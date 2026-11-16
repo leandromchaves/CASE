@@ -1,5 +1,8 @@
 ﻿using System.Collections.Generic;
 using CASE.Models;
+using System;
+using CASE.Data;
+using CASE.Services;
 using MySql.Data.MySqlClient;
 
 namespace CASE.Repositories
@@ -9,6 +12,7 @@ namespace CASE.Repositories
 
         public List<ProdutoFornecedor> ListarPorProduto(int idProduto)
         {
+            ExigirConsulta();
             return AcessoDados.ConsultarLista(
                 "SELECT id_produto,id_fornecedor,codigo_no_fornecedor FROM produtofornecedor WHERE id_produto=@id ORDER BY id_fornecedor",
                 ConverterLinha,
@@ -18,6 +22,7 @@ namespace CASE.Repositories
 
         public ProdutoFornecedor BuscarPorChave(int idProduto, int idFornecedor)
         {
+            ExigirConsulta();
             return AcessoDados.ConsultarUnico(
                 "SELECT id_produto,id_fornecedor,codigo_no_fornecedor FROM produtofornecedor WHERE id_produto=@produto AND id_fornecedor=@fornecedor",
                 ConverterLinha,
@@ -31,40 +36,75 @@ namespace CASE.Repositories
 
         public void Vincular(ProdutoFornecedor item)
         {
-            AcessoDados.Executar(
+            ExecutarAdministrativo(
                 "INSERT INTO produtofornecedor (id_produto,id_fornecedor,codigo_no_fornecedor) VALUES (@produto,@fornecedor,@codigo)",
-                comando =>
-                {
-                    AcessoDados.AdicionarParametro(comando, "@produto", item.IdProduto);
-                    AcessoDados.AdicionarParametro(comando, "@fornecedor", item.IdFornecedor);
-                    AcessoDados.AdicionarTextoOpcional(comando, "@codigo", item.CodigoNoFornecedor);
-                });
+                item.IdProduto,
+item.IdFornecedor,
+item.CodigoNoFornecedor);
 
+        }
+
+        public void SalvarVinculo(ProdutoFornecedor item)
+        {
+            ExecutarAdministrativo(
+                "INSERT INTO produtofornecedor (id_produto,id_fornecedor,codigo_no_fornecedor) " +
+                "VALUES (@produto,@fornecedor,@codigo) ON DUPLICATE KEY UPDATE codigo_no_fornecedor=@codigo",
+                item.IdProduto, item.IdFornecedor, item.CodigoNoFornecedor);
         }
 
         public bool AtualizarCodigo(int idProduto, int idFornecedor, string codigo)
         {
-            return AcessoDados.Executar(
+            return ExecutarAdministrativo(
                 "UPDATE produtofornecedor SET codigo_no_fornecedor=@codigo WHERE id_produto=@produto AND id_fornecedor=@fornecedor",
-                comando =>
-                {
-                    AcessoDados.AdicionarTextoOpcional(comando, "@codigo", codigo);
-                    AcessoDados.AdicionarParametro(comando, "@produto", idProduto);
-                    AcessoDados.AdicionarParametro(comando, "@fornecedor", idFornecedor);
-                }) > 0;
+                idProduto,
+idFornecedor,
+codigo) > 0;
 
         }
 
         public bool Desvincular(int idProduto, int idFornecedor)
         {
-            return AcessoDados.Executar(
+            return ExecutarAdministrativo(
                 "DELETE FROM produtofornecedor WHERE id_produto=@produto AND id_fornecedor=@fornecedor",
-                comando =>
-                {
-                    AcessoDados.AdicionarParametro(comando, "@produto", idProduto);
-                    AcessoDados.AdicionarParametro(comando, "@fornecedor", idFornecedor);
-                }) > 0;
+                idProduto, idFornecedor, null) > 0;
 
+        }
+
+        private static void ExigirConsulta()
+        {
+            new AutorizacaoService().ExigirAdministradorOuGerente(SessaoUsuario.ObterUsuarioAtual());
+        }
+
+        private static int ExecutarAdministrativo(string sql, int produto, int fornecedor, string codigo)
+        {
+            using (var conexao = Conexao.CriarConexao())
+            {
+                conexao.Open();
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        FornecedorRepository.ValidarAcesso(conexao, transacao, true);
+                        if (produto <= 0 || fornecedor <= 0 || codigo != null && codigo.Length > 50)
+                        {
+                            throw new ArgumentException("Selecione produto e fornecedor válidos e um código com até 50 caracteres.");
+                        }
+                        int resultado = AcessoDados.Executar(conexao, transacao, sql, comando =>
+                        {
+                            comando.Parameters.AddWithValue("@produto", produto);
+                            comando.Parameters.AddWithValue("@fornecedor", fornecedor);
+                            AcessoDados.AdicionarTextoOpcional(comando, "@codigo", codigo);
+                        });
+                        transacao.Commit();
+                        return resultado;
+                    }
+                    catch
+                    {
+                        transacao.Rollback();
+                        throw;
+                    }
+                }
+            }
         }
 
         private static ProdutoFornecedor ConverterLinha(MySqlDataReader leitor)

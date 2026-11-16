@@ -18,7 +18,7 @@ namespace CASE.Services
                 throw new ArgumentNullException(nameof(setor));
             }
 
-            if (setor.IdEvento <= 0 || string.IsNullOrWhiteSpace(setor.Nome))
+            if (setor.IdEvento <= 0 || string.IsNullOrWhiteSpace(setor.Nome) || setor.Nome.Trim().Length > 100)
             {
                 throw new ArgumentException(
                     "Informe um evento e o nome do setor.",
@@ -91,6 +91,41 @@ namespace CASE.Services
             }
 
             return setoresPermitidos;
+        }
+
+        public void Renomear(Usuario usuario, int idSetor, string nome, string nomeAnterior)
+        {
+            if (string.IsNullOrWhiteSpace(nome) || nome.Trim().Length > 100)
+            {
+                throw new ArgumentException("Informe um nome de setor com até 100 caracteres.");
+            }
+            string perfil;
+            Usuario atual = autorizacaoService.ValidarUsuarioEObterPerfil(usuario, out perfil);
+            Setor setor = BuscarPorId(usuario, idSetor);
+            if (setor == null)
+            {
+                throw new InvalidOperationException("O setor não foi encontrado.");
+            }
+            Evento evento = eventoRepository.BuscarPorId(setor.IdEvento);
+            if (perfil != "Gerente" || evento == null || evento.IdResponsavel != atual.IdPessoa)
+            {
+                throw new UnauthorizedAccessException("Somente o gerente responsável pode renomear o setor.");
+            }
+            if (evento.Situacao != SituacoesEvento.Planejado && evento.Situacao != SituacoesEvento.EmAndamento)
+            {
+                throw new InvalidOperationException("O evento não permite alterações de setores nesta situação.");
+            }
+            if (!string.Equals(setor.Nome, nomeAnterior, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("O setor foi alterado. Atualize a lista antes de editar.");
+            }
+            nome = nome.Trim();
+            if (nome == setor.Nome)
+            {
+                return;
+            }
+            setor.Nome = nome;
+            setorRepository.RenomearComLocal(setor, atual.IdUsuario, nomeAnterior);
         }
 
         public Setor BuscarPorId(Usuario usuario, int idSetor)

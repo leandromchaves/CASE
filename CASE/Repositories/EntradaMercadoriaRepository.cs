@@ -128,8 +128,97 @@ namespace CASE.Repositories
             int idUsuarioAlteracao,
             string justificativa)
         {
-            throw new InvalidOperationException(
-                "Movimentações confirmadas são imutáveis. A correção exige uma nova operação auditada.");
+            if (entrada == null || itens == null || itens.Count == 0)
+            {
+                throw new ArgumentException("Informe a entrada e seus itens para corrigir.");
+            }
+            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            {
+                conexao.Open();
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        string perfil = ControleCorrecaoOperacao.ValidarEditor(conexao, transacao, idUsuarioAlteracao);
+                        if (perfil != "Administrador")
+                        {
+                            throw new UnauthorizedAccessException("Somente administradores podem corrigir entradas do central.");
+                        }
+                        EntradaMercadoria atual = BuscarParaAtualizacao(conexao, transacao, entrada.IdEntrada);
+                        if (atual == null)
+                        {
+                            throw new InvalidOperationException("A entrada não foi encontrada.");
+                        }
+                        ControleCorrecaoOperacao.ValidarVersao(atual.Versao, entrada.Versao, justificativa);
+                        if (atual.IdLocalDestino != entrada.IdLocalDestino || atual.IdFornecedor != entrada.IdFornecedor ||
+                            atual.TipoEntrada != entrada.TipoEntrada)
+                        {
+                            throw new ArgumentException("A correção deve manter local, fornecedor e tipo originais da entrada.");
+                        }
+                        if (entrada.NumeroDocumento != null && entrada.NumeroDocumento.Length > 50)
+                        {
+                            throw new ArgumentException("O número do documento pode ter até 50 caracteres.");
+                        }
+                        ValidarAdministradorEEstoqueCentral(conexao, transacao, idUsuarioAlteracao, atual.IdLocalDestino);
+                        string anterior = CriarSnapshot(conexao, transacao, atual.IdEntrada);
+                        Dictionary<int, int> originais = ControleCorrecaoOperacao.LerItens(
+conexao,
+transacao,
+                            "SELECT id_entrada_item AS id_item,id_produto FROM entradaitem WHERE id_entrada=@id FOR UPDATE",
+                            atual.IdEntrada,
+itens.Count);
+                        HashSet<int> informados = new HashSet<int>();
+                        List<Tuple<int, int, decimal>> ajustes = CarregarAjustesAnteriores(conexao, transacao, atual.IdEntrada);
+                        foreach (EntradaItem item in itens)
+                        {
+                            if (item == null)
+                            {
+                                throw new ArgumentException("A correção contém um item nulo.");
+                            }
+                            ControleCorrecaoOperacao.ValidarItem(originais, informados, item.IdEntradaItem,
+                                item.IdProduto, item.Quantidade, item.CustoUnitario, false);
+                            ajustes.Add(Tuple.Create(atual.IdLocalDestino, item.IdProduto, item.Quantidade));
+                            AcessoDados.Executar(conexao, transacao,
+                                "UPDATE entradaitem SET quantidade=@quantidade,custo_unitario=@custo " +
+                                "WHERE id_entrada_item=@item AND id_entrada=@entrada",
+                                comando =>
+                                {
+                                    comando.Parameters.AddWithValue("@quantidade", item.Quantidade);
+                                    AcessoDados.AdicionarParametro(comando, "@custo", item.CustoUnitario);
+                                    comando.Parameters.AddWithValue("@item", item.IdEntradaItem);
+                                    comando.Parameters.AddWithValue("@entrada", atual.IdEntrada);
+                                });
+                        }
+                        ControleSaldoEstoque.AplicarAjustes(conexao, transacao, ajustes, true);
+                        AcessoDados.Executar(
+conexao,
+transacao,
+                            "UPDATE entradamercadoria SET observacao=@observacao,numero_documento=@documento," +
+                            "id_usuario_alteracao=@usuario,atualizado_em=NOW(),versao=versao+1 WHERE id_entrada=@id",
+                            comando =>
+                            {
+                                AcessoDados.AdicionarTextoOpcional(comando, "@observacao", entrada.Observacao);
+                                AcessoDados.AdicionarTextoOpcional(comando, "@documento", entrada.NumeroDocumento);
+                                comando.Parameters.AddWithValue("@usuario", idUsuarioAlteracao);
+                                comando.Parameters.AddWithValue("@id", atual.IdEntrada);
+                            });
+                        RegistrarHistorico(
+conexao,
+transacao,
+atual.IdEntrada,
+idUsuarioAlteracao,
+                            justificativa.Trim(),
+anterior,
+CriarSnapshot(conexao, transacao, atual.IdEntrada));
+                        transacao.Commit();
+                    }
+                    catch
+                    {
+                        transacao.Rollback();
+                        throw;
+                    }
+                }
+            }
         }
 
         private static EntradaMercadoria BuscarParaAtualizacao(
@@ -204,8 +293,9 @@ namespace CASE.Repositories
                 "SELECT CAST(JSON_OBJECT('id_fornecedor',em.id_fornecedor," +
                 "'id_local_destino',em.id_local_destino,'id_usuario_responsavel',em.id_usuario_responsavel," +
                 "'tipo_entrada',em.tipo_entrada,'data_hora',em.data_hora,'numero_documento',em.numero_documento," +
-                "'observacao',em.observacao,'itens',(SELECT JSON_ARRAYAGG(JSON_OBJECT(" +
-                "'id_produto',ei.id_produto,'quantidade',ei.quantidade,'custo_unitario',ei.custo_unitario)) " +
+                "'observacao',em.observacao,'versao',em.versao,'id_usuario_alteracao',em.id_usuario_alteracao," +
+                "'atualizado_em',em.atualizado_em,'itens',(SELECT JSON_ARRAYAGG(JSON_OBJECT(" +
+                "'id_item',ei.id_entrada_item,'id_produto',ei.id_produto,'quantidade',ei.quantidade,'custo_unitario',ei.custo_unitario)) " +
                 "FROM entradaitem ei WHERE ei.id_entrada=em.id_entrada)) AS CHAR) " +
                 "FROM entradamercadoria em WHERE em.id_entrada=@id",
                 conexao,

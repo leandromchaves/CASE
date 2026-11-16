@@ -159,8 +159,154 @@ namespace CASE.Repositories
             int idUsuarioAlteracao,
             string justificativa)
         {
-            throw new InvalidOperationException(
-                "Lançamentos confirmados são imutáveis. A correção exige uma nova operação auditada.");
+            if (registro == null || itens == null || itens.Count == 0)
+            {
+                throw new ArgumentException("Informe o registro e seus itens para corrigir.");
+            }
+            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            {
+                conexao.Open();
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        string perfil = ControleCorrecaoOperacao.ValidarEditor(conexao, transacao, idUsuarioAlteracao);
+                        Registro atual = BuscarParaAtualizacao(conexao, transacao, registro.IdRegistro);
+                        if (atual == null)
+                        {
+                            throw new InvalidOperationException("O registro não foi encontrado.");
+                        }
+                        ControleCorrecaoOperacao.ValidarVersao(atual.Versao, registro.Versao, justificativa);
+                        if (atual.IdEscala != registro.IdEscala)
+                        {
+                            throw new ArgumentException("A correção não pode mudar a escala original.");
+                        }
+                        using (var comando = new MySqlCommand(
+                            "SELECT s.id_evento FROM escala e JOIN equipeevento eq ON eq.id_equipe=e.id_equipe " +
+                            "JOIN jornadasetor j ON j.id_jornada=e.id_jornada JOIN setor s ON s.id_setor=j.id_setor " +
+                            "WHERE e.id_escala=@escala AND eq.id_evento=s.id_evento " +
+                            "AND (@perfil<>'Membro' OR (eq.ativo=1 AND eq.id_pessoa=@pessoa AND e.situacao<>'cancelada')) FOR UPDATE",
+                            conexao,
+transacao))
+                        {
+                            comando.Parameters.AddWithValue("@escala", atual.IdEscala);
+                            comando.Parameters.AddWithValue("@perfil", perfil);
+                            comando.Parameters.AddWithValue("@pessoa", SessaoUsuario.ObterUsuarioAtual().IdPessoa);
+                            object evento = comando.ExecuteScalar();
+                            if (evento == null)
+                            {
+                                throw new UnauthorizedAccessException("A escala não está autorizada para esta correção.");
+                            }
+                            ControleCorrecaoOperacao.ValidarEvento(conexao, transacao, Convert.ToInt32(evento),
+                                perfil, true, atual.IdUsuarioResponsavel);
+                        }
+                        registro.Tipo = TiposRegistro.Normalizar(registro.Tipo);
+                        if (registro.Tipo == TiposRegistro.Venda)
+                        {
+                            if (registro.FormaPagamento != "dinheiro" && registro.FormaPagamento != "pix" &&
+                                registro.FormaPagamento != "cartao")
+                            {
+                                throw new ArgumentException("Selecione a forma de pagamento da venda.");
+                            }
+                        }
+                        else
+                        {
+                            if (string.IsNullOrWhiteSpace(registro.Observacao))
+                            {
+                                throw new ArgumentException("Informe a justificativa da perda.");
+                            }
+                            registro.FormaPagamento = null;
+                        }
+                        string anterior = CriarSnapshot(conexao, transacao, atual.IdRegistro);
+                        Dictionary<int, int> originais = ControleCorrecaoOperacao.LerItens(
+conexao,
+transacao,
+                            "SELECT id_registro_item AS id_item,id_produto_setor AS id_produto FROM registroitem " +
+                            "WHERE id_registro=@id FOR UPDATE",
+atual.IdRegistro,
+itens.Count);
+                        HashSet<int> informados = new HashSet<int>();
+                        List<Tuple<int, int, decimal>> ajustes = CarregarAjustesAnteriores(conexao, transacao, atual.IdRegistro);
+                        int idSetor;
+                        int idLocal;
+                        BuscarSetorELocalDaEscala(conexao, transacao, atual.IdEscala, out idSetor, out idLocal);
+                        foreach (RegistroItem item in itens)
+                        {
+                            if (item == null)
+                            {
+                                throw new ArgumentException("A correção contém um item nulo.");
+                            }
+                            if (registro.Tipo == TiposRegistro.Perda)
+                            {
+                                item.PrecoUnitarioPraticado = null;
+                            }
+                            ControleCorrecaoOperacao.ValidarItem(
+originais,
+informados,
+item.IdRegistroItem,
+                                item.IdProdutoSetor,
+item.Quantidade,
+item.PrecoUnitarioPraticado,
+registro.Tipo == TiposRegistro.Venda,
+true);
+                            int produto = BuscarProdutoDoSetor(conexao, transacao, item.IdProdutoSetor, idSetor);
+                            if (originais[item.IdRegistroItem] != item.IdProdutoSetor)
+                            {
+                                using (var comando = new MySqlCommand("SELECT ativo FROM produto WHERE id_produto=@id FOR UPDATE", conexao, transacao))
+                                {
+                                    comando.Parameters.AddWithValue("@id", produto);
+                                    if (!Convert.ToBoolean(comando.ExecuteScalar()))
+                                    {
+                                        throw new InvalidOperationException("Selecione um produto ativo do mesmo setor para corrigir o registro.");
+                                    }
+                                }
+                            }
+                            ajustes.Add(Tuple.Create(idLocal, produto, -item.Quantidade));
+                            AcessoDados.Executar(
+conexao,
+transacao,
+                                "UPDATE registroitem SET id_produto_setor=@produto,quantidade=@quantidade,preco_unitario_praticado=@preco " +
+                                "WHERE id_registro_item=@item AND id_registro=@registro",
+                                comando =>
+                                {
+                                    comando.Parameters.AddWithValue("@produto", item.IdProdutoSetor);
+                                    comando.Parameters.AddWithValue("@quantidade", item.Quantidade);
+                                    AcessoDados.AdicionarParametro(comando, "@preco", item.PrecoUnitarioPraticado);
+                                    comando.Parameters.AddWithValue("@item", item.IdRegistroItem);
+                                    comando.Parameters.AddWithValue("@registro", atual.IdRegistro);
+                                });
+                        }
+                        ControleSaldoEstoque.AplicarAjustes(conexao, transacao, ajustes, true);
+                        AcessoDados.Executar(
+conexao,
+transacao,
+                            "UPDATE registro SET tipo=@tipo,forma_pagamento=@pagamento,observacao=@observacao," +
+                            "id_usuario_alteracao=@usuario,atualizado_em=NOW(),versao=versao+1 WHERE id_registro=@id",
+                            comando =>
+                            {
+                                comando.Parameters.AddWithValue("@tipo", registro.Tipo);
+                                AcessoDados.AdicionarTextoOpcional(comando, "@pagamento", registro.FormaPagamento);
+                                AcessoDados.AdicionarTextoOpcional(comando, "@observacao", registro.Observacao);
+                                comando.Parameters.AddWithValue("@usuario", idUsuarioAlteracao);
+                                comando.Parameters.AddWithValue("@id", atual.IdRegistro);
+                            });
+                        RegistrarHistorico(
+conexao,
+transacao,
+atual.IdRegistro,
+idUsuarioAlteracao,
+                            justificativa.Trim(),
+anterior,
+CriarSnapshot(conexao, transacao, atual.IdRegistro));
+                        transacao.Commit();
+                    }
+                    catch
+                    {
+                        transacao.Rollback();
+                        throw;
+                    }
+                }
+            }
         }
 
         private static void ValidarAutorNaTransacao(MySqlConnection conexao,
@@ -260,7 +406,7 @@ namespace CASE.Repositories
             int idRegistro)
         {
             using (MySqlCommand comando = new MySqlCommand(
-                "SELECT id_registro,id_escala,id_usuario_responsavel,tipo,data_hora,observacao," +
+                "SELECT id_registro,id_escala,id_usuario_responsavel,tipo,forma_pagamento,data_hora,observacao," +
                 "chave_operacao,criado_em,id_usuario_alteracao,atualizado_em,versao " +
                 "FROM registro WHERE id_registro=@id FOR UPDATE",
                 conexao,
@@ -369,9 +515,10 @@ namespace CASE.Repositories
             using (MySqlCommand comando = new MySqlCommand(
                 "SELECT CAST(JSON_OBJECT(" +
                 "'id_escala',r.id_escala,'id_usuario_responsavel',r.id_usuario_responsavel," +
-                "'tipo',r.tipo,'data_hora',r.data_hora,'observacao',r.observacao," +
+                "'tipo',r.tipo,'forma_pagamento',r.forma_pagamento,'data_hora',r.data_hora,'observacao',r.observacao," +
+                "'versao',r.versao,'id_usuario_alteracao',r.id_usuario_alteracao,'atualizado_em',r.atualizado_em," +
                 "'itens',(SELECT JSON_ARRAYAGG(JSON_OBJECT(" +
-                "'id_produto_setor',ri.id_produto_setor,'quantidade',ri.quantidade," +
+                "'id_item',ri.id_registro_item,'id_produto_setor',ri.id_produto_setor,'quantidade',ri.quantidade," +
                 "'preco',ri.preco_unitario_praticado)) FROM registroitem ri " +
                 "WHERE ri.id_registro=r.id_registro)) AS CHAR) " +
                 "FROM registro r WHERE r.id_registro=@id",

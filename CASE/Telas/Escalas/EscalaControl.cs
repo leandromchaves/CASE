@@ -24,16 +24,14 @@ namespace CASE.Quermesse
         {
         }
 
-        public EscalaControl(QuermessePreview exemplos) : this(null, null)
-        {
-        }
-
         public EscalaControl(Usuario usuario, Evento evento)
         {
             InitializeComponent();
             FrontendTheme.Aplicar(this);
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
+            cmbFiltroEscala.Items.Clear();
+            cmbFiltroTurnoEscala.Items.Clear();
             dgvEscala.CellDoubleClick += dgvEscala_CellDoubleClick;
 
             if (usuarioAutenticado == null)
@@ -89,11 +87,6 @@ namespace CASE.Quermesse
 
         private void btnNovaAlocacao_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirEscalaDemo(false);
-                return;
-            }
 
             if (eventoSelecionado == null || !podeAdministrarEscalas)
             {
@@ -106,11 +99,6 @@ namespace CASE.Quermesse
 
         private void dgvEscala_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirEscalaDemo(true);
-                return;
-            }
 
             if (e.RowIndex < 0 || eventoSelecionado == null)
             {

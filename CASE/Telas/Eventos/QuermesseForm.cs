@@ -50,12 +50,14 @@ namespace CASE.Quermesse
             txtResponsavelQuermesse.TabStop = false;
             lblSituacao.Text = "Situação (automática)";
 
-            // Dá espaço entre o ComboBox de situação e o próximo rótulo.
+
             lblObservacao.Top = 438;
             txtObservacaoQuermesse.Top = 464;
             labelAvisoFormulario.Top = 499;
 
             txtNomeQuermesse.TabIndex = 0;
+            txtNomeQuermesse.MaxLength = 150;
+            txtLocalQuermesse.MaxLength = 200;
             cmbTipoEvento.TabIndex = 1;
             txtLocalQuermesse.TabIndex = 2;
             dtpInicioQuermesse.TabIndex = 3;
@@ -159,11 +161,6 @@ namespace CASE.Quermesse
 
         private void btnSalvarVisual_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                SalvarEventoDemo();
-                return;
-            }
 
             if (usuarioAutenticado == null)
             {

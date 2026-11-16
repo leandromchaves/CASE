@@ -175,7 +175,7 @@ namespace CASE.Repositories
                                 if (saldosPendentes > 0)
                                 {
                                     throw new InvalidOperationException(
-                                        "O evento possui saldo pendente nas barracas e não pode ser finalizado.");
+                                        "O evento possui saldo no estoque geral ou nas barracas e não pode ser finalizado.");
                                 }
                             }
                         }

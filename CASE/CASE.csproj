@@ -106,6 +106,78 @@
     <Reference Include="ZstdSharp, Version=0.8.8.0, Culture=neutral, PublicKeyToken=8d151af33a4ad5cf, processorArchitecture=MSIL">
       <HintPath>..\packages\ZstdSharp.Port.0.8.8\lib\net462\ZstdSharp.dll</HintPath>
     </Reference>
+    <Reference Include="ClosedXML">
+      <HintPath>..\packages\ClosedXML.0.105.1\lib\netstandard2.0\ClosedXML.dll</HintPath>
+    </Reference>
+    <Reference Include="ClosedXML.Parser">
+      <HintPath>..\packages\ClosedXML.Parser.2.0.0\lib\netstandard2.0\ClosedXML.Parser.dll</HintPath>
+    </Reference>
+    <Reference Include="DocumentFormat.OpenXml">
+      <HintPath>..\packages\DocumentFormat.OpenXml.3.1.1\lib\net46\DocumentFormat.OpenXml.dll</HintPath>
+    </Reference>
+    <Reference Include="DocumentFormat.OpenXml.Framework">
+      <HintPath>..\packages\DocumentFormat.OpenXml.Framework.3.1.1\lib\net46\DocumentFormat.OpenXml.Framework.dll</HintPath>
+    </Reference>
+    <Reference Include="ExcelNumberFormat">
+      <HintPath>..\packages\ExcelNumberFormat.1.1.0\lib\netstandard2.0\ExcelNumberFormat.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.HashCode">
+      <HintPath>..\packages\Microsoft.Bcl.HashCode.1.1.1\lib\net461\Microsoft.Bcl.HashCode.dll</HintPath>
+    </Reference>
+    <Reference Include="RBush">
+      <HintPath>..\packages\RBush.Signed.4.0.0\lib\netstandard2.0\RBush.dll</HintPath>
+    </Reference>
+    <Reference Include="SixLabors.Fonts">
+      <HintPath>..\packages\SixLabors.Fonts.1.0.0\lib\netstandard2.0\SixLabors.Fonts.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp-gdi">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.BarCodes-gdi">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp.BarCodes-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Charting-gdi">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp.Charting-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Cryptography">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp.Cryptography.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Quality-gdi">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp.Quality-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Shared">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp.Shared.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.Snippets-gdi">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp.Snippets-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.System">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp.System.dll</HintPath>
+    </Reference>
+    <Reference Include="PdfSharp.WPFonts">
+      <HintPath>..\packages\PDFsharp-GDI.6.2.4\lib\net462\PdfSharp.WPFonts.dll</HintPath>
+    </Reference>
+    <Reference Include="MigraDoc.DocumentObjectModel">
+      <HintPath>..\packages\PDFsharp-MigraDoc-GDI.6.2.4\lib\net462\MigraDoc.DocumentObjectModel.dll</HintPath>
+    </Reference>
+    <Reference Include="MigraDoc.Rendering-gdi">
+      <HintPath>..\packages\PDFsharp-MigraDoc-GDI.6.2.4\lib\net462\MigraDoc.Rendering-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="MigraDoc.RtfRendering-gdi">
+      <HintPath>..\packages\PDFsharp-MigraDoc-GDI.6.2.4\lib\net462\MigraDoc.RtfRendering-gdi.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions">
+      <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.8.0.2\lib\net462\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Extensions.Logging.Abstractions">
+      <HintPath>..\packages\Microsoft.Extensions.Logging.Abstractions.8.0.3\lib\net462\Microsoft.Extensions.Logging.Abstractions.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.Bcl.AsyncInterfaces">
+      <HintPath>..\packages\Microsoft.Bcl.AsyncInterfaces.8.0.0\lib\net462\Microsoft.Bcl.AsyncInterfaces.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Security.Cryptography.Pkcs">
+      <HintPath>..\packages\System.Security.Cryptography.Pkcs.8.0.1\lib\net462\System.Security.Cryptography.Pkcs.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Data\Conexao.cs" />
@@ -168,6 +240,7 @@
     <Compile Include="Repositories\RegistroRepository.cs" />
     <Compile Include="Repositories\AcessoDados.cs" />
     <Compile Include="Repositories\ControleSaldoEstoque.cs" />
+    <Compile Include="Repositories\ControleCorrecaoOperacao.cs" />
     <Compile Include="Repositories\SetorRepository.cs" />
     <Compile Include="Repositories\SolicitacaoItemRepository.cs" />
     <Compile Include="Repositories\SolicitacaoRepository.cs" />
@@ -197,17 +270,6 @@
     <Compile Include="Services\ProdutoService.cs" />
     <Compile Include="Services\RegistroService.cs" />
     <Compile Include="Services\ConsultaOperacionalService.cs" />
-    <Compile Include="DadosExemplo\DadosDemonstracao.cs" />
-    <Compile Include="DadosExemplo\TelasDemonstracao.cs" />
-    <Compile Include="DadosExemplo\OperacaoTelasDemonstracao.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="DadosExemplo\ModoDemonstracaoPrincipal.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="DadosExemplo\FinanceiroDemonstracao.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
     <Compile Include="Services\ConfiguracaoInstitucionalService.cs" />
     <Compile Include="Utils\ExportadorRelatorio.cs" />
     <Compile Include="Repositories\ConsultaOperacionalRepository.cs" />
@@ -261,6 +323,9 @@
     <Compile Include="Telas\Estoque\MovimentacoesControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Telas\Estoque\CorrecaoOperacaoForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Telas\Estoque\MovimentacoesControl.Designer.cs">
       <DependentUpon>MovimentacoesControl.cs</DependentUpon>
     </Compile>
@@ -312,7 +377,6 @@
     <Compile Include="Telas\Estoque\TransferenciaEstoqueForm.Designer.cs">
       <DependentUpon>TransferenciaEstoqueForm.cs</DependentUpon>
     </Compile>
-    <Compile Include="DadosExemplo\OperacoesPreview.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utils\VisualUtils.cs" />
@@ -397,7 +461,6 @@
     <Compile Include="Telas\Eventos\QuermessesControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="DadosExemplo\QuermessePreview.cs" />
     <Compile Include="Telas\Registros\RegistrosControl.Designer.cs">
       <DependentUpon>RegistrosControl.cs</DependentUpon>
     </Compile>
@@ -433,9 +496,6 @@
     </EmbeddedResource>
     <Compile Include="Telas\Financeiro\FinanceiroControl.cs">
       <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Utils\GraficoPreview.cs">
-      <SubType>Component</SubType>
     </Compile>
     <EmbeddedResource Include="Telas\Acesso\CadastroForm.resx">
       <DependentUpon>CadastroForm.cs</DependentUpon>
@@ -506,7 +566,6 @@
   <ItemGroup>
     <None Include="Resources\Lucide\*.svg" />
     <None Include="Resources\Lucide\*.png" />
-    <None Include="Resources\Lucide\README.md" />
     <Content Include="Resources\Lucide\LICENSE.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>

@@ -28,10 +28,22 @@ namespace CASE.Quermesse
             eventoSelecionado = evento;
             ConfigurarFormulario();
             CarregarProdutos();
+            dgvItens.BackgroundColor = System.Drawing.Color.White;
+            dgvItens.EnableHeadersVisualStyles = false;
+            CASE.Utils.FrontendTheme.Aplicar(this);
+            CASE.Utils.IconoAplicacao.Aplicar(this);
         }
 
         private void ConfigurarFormulario()
         {
+            Name = "SolicitacaoEstoqueCentralForm";
+            cmbTipo.Name = "cmbTipoPedidoCentral";
+            dgvItens.Name = "dgvItensPedidoCentral";
+            btnAdicionarItem.Name = "btnAdicionarItemCentral";
+            btnRemoverItem.Name = "btnRemoverItemCentral";
+            btnEnviar.Name = "btnEnviarPedidoCentral";
+            btnCancelar.Name = "btnCancelarPedidoCentral";
+            lblAviso.Name = "lblAvisoPedidoCentral";
             Text = "Solicitação ao estoque central";
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -58,6 +70,11 @@ namespace CASE.Quermesse
             dgvItens.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             dgvItens.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvItens.RowHeadersVisible = false;
+            dgvItens.DataError += (s, e) =>
+            {
+                e.ThrowException = false;
+                lblAviso.Text = "Selecione um produto válido na lista e revise a quantidade.";
+            };
             dgvItens.Columns.Add(new DataGridViewComboBoxColumn
             {
                 Name = "produto",

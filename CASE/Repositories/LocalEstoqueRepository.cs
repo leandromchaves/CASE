@@ -14,7 +14,9 @@ namespace CASE.Repositories
                 using (var transacao = conexao.BeginTransaction())
                 {
                     using (var comando = new MySqlCommand(
-                        "SELECT id_instituicao FROM instituicao WHERE id_instituicao=@id FOR UPDATE", conexao, transacao))
+                        "SELECT id_instituicao FROM instituicao WHERE id_instituicao=@id FOR UPDATE",
+conexao,
+transacao))
                     {
                         comando.Parameters.AddWithValue("@id", idInstituicao);
                         if (comando.ExecuteScalar() == null)
@@ -24,7 +26,9 @@ namespace CASE.Repositories
                     }
                     int idCentral = 0;
                     using (var comando = new MySqlCommand(
-                        "SELECT id_local_estoque,ativo FROM localestoque WHERE id_instituicao=@id AND eh_central=1 FOR UPDATE", conexao, transacao))
+                        "SELECT id_local_estoque,ativo FROM localestoque WHERE id_instituicao=@id AND eh_central=1 FOR UPDATE",
+conexao,
+transacao))
                     {
                         comando.Parameters.AddWithValue("@id", idInstituicao);
                         using (var leitor = comando.ExecuteReader())
@@ -43,7 +47,9 @@ namespace CASE.Repositories
                     {
                         using (var comando = new MySqlCommand(
                             "INSERT INTO localestoque(id_instituicao,nome,ativo,eh_central,eh_geral_evento,id_evento) " +
-                            "VALUES (@id,'Estoque central',1,1,0,NULL)", conexao, transacao))
+                            "VALUES (@id,'Estoque central',1,1,0,NULL)",
+conexao,
+transacao))
                         {
                             comando.Parameters.AddWithValue("@id", idInstituicao);
                             comando.ExecuteNonQuery();

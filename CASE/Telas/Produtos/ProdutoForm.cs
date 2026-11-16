@@ -81,11 +81,6 @@ namespace CASE
             }
         }
 
-        public void PreencherPreview(Produto produto)
-        {
-            PreencherProduto(produto);
-        }
-
         private void PreencherProduto(Produto produto)
         {
             if (produto == null)
@@ -111,11 +106,6 @@ namespace CASE
 
         private void btnSalvarProduto_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                SalvarProdutoDemo();
-                return;
-            }
 
             Categoria categoria = cmbCategoriaProduto.SelectedItem as Categoria;
 
@@ -232,6 +222,10 @@ namespace CASE
 
                 try
                 {
+                    if (new FileInfo(seletor.FileName).Length > ProdutoService.TamanhoMaximoImagem)
+                    {
+                        throw new ArgumentException("A imagem do produto excede o limite de 16 MB.");
+                    }
                     byte[] dados = File.ReadAllBytes(seletor.FileName);
                     imagemProduto = ValidarEPrepararImagem(dados);
                     ExibirImagemProduto(imagemProduto);
@@ -251,6 +245,7 @@ namespace CASE
 
         private byte[] ValidarEPrepararImagem(byte[] dados)
         {
+            ProdutoService.ValidarImagemProduto(dados);
             if (dados == null || dados.Length == 0)
             {
                 throw new ArgumentException("Selecione um arquivo de imagem válido.");

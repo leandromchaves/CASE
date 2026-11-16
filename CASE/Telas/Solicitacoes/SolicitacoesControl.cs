@@ -20,16 +20,14 @@ namespace CASE.Quermesse
         {
         }
 
-        public SolicitacoesControl(QuermessePreview exemplos) : this(null, null)
-        {
-        }
-
         public SolicitacoesControl(Usuario usuario, Evento evento)
         {
             InitializeComponent();
             FrontendTheme.Aplicar(this);
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
+            cmbFiltroSolicitacoes.Items.Clear();
+            cmbStatusListaSolicitacoes.Items.Clear();
             btnDetalhesSolicitacao.Text = "Detalhes / analisar";
             dgvSolicitacoesQuermesse.CellDoubleClick += dgvSolicitacoesQuermesse_CellDoubleClick;
 
@@ -62,11 +60,6 @@ namespace CASE.Quermesse
 
         private void btnNovaSolicitacao_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirPedidoDemo(0);
-                return;
-            }
 
             if (gerenteAutorizado)
             {
@@ -122,11 +115,6 @@ namespace CASE.Quermesse
 
         private void AbrirSolicitacaoSelecionada()
         {
-            if (dadosDemo != null)
-            {
-                AbrirSolicitacaoDemoSelecionada();
-                return;
-            }
 
             if (dgvSolicitacoesQuermesse.SelectedRows.Count == 0)
             {
@@ -199,6 +187,25 @@ namespace CASE.Quermesse
             MostrarDetalhes(solicitacao.IdSolicitacao);
         }
 
+        public void AbrirPedidoDeReposicao(int idSolicitacao)
+        {
+            exibindoPedidosCentrais = false;
+            CarregarSolicitacoes();
+            foreach (DataGridViewRow linha in dgvSolicitacoesQuermesse.Rows)
+            {
+                Solicitacao solicitacao = linha.Tag as Solicitacao;
+                if (solicitacao != null && solicitacao.IdSolicitacao == idSolicitacao)
+                {
+                    dgvSolicitacoesQuermesse.ClearSelection();
+                    linha.Selected = true;
+                    dgvSolicitacoesQuermesse.CurrentCell = linha.Cells[0];
+                    AbrirSolicitacaoSelecionada();
+                    return;
+                }
+            }
+            labelAviso.Text = "O pedido não está mais disponível. Atualize as pendências.";
+        }
+
         private void DecidirSolicitacao(Solicitacao solicitacao)
         {
             DialogResult resposta = MessageBox.Show(
@@ -215,8 +222,8 @@ namespace CASE.Quermesse
                         usuarioAutenticado,
                         solicitacao.IdSolicitacao,
                         null);
-                    labelAviso.Text = "Solicitação aprovada. O estoque não foi movimentado.";
                     CarregarSolicitacoes();
+                    labelAviso.Text = "Solicitação aprovada. O estoque não foi movimentado.";
                 }
                 else if (resposta == DialogResult.No)
                 {
@@ -231,8 +238,8 @@ namespace CASE.Quermesse
                         usuarioAutenticado,
                         solicitacao.IdSolicitacao,
                         justificativa);
-                    labelAviso.Text = "Solicitação rejeitada.";
                     CarregarSolicitacoes();
+                    labelAviso.Text = "Solicitação rejeitada.";
                 }
             }
             catch (UnauthorizedAccessException)
@@ -241,8 +248,8 @@ namespace CASE.Quermesse
             }
             catch (InvalidOperationException ex)
             {
-                labelAviso.Text = ex.Message;
                 CarregarSolicitacoes();
+                labelAviso.Text = ex.Message;
             }
             catch (Exception)
             {
@@ -265,11 +272,24 @@ namespace CASE.Quermesse
                 dialogo.MaximizeBox = false;
 
                 campo.Multiline = true;
+                campo.Name = "txtJustificativaRejeicao";
                 campo.MaxLength = 500;
                 campo.SetBounds(12, 12, 396, 72);
 
                 confirmar.Text = "Rejeitar";
-                confirmar.DialogResult = DialogResult.OK;
+                Label erroMotivo = new Label { Name = "lblErroJustificativa", ForeColor = Color.Firebrick };
+                erroMotivo.SetBounds(12, 85, 396, 17);
+                dialogo.Controls.Add(erroMotivo);
+                confirmar.Click += (s, e) =>
+                {
+                    if (string.IsNullOrWhiteSpace(campo.Text))
+                    {
+                        erroMotivo.Text = "Informe o motivo da rejeição.";
+                        campo.Focus();
+                        return;
+                    }
+                    dialogo.DialogResult = DialogResult.OK;
+                };
                 confirmar.SetBounds(222, 102, 88, 30);
 
                 cancelar.Text = "Cancelar";
@@ -298,8 +318,8 @@ namespace CASE.Quermesse
                 new TransferenciaEstoqueService().AtenderSolicitacaoMembro(
                     usuarioAutenticado,
                     solicitacao.IdSolicitacao);
-                labelAviso.Text = "Solicitação atendida integralmente por transferência.";
                 CarregarSolicitacoes();
+                labelAviso.Text = "Solicitação atendida integralmente por transferência.";
             }
             catch (UnauthorizedAccessException)
             {
@@ -334,6 +354,13 @@ namespace CASE.Quermesse
         {
             dgvSolicitacoesQuermesse.Rows.Clear();
             btnNovaSolicitacao.Enabled = false;
+
+            if (gerenteAutorizado && eventoSelecionado == null && !exibindoPedidosCentrais)
+            {
+                btnDetalhesSolicitacao.Text = "Ver meus pedidos ao central";
+                labelAviso.Text = "Selecione um evento na tela Eventos para consultar reposições ou solicitar produtos ao central.";
+                return;
+            }
 
             if (gerenteAutorizado && exibindoPedidosCentrais)
             {

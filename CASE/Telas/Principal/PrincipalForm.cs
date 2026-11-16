@@ -16,16 +16,18 @@ namespace CASE
     {
         private readonly Usuario usuarioAutenticado;
         private Evento eventoSelecionado;
+        private Button menuAtual;
+        private bool ajustandoMenu;
         private Button buttonFornecedores;
         private Button buttonAcessos;
         private readonly ToolTip dicaNotificacoes = new ToolTip();
         private readonly ToolTip dicaNomeUsuario = new ToolTip();
         private readonly Label indicadorNotificacoes = new Label();
         private readonly ContextMenuStrip menuFotoPerfil = new ContextMenuStrip();
+        private readonly ContextMenuStrip menuNotificacoes = new ContextMenuStrip();
         private readonly CASE.Services.FotoPerfilService fotoPerfilService =
             new CASE.Services.FotoPerfilService();
         private Image fotoPerfilPersonalizada;
-
 
 
         public PrincipalForm() : this(null)
@@ -62,6 +64,9 @@ namespace CASE
             usuarioAutenticado = usuario;
             ConfigurarFotoPerfil();
             ConfigurarNovosCadastros();
+            navegacao.Layout += (s, e) => AjustarLarguraMenu();
+            navegacao.ClientSizeChanged += (s, e) => AjustarLarguraMenu();
+            AjustarLarguraMenu();
             AplicarAcabamento();
             ConfigurarNotificacoes();
 
@@ -83,13 +88,14 @@ namespace CASE
             buttonDashboard.Click += (s, e) => AbrirTela(buttonDashboard, () => new DashboardControl(usuarioAutenticado));
             buttonProdutos.Click += (s, e) => AbrirTela(buttonProdutos, () => new ProdutosControl(usuarioAutenticado));
             buttonEstoque.Click += (s, e) => AbrirTela(buttonEstoque, CriarOperacoesEstoque);
-            buttonMovimentacoes.Click += (s, e) => AbrirTela(buttonMovimentacoes, () => new RegistrosControl(usuarioAutenticado, eventoSelecionado));
+            buttonMovimentacoes.Click += (s, e) => AbrirTela(
+                buttonMovimentacoes,
+                () => new RegistrosControl(usuarioAutenticado, eventoSelecionado));
             buttonRelatorios.Text = "Relatórios";
             buttonRelatorios.Click += (s, e) => AbrirTela(buttonRelatorios, () => new RelatoriosControl(usuarioAutenticado));
             buttonConfiguracoes.Click += (s, e) => AbrirTela(buttonConfiguracoes, CriarConfiguracoes);
             buttonSair.Click += (s, e) => Close();
             ConfigurarQuermesse();
-            ConfigurarModoDemonstracao();
         }
 
         private void ConfigurarQuermesse()
@@ -145,10 +151,18 @@ namespace CASE
 
         private Button CriarBotaoMenu(string nome, string texto)
         {
-            var botao = new Button { Name = nome, Text = texto, Size = buttonEstoque.Size,
-                Margin = buttonEstoque.Margin, Padding = buttonEstoque.Padding,
-                TextAlign = buttonEstoque.TextAlign, FlatStyle = FlatStyle.Flat,
-                BackColor = VisualUtils.Marinho, ForeColor = Color.White };
+            var botao = new Button
+            {
+                Name = nome,
+                Text = texto,
+                Size = buttonEstoque.Size,
+                Margin = buttonEstoque.Margin,
+                Padding = buttonEstoque.Padding,
+                TextAlign = buttonEstoque.TextAlign,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = VisualUtils.Marinho,
+                ForeColor = Color.White
+            };
             navegacao.Controls.Add(botao);
             VisualUtils.Arredondar(botao, 8);
             return botao;
@@ -156,9 +170,16 @@ namespace CASE
 
         private void AdicionarIconeMenu(Button botao, Image imagem)
         {
-            var icone = new PictureBox { Name = "icone" + botao.Name, Image = imagem,
-                Bounds = new Rectangle(12, 9, 20, 20), SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.Transparent, Enabled = false, TabStop = false };
+            var icone = new PictureBox
+            {
+                Name = "icone" + botao.Name,
+                Image = imagem,
+                Bounds = new Rectangle(12, 9, 20, 20),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                Enabled = false,
+                TabStop = false
+            };
             botao.Controls.Add(icone);
         }
 
@@ -181,6 +202,8 @@ namespace CASE
 
         private void ConfigurarNotificacoes()
         {
+            FormClosing += (s, e) => menuNotificacoes.Close();
+            Disposed += (s, e) => menuNotificacoes.Dispose();
             pictureNotificacoes.Cursor = Cursors.Hand;
             pictureNotificacoes.Click += pictureNotificacoes_Click;
             indicadorNotificacoes.Name = "indicadorNotificacoes";
@@ -203,11 +226,6 @@ namespace CASE
 
         private void AtualizarContagemNotificacoes()
         {
-            if (modoDemonstracao)
-            {
-                AtualizarContagemDemonstracao();
-                return;
-            }
             try
             {
                 List<CASE.Services.NotificacaoPendente> pendencias =
@@ -238,12 +256,14 @@ namespace CASE
 
         private void pictureNotificacoes_Click(object sender, EventArgs e)
         {
-            if (modoDemonstracao)
+            ContextMenuStrip menu = menuNotificacoes;
+            menu.Close();
+            while (menu.Items.Count > 0)
             {
-                AbrirNotificacoesDemonstracao();
-                return;
+                ToolStripItem itemAnterior = menu.Items[0];
+                menu.Items.RemoveAt(0);
+                itemAnterior.Dispose();
             }
-            ContextMenuStrip menu = new ContextMenuStrip();
 
             try
             {
@@ -268,24 +288,14 @@ namespace CASE
                     }
                 }
 
-                // O Click do item ainda pode estar na fila quando o menu se fecha.
-                menu.Closed += (menuSender, menuArgs) =>
-                {
-                    if (!IsDisposed && IsHandleCreated)
-                    {
-                        BeginInvoke(new Action(menu.Dispose));
-                    }
-                    else
-                    {
-                        menu.Dispose();
-                    }
-                };
+                // O mesmo menu permanece vivo durante as mensagens de foco do Windows.
                 menu.Show(pictureNotificacoes, new Point(0, pictureNotificacoes.Height));
                 AtualizarContagemNotificacoes();
             }
-            catch (Exception)
+            catch (Exception erro)
             {
-                menu.Dispose();
+                menu.Close();
+                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em Notificacoes: " + erro.StackTrace);
                 MessageBox.Show(
                     "Não foi possível carregar as pendências.",
                     "Notificações",
@@ -325,6 +335,14 @@ namespace CASE
                     AbrirTela(
                         buttonSolicitacoes,
                         () => new SolicitacoesControl(usuarioAutenticado, eventoSelecionado));
+                    if (panelConteudo.Controls.Count > 0)
+                    {
+                        SolicitacoesControl tela = panelConteudo.Controls[0] as SolicitacoesControl;
+                        if (tela != null)
+                        {
+                            tela.AbrirPedidoDeReposicao(pendencia.IdReferencia);
+                        }
+                    }
                 }
                 catch (Exception)
                 {
@@ -484,10 +502,23 @@ namespace CASE
                 dialogo.MinimizeBox = false;
                 dialogo.MaximizeBox = false;
                 campo.Multiline = true;
+                campo.Name = "txtJustificativaRejeicao";
                 campo.MaxLength = 500;
                 campo.SetBounds(12, 12, 396, 72);
                 rejeitar.Text = "Rejeitar";
-                rejeitar.DialogResult = DialogResult.OK;
+                Label erroMotivo = new Label { Name = "lblErroJustificativa", ForeColor = Color.Firebrick };
+                erroMotivo.SetBounds(12, 85, 396, 17);
+                dialogo.Controls.Add(erroMotivo);
+                rejeitar.Click += (s, e) =>
+                {
+                    if (string.IsNullOrWhiteSpace(campo.Text))
+                    {
+                        erroMotivo.Text = "Informe o motivo da rejeição.";
+                        campo.Focus();
+                        return;
+                    }
+                    dialogo.DialogResult = DialogResult.OK;
+                };
                 rejeitar.SetBounds(222, 102, 88, 30);
                 cancelar.Text = "Cancelar";
                 cancelar.DialogResult = DialogResult.Cancel;
@@ -518,11 +549,6 @@ namespace CASE
                 using (var linha = new Pen(VisualUtils.Borda))
                     e.Graphics.DrawLine(linha, 0, panelCabecalho.Height - 1, panelCabecalho.Width, panelCabecalho.Height - 1);
             };
-            labelPreviewUsuario.Text = "PRÉVIA · USUÁRIO";
-            labelPreviewUsuario.Font = new Font("Segoe UI", 8);
-            labelPreviewUsuario.ForeColor = VisualUtils.TextoSuave;
-            usuarioPreview.Width = 330;
-            VisualUtils.EstilizarSelecao(usuarioPreview);
             labelNomeUsuario.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             labelNomeUsuario.ForeColor = VisualUtils.Texto;
             labelTipoUsuario.Font = new Font("Segoe UI", 8.5F);
@@ -540,7 +566,8 @@ namespace CASE
                 botao.Cursor = Cursors.Hand;
                 botao.Paint += (s, e) =>
                 {
-                    if (botao.BackColor != Color.FromArgb(27, 75, 125)) return;
+                    if (botao.BackColor != Color.FromArgb(27, 75, 125))
+                        return;
                     using (var pincel = new SolidBrush(Color.FromArgb(89, 163, 255)))
                         e.Graphics.FillRectangle(pincel, 0, 10, 3, Math.Max(1, botao.Height - 20));
                 };
@@ -588,11 +615,6 @@ namespace CASE
 
         private void MenuFotoPerfil_Opening(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (modoDemonstracao)
-            {
-                e.Cancel = true;
-                return;
-            }
             if (menuFotoPerfil.Items.Count > 1)
             {
                 menuFotoPerfil.Items[1].Enabled = fotoPerfilPersonalizada != null;
@@ -601,11 +623,6 @@ namespace CASE
 
         private void AlterarFotoPerfil_Click(object sender, EventArgs e)
         {
-            if (modoDemonstracao)
-            {
-                MessageBox.Show(this, "Saia do modo demonstração para alterar sua foto real.", "Modo demonstração");
-                return;
-            }
             using (OpenFileDialog seletorArquivo = new OpenFileDialog())
             {
                 seletorArquivo.Title = "Selecionar foto de perfil";
@@ -672,10 +689,6 @@ namespace CASE
 
         private void RemoverFotoPerfil_Click(object sender, EventArgs e)
         {
-            if (modoDemonstracao)
-            {
-                return;
-            }
             try
             {
                 fotoPerfilService.RemoverFotoPerfil(usuarioAutenticado);
@@ -758,6 +771,7 @@ namespace CASE
                 buttonEquipeSetores.Visible = !membro;
                 buttonFinanceiro.Visible = !membro;
                 buttonRelatorios.Visible = true;
+                OrganizarMenuPorPerfil(nomePerfil);
             }
             catch (Exception)
             {
@@ -776,6 +790,77 @@ namespace CASE
             var controle = new ConfiguracoesControl(usuarioAutenticado);
             controle.GerenciarAcessosSolicitado += (s, e) => AbrirTela(buttonAcessos, CriarGestaoAcessos);
             return controle;
+        }
+
+        private void OrganizarMenuPorPerfil(string perfil)
+        {
+            string[] ordem;
+            if (string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                ordem = new[] { "buttonDashboard",
+"buttonAcessos",
+                    "buttonFornecedores",
+"buttonProdutos",
+"buttonQuermesses",
+"buttonEquipeSetores",
+                    "buttonEscala",
+"buttonEstoque",
+"buttonSolicitacoes",
+"buttonMovimentacoes",
+                    "buttonFinanceiro",
+"buttonHistorico",
+"buttonRelatorios",
+"buttonConfiguracoes" };
+            }
+            else if (string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+            {
+                ordem = new[] { "buttonDashboard",
+"buttonFornecedores",
+"buttonProdutos",
+                    "buttonQuermesses",
+"buttonEquipeSetores",
+"buttonEscala",
+"buttonEstoque",
+                    "buttonSolicitacoes",
+"buttonMovimentacoes",
+"buttonFinanceiro",
+"buttonHistorico",
+                    "buttonRelatorios",
+"buttonConfiguracoes" };
+            }
+            else
+            {
+                ordem = new[] { "buttonDashboard",
+"buttonEscala",
+"buttonEstoque",
+                    "buttonMovimentacoes",
+"buttonSolicitacoes",
+"buttonHistorico",
+"buttonRelatorios",
+                    "buttonConfiguracoes" };
+            }
+
+            navegacao.SuspendLayout();
+            try
+            {
+                navegacao.Controls.Add(buttonConfiguracoes);
+                buttonConfiguracoes.Margin = buttonDashboard.Margin;
+                buttonConfiguracoes.Size = buttonDashboard.Size;
+                for (int indice = 0; indice < ordem.Length; indice++)
+                {
+                    Control controle = navegacao.Controls[ordem[indice]];
+                    if (controle != null)
+                    {
+                        navegacao.Controls.SetChildIndex(controle, indice);
+                        controle.TabIndex = indice;
+                    }
+                }
+            }
+            finally
+            {
+                navegacao.ResumeLayout(true);
+                AjustarLarguraMenu();
+            }
         }
 
         private void SelecionarMenu(Button ativo)
@@ -802,21 +887,8 @@ namespace CASE
             UserControl tela = null;
             try
             {
-                // Construa antes de descartar a tela atual: uma falha não deve encerrar a navegação.
-                if (modoDemonstracao)
-                {
-                    tela = TelasDemonstracao.Criar(menu.Name, dadosDemonstracao);
-                    OperacoesEstoqueControl estoqueDemo = tela as OperacoesEstoqueControl;
-                    if (estoqueDemo != null)
-                    {
-                        estoqueDemo.FornecedoresSolicitados += (s, e) =>
-                            AbrirTela(buttonFornecedores, () => new FornecedoresControl(usuarioAutenticado));
-                    }
-                }
-                else
-                {
-                    tela = criar();
-                }
+                // Mantém a tela atual se a abertura da próxima falhar.
+                tela = criar();
                 tela.Dock = DockStyle.Fill;
                 panelConteudo.SuspendLayout();
                 while (panelConteudo.Controls.Count > 0)
@@ -824,6 +896,13 @@ namespace CASE
                     panelConteudo.Controls[0].Dispose();
                 }
                 panelConteudo.Controls.Add(tela);
+                if (menuAtual != menu)
+                {
+                    // A busca de um módulo não deve esconder registros de outro módulo.
+                    textPesquisa.Text = "Pesquisar...";
+                    textPesquisa.ForeColor = Color.FromArgb(148, 163, 184);
+                }
+                menuAtual = menu;
                 SelecionarMenu(menu);
                 AplicarPesquisaAtual(tela);
             }
@@ -840,6 +919,35 @@ namespace CASE
             finally
             {
                 panelConteudo.ResumeLayout(true);
+            }
+        }
+
+        private void AjustarLarguraMenu()
+        {
+            if (ajustandoMenu)
+            {
+                return;
+            }
+            ajustandoMenu = true;
+            try
+            {
+                int largura = navegacao.ClientSize.Width - navegacao.Padding.Horizontal;
+                foreach (Control controle in navegacao.Controls)
+                {
+                    Button botao = controle as Button;
+                    if (botao != null)
+                    {
+                        int desejada = Math.Max(140, largura - botao.Margin.Horizontal - 2);
+                        if (botao.Width != desejada)
+                        {
+                            botao.Width = desejada;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                ajustandoMenu = false;
             }
         }
 
@@ -891,11 +999,11 @@ namespace CASE
 
         private void textPesquisa_Enter(object sender, EventArgs e)
         {
-            if(textPesquisa.Text == "Pesquisar...")
+            if (textPesquisa.Text == "Pesquisar...")
             {
                 textPesquisa.Text = string.Empty;
                 textPesquisa.ForeColor = Color.FromArgb(18, 47, 80);
-            }   
+            }
         }
 
         private void PrincipalForm_Shown(object sender, EventArgs e)

@@ -162,11 +162,6 @@ namespace CASE.Quermesse
 
         private void btnSalvarFuncionario_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                SalvarMembroDemo();
-                return;
-            }
 
             if (cmbPerfilFuncionario.SelectedItem == null)
             {
@@ -181,11 +176,16 @@ namespace CASE.Quermesse
             {
                 if (vinculo == null)
                 {
-                    if (string.IsNullOrWhiteSpace(txtLoginFuncionario.Text) ||
-                        string.IsNullOrWhiteSpace(txtNomeFuncionario.Text))
+                    if (string.IsNullOrWhiteSpace(txtLoginFuncionario.Text))
                     {
                         labelAvisoFormulario.Text = "Informe o login de um membro aprovado e disponível.";
                         txtLoginFuncionario.Focus();
+                        return;
+                    }
+                    // Reconsulta o membro caso Salvar seja acionado sem sair do login.
+                    txtLoginFuncionario_Leave(txtLoginFuncionario, EventArgs.Empty);
+                    if (string.IsNullOrWhiteSpace(txtNomeFuncionario.Text))
+                    {
                         return;
                     }
 

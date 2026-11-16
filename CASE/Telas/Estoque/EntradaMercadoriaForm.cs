@@ -29,6 +29,7 @@ namespace CASE
             InitializeComponent();
             IconoAplicacao.Aplicar(this);
             usuarioAutenticado = usuario;
+            lblModoApresentacao.Visible = false;
 
             if (System.ComponentModel.LicenseManager.UsageMode ==
                 System.ComponentModel.LicenseUsageMode.Designtime)
@@ -235,11 +236,6 @@ namespace CASE
 
         private void ConfirmarEntrada()
         {
-            if (dadosDemo != null)
-            {
-                ConfirmarEntradaDemo();
-                return;
-            }
 
             if (salvando)
             {

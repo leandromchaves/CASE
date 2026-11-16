@@ -28,6 +28,7 @@ namespace CASE
             InitializeComponent();
             IconoAplicacao.Aplicar(this);
             usuarioAutenticado = usuario;
+            lblModoApresentacao.Visible = false;
 
             if (System.ComponentModel.LicenseManager.UsageMode ==
                 System.ComponentModel.LicenseUsageMode.Designtime)
@@ -35,8 +36,8 @@ namespace CASE
                 return;
             }
 
-            cmbOrigem.DisplayMember = "Nome";
-            cmbDestino.DisplayMember = "Nome";
+            cmbOrigem.DisplayMember = "Descricao";
+            cmbDestino.DisplayMember = "Descricao";
             cmbProduto.DisplayMember = "Nome";
             numQuantidade.DecimalPlaces = 0;
             numQuantidade.Minimum = 1;
@@ -142,11 +143,6 @@ namespace CASE
 
         private void MostrarSaldo()
         {
-            if (dadosDemo != null)
-            {
-                MostrarSaldoDemo();
-                return;
-            }
 
             LocalEstoque origem = cmbOrigem.SelectedItem as LocalEstoque;
             Produto produto = cmbProduto.SelectedItem as Produto;
@@ -190,11 +186,6 @@ namespace CASE
 
         private void ConfirmarTransferencia()
         {
-            if (dadosDemo != null)
-            {
-                ConfirmarTransferenciaDemo();
-                return;
-            }
 
             if (salvando)
             {

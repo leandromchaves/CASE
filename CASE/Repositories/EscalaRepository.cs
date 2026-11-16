@@ -112,6 +112,28 @@ namespace CASE.Repositories
                             BloquearPessoa(conexao, transacao, segundoId);
                         }
 
+                        using (var comando = new MySqlCommand(
+                            "SELECT id_escala FROM escala WHERE id_equipe=@equipe " +
+                            "AND id_jornada=@jornada AND (@id IS NULL OR id_escala<>@id) FOR UPDATE",
+                            conexao,
+                            transacao))
+                        {
+                            comando.Parameters.AddWithValue("@equipe", item.IdEquipe);
+                            comando.Parameters.AddWithValue("@jornada", item.IdJornada);
+                            object idIgnorado = System.DBNull.Value;
+                            if (idEscalaExistente.HasValue)
+                            {
+                                idIgnorado = idEscalaExistente.Value;
+                            }
+                            comando.Parameters.AddWithValue("@id", idIgnorado);
+                            if (comando.ExecuteScalar() != null)
+                            {
+                                throw new System.InvalidOperationException(
+                                    "O membro já possui escala neste setor, dia e turno. " +
+                                    "Edite a escala existente ou selecione outro turno.");
+                            }
+                        }
+
                         if (ExisteConflito(conexao, transacao, item, idPessoa, idEscalaExistente))
                         {
                             throw new System.InvalidOperationException(

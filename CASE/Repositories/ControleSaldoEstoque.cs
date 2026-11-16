@@ -4,13 +4,14 @@ using MySql.Data.MySqlClient;
 
 namespace CASE.Repositories
 {
-    // Atualiza os saldos dentro da transacao da operacao que os originou.
+    // Atualiza o saldo na mesma transação da operação.
     internal static class ControleSaldoEstoque
     {
         internal static void AplicarAjustes(
             MySqlConnection conexao,
             MySqlTransaction transacao,
-            IList<Tuple<int, int, decimal>> ajustes)
+            IList<Tuple<int, int, decimal>> ajustes,
+            bool exigirSaldosExistentes = false)
         {
             Dictionary<Tuple<int, int>, decimal> saldoPorChave =
                 new Dictionary<Tuple<int, int>, decimal>();
@@ -39,7 +40,7 @@ namespace CASE.Repositories
 
             foreach (KeyValuePair<Tuple<int, int>, decimal> item in saldoPorChave)
             {
-                if (item.Value != 0)
+                if (item.Value != 0 || exigirSaldosExistentes)
                 {
                     chaves.Add(item.Key);
                 }
@@ -52,7 +53,10 @@ namespace CASE.Repositories
 
             foreach (Tuple<int, int> chave in chaves)
             {
-                CriarLinhaSeNecessario(conexao, transacao, chave.Item1, chave.Item2);
+                if (!exigirSaldosExistentes)
+                {
+                    CriarLinhaSeNecessario(conexao, transacao, chave.Item1, chave.Item2);
+                }
 
                 int idEstoque;
                 decimal saldoAtual;
@@ -78,7 +82,10 @@ namespace CASE.Repositories
                         "O saldo de estoque deve permanecer em unidades inteiras.");
                 }
 
-                saldosNovos.Add(chave, Tuple.Create(idEstoque, saldoNovo));
+                if (saldoPorChave[chave] != 0)
+                {
+                    saldosNovos.Add(chave, Tuple.Create(idEstoque, saldoNovo));
+                }
             }
 
             foreach (KeyValuePair<Tuple<int, int>, Tuple<int, decimal>> item in saldosNovos)

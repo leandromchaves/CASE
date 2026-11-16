@@ -21,10 +21,6 @@ namespace CASE.Quermesse
         {
         }
 
-        public EscalaForm(QuermessePreview exemplos) : this(null, null, null)
-        {
-        }
-
         public EscalaForm(Usuario usuario, Evento evento, Escala escala)
         {
             InitializeComponent();
@@ -72,7 +68,7 @@ namespace CASE.Quermesse
 
         private void OrganizarCamposPorDependencia()
         {
-            // O preenchimento segue a ordem: evento, setor, data, turno, membro e horários.
+
             PosicionarCampo(lblSetorbarraca, cmbSetorEscala, 123, 145);
             PosicionarCampo(lblData, dtpDiaEscala, 174, 196);
             PosicionarCampo(lblTurno, cmbTurnoEscala, 225, 247);
@@ -267,11 +263,6 @@ namespace CASE.Quermesse
 
         private void btnSalvarVisual_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                SalvarEscalaDemo();
-                return;
-            }
 
             if (cmbPessoaEscala.SelectedItem == null ||
                 cmbSetorEscala.SelectedItem == null ||
@@ -345,9 +336,10 @@ namespace CASE.Quermesse
             {
                 labelAvisoFormulario.Text = "Sua conta não pode salvar escalas neste evento.";
             }
-            catch (Exception)
+            catch (Exception erro)
             {
                 labelAvisoFormulario.Text = "Não foi possível salvar a escala.";
+                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em SalvarEscala: " + erro.StackTrace);
             }
         }
     }

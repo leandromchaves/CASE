@@ -16,7 +16,7 @@ namespace CASE.Services
             {
                 throw new ArgumentNullException(nameof(despesa));
             }
-            // Reutiliza a autorização de consulta do evento, inclusive a restrição a membros.
+            // Aplica as permissões do evento antes de registrar a despesa.
             ListarPorEvento(usuario, despesa.IdEvento);
             if (string.IsNullOrWhiteSpace(despesa.Descricao) || despesa.Descricao.Length > 255)
             {

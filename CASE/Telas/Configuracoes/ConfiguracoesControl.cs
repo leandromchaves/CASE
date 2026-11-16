@@ -58,8 +58,12 @@ namespace CASE
             txtPerfilNome.Clear();
             txtPerfilUsuario.Clear();
             txtPerfilEmail.Clear();
-            var menu = new FlowLayoutPanel { Name = "panelMenuConfiguracoes",
-                Bounds = new System.Drawing.Rectangle(30, 115, 180, 320), FlowDirection = FlowDirection.TopDown };
+            var menu = new FlowLayoutPanel
+            {
+                Name = "panelMenuConfiguracoes",
+                Bounds = new System.Drawing.Rectangle(30, 115, 180, 320),
+                FlowDirection = FlowDirection.TopDown
+            };
             Controls.Add(menu);
             panelPerfilUsuario.SetBounds(230, 115, 710, 360);
             panelPreferencias.SetBounds(230, 115, 710, 360);
@@ -92,11 +96,22 @@ namespace CASE
                 "O banco atual não possui armazenamento para estas preferências.";
 
             CarregarMeusDados();
-            var categorias = new Panel { Name = "panelCategorias", BackColor = System.Drawing.Color.White,
-                Bounds = panelPerfilUsuario.Bounds, Anchor = panelPerfilUsuario.Anchor };
+            var categorias = new Panel
+            {
+                Name = "panelCategorias",
+                BackColor = System.Drawing.Color.White,
+                Bounds = panelPerfilUsuario.Bounds,
+                Anchor = panelPerfilUsuario.Anchor
+            };
             categorias.Controls.Add(FrontendTheme.Legenda("Categorias de produtos", new System.Drawing.Rectangle(24, 20, 400, 30)));
-            var lista = new ListBox { Name = "listCategorias", BorderStyle = BorderStyle.None,
-                Bounds = new System.Drawing.Rectangle(24, 66, 650, 220), Font = new System.Drawing.Font("Segoe UI", 11), ItemHeight = 40 };
+            var lista = new ListBox
+            {
+                Name = "listCategorias",
+                BorderStyle = BorderStyle.None,
+                Bounds = new System.Drawing.Rectangle(24, 66, 650, 220),
+                Font = new System.Drawing.Font("Segoe UI", 11),
+                ItemHeight = 40
+            };
             if (administrador)
             {
                 CarregarCategorias(lista);
@@ -113,15 +128,38 @@ namespace CASE
             Controls.Add(turnos);
             Controls.Add(funcoes);
             menu.Height = 440;
-            Panel[] paginas = { panelPerfilUsuario, instituicao, categorias, tipos, turnos, funcoes, panelSolicitacoesPendentes, panelPreferencias };
-            string[] nomes = { "Perfil", "Instituição", "Categorias", "Tipos de evento", "Turnos", "Funções na equipe", "Usuários", "Preferências" };
+            Panel[] paginas = { panelPerfilUsuario,
+instituicao,
+categorias,
+tipos,
+turnos,
+funcoes,
+panelSolicitacoesPendentes,
+panelPreferencias };
+            string[] nomes = { "Perfil",
+"Instituição",
+"Categorias",
+"Tipos de evento",
+"Turnos",
+"Funções na equipe",
+"Usuários",
+"Preferências" };
             var botoes = new System.Collections.Generic.List<Button>();
             for (int i = 0; i < nomes.Length; i++)
             {
                 Panel pagina = paginas[i];
-                var botao = new Button { Name = "btnConfig" + i, Text = nomes[i], Width = 170, Height = 40,
-                    FlatStyle = FlatStyle.Flat, ForeColor = FrontendTheme.Texto, BackColor = BackColor,
-                    TextAlign = System.Drawing.ContentAlignment.MiddleLeft, Cursor = Cursors.Hand };
+                var botao = new Button
+                {
+                    Name = "btnConfig" + i,
+                    Text = nomes[i],
+                    Width = 170,
+                    Height = 40,
+                    FlatStyle = FlatStyle.Flat,
+                    ForeColor = FrontendTheme.Texto,
+                    BackColor = BackColor,
+                    TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
+                    Cursor = Cursors.Hand
+                };
                 botao.FlatAppearance.BorderSize = 0;
                 if (!administrador && pagina != panelPerfilUsuario && pagina != panelPreferencias)
                 {
@@ -136,7 +174,8 @@ namespace CASE
                         GerenciarAcessosSolicitado?.Invoke(this, EventArgs.Empty);
                         return;
                     }
-                    foreach (Panel item in paginas) item.Visible = item == pagina;
+                    foreach (Panel item in paginas)
+                        item.Visible = item == pagina;
                     foreach (Button item in botoes)
                     {
                         if (item == botao)

@@ -272,8 +272,17 @@ namespace CASE.Services
             string justificativa)
         {
             autorizacaoService.ExigirAdministradorOuGerente(usuario);
-            throw new InvalidOperationException(
-                "Movimentações confirmadas são imutáveis. A correção exige uma nova operação auditada.");
+            if (transferencia == null || itens == null || itens.Count == 0)
+            {
+                throw new ArgumentException("Informe uma transferência e seus itens para corrigir.");
+            }
+            TransferenciaEstoque atual = BuscarPorId(usuario, transferencia.IdTransferencia);
+            if (atual == null)
+            {
+                throw new InvalidOperationException("A transferência não foi encontrada.");
+            }
+            ControleCorrecaoOperacao.ValidarVersao(atual.Versao, transferencia.Versao, justificativa);
+            transferenciaRepository.AtualizarComItens(transferencia, itens, usuario.IdUsuario, justificativa);
         }
 
         public List<TransferenciaEstoque> ListarPorLocalOrigem(Usuario usuario, int idLocalEstoque)

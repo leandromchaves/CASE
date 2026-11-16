@@ -10,13 +10,21 @@ namespace CASE.Services
         private readonly ApuracaoRepository apuracaoRepository = new ApuracaoRepository();
         private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
 
-        public int RegistrarConferencia(Usuario usuario, Apuracao apuracao)
+        public int RegistrarConferencia(Usuario usuario, Apuracao apuracao, int? ultimaConferenciaEsperada = null)
         {
             if (apuracao == null)
             {
                 throw new ArgumentNullException(nameof(apuracao));
             }
-            ListarPorJornada(usuario, apuracao.IdJornada);
+            List<Apuracao> anteriores = ListarPorJornada(usuario, apuracao.IdJornada);
+            if (!ultimaConferenciaEsperada.HasValue)
+            {
+                ultimaConferenciaEsperada = 0;
+                if (anteriores.Count > 0)
+                {
+                    ultimaConferenciaEsperada = anteriores[anteriores.Count - 1].IdApuracao;
+                }
+            }
             ValidarValor(apuracao.ValorDinheiro);
             ValidarValor(apuracao.ValorPix);
             ValidarValor(apuracao.ValorCartao);
@@ -28,7 +36,23 @@ namespace CASE.Services
             }
             apuracao.IdUsuarioResponsavel = usuario.IdUsuario;
             apuracao.DataHora = DateTime.Now;
-            return apuracaoRepository.Cadastrar(apuracao);
+            if (apuracao.Observacao != null && apuracao.Observacao.Length > 500)
+            {
+                throw new ArgumentException("A observação deve ter até 500 caracteres.");
+            }
+            return apuracaoRepository.Cadastrar(apuracao, ultimaConferenciaEsperada);
+        }
+
+        public System.Data.DataTable ResumoPorJornada(Usuario usuario, int idJornada)
+        {
+            ListarPorJornada(usuario, idJornada);
+            return apuracaoRepository.ResumoPorJornada(idJornada);
+        }
+
+        public System.Data.DataTable VendasPorJornada(Usuario usuario, int idJornada)
+        {
+            ListarPorJornada(usuario, idJornada);
+            return apuracaoRepository.VendasPorJornada(idJornada);
         }
 
         private static void ValidarValor(decimal? valor)

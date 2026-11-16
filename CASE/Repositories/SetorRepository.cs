@@ -112,6 +112,64 @@ namespace CASE.Repositories
 
         }
 
+        public void RenomearComLocal(Setor setor, int idUsuario, string nomeAnterior)
+        {
+            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            {
+                conexao.Open();
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        ValidarGerenteResponsavel(conexao, transacao, setor.IdEvento, idUsuario);
+                        int alterados = AcessoDados.Executar(conexao, transacao,
+                            "UPDATE setor SET nome=@nome WHERE id_setor=@setor AND id_evento=@evento " +
+                            "AND BINARY nome=BINARY @anterior",
+                            comando =>
+                            {
+                                AcessoDados.AdicionarParametro(comando, "@setor", setor.IdSetor);
+                                AcessoDados.AdicionarParametro(comando, "@evento", setor.IdEvento);
+                                AcessoDados.AdicionarParametro(comando, "@nome", setor.Nome);
+                                AcessoDados.AdicionarParametro(comando, "@anterior", nomeAnterior);
+                            });
+                        if (alterados != 1)
+                        {
+                            throw new InvalidOperationException("O setor foi alterado. Atualize a lista antes de editar.");
+                        }
+                        int locais = AcessoDados.Executar(conexao, transacao,
+                            "UPDATE localestoque l JOIN estoquesetor es ON es.id_local_estoque=l.id_local_estoque " +
+                            "SET l.nome=@nome WHERE es.id_setor=@setor AND es.id_evento=@evento " +
+                            "AND l.id_evento=@evento AND l.eh_central=0 AND l.eh_geral_evento=0",
+                            comando =>
+                            {
+                                AcessoDados.AdicionarParametro(comando, "@setor", setor.IdSetor);
+                                AcessoDados.AdicionarParametro(comando, "@evento", setor.IdEvento);
+                                AcessoDados.AdicionarParametro(comando, "@nome", setor.Nome);
+                            });
+                        if (locais != 1)
+                        {
+                            throw new InvalidOperationException("O local de estoque do setor não está configurado corretamente.");
+                        }
+                        transacao.Commit();
+                    }
+                    catch (MySqlException erro)
+                    {
+                        transacao.Rollback();
+                        if (erro.Number == 1062)
+                        {
+                            throw new InvalidOperationException("Já existe um setor ou local com esse nome no evento.", erro);
+                        }
+                        throw;
+                    }
+                    catch
+                    {
+                        transacao.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
         private static void ValidarGerenteResponsavel(
             MySqlConnection conexao,
             MySqlTransaction transacao,

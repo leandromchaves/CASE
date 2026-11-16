@@ -51,6 +51,7 @@ namespace CASE.Quermesse
             cmbTipoSolicitacao.Items.Add("reposicao");
             cmbTipoSolicitacao.SelectedIndex = 0;
             cmbStatusSolicitacao.Visible = false;
+            cmbStatusSolicitacao.Items.Clear();
             lblSituacao.Visible = false;
 
             if (usuarioAutenticado == null)
@@ -74,6 +75,7 @@ namespace CASE.Quermesse
         {
             comboProdutos.DropDownStyle = ComboBoxStyle.DropDownList;
             comboProdutos.Font = txtProdutoSolicitacao.Font;
+            comboProdutos.Name = "cmbProdutoSolicitacao";
             comboProdutos.BackColor = txtProdutoSolicitacao.BackColor;
             comboProdutos.ForeColor = txtProdutoSolicitacao.ForeColor;
             comboProdutos.Bounds = txtProdutoSolicitacao.Bounds;
@@ -103,6 +105,10 @@ namespace CASE.Quermesse
 
                 foreach (Escala escala in escalas)
                 {
+                    if (string.Equals(escala.Situacao, SituacoesEscala.Cancelada, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
                     JornadaSetor jornada = new JornadaSetorService().BuscarPorId(
                         usuarioAutenticado,
                         escala.IdJornada);
@@ -164,11 +170,6 @@ namespace CASE.Quermesse
 
         private void cmbSetorSolicitacao_SelectedIndexChanged(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                SelecionarProdutosSolicitacaoDemo();
-                return;
-            }
 
             CarregarProdutosDaEscalaSelecionada();
         }
@@ -269,11 +270,6 @@ namespace CASE.Quermesse
 
         private void btnSalvarVisual_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                SalvarSolicitacaoDemo();
-                return;
-            }
 
             EscalaOpcao escalaSelecionada = cmbSetorSolicitacao.SelectedItem as EscalaOpcao;
             SolicitacaoService.ProdutoSolicitacaoOpcao produtoSelecionado =

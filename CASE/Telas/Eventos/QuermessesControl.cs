@@ -16,12 +16,9 @@ namespace CASE.Quermesse
         private readonly TipoEventoService tipoEventoService = new TipoEventoService();
         private readonly Dictionary<int, string> nomesTiposEvento = new Dictionary<int, string>();
         private List<Evento> eventosCarregados = new List<Evento>();
+        private string pesquisaAtual = string.Empty;
 
         public QuermessesControl() : this((Usuario)null)
-        {
-        }
-
-        public QuermessesControl(QuermessePreview exemplos) : this((Usuario)null)
         {
         }
 
@@ -68,10 +65,15 @@ namespace CASE.Quermesse
             menu.Items.Add(iniciar);
             menu.Items.Add(finalizar);
             menu.Items.Add(cancelar);
+            ToolStripMenuItem resumo = new ToolStripMenuItem("Consultar resumo do evento");
+            resumo.Click += AbrirResumoEvento;
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(resumo);
             menu.Opening += (s, e) =>
             {
                 Evento evento = ObterEventoSelecionado();
-                bool gerente = dadosDemo != null;
+                resumo.Enabled = evento != null;
+                bool gerente = false;
                 if (usuarioAutenticado != null && evento != null)
                 {
                     try
@@ -113,11 +115,6 @@ namespace CASE.Quermesse
 
         private void AlterarSituacaoSelecionada(string situacao)
         {
-            if (dadosDemo != null)
-            {
-                AlterarEventoDemo(situacao);
-                return;
-            }
 
             Evento evento = ObterEventoSelecionado();
             if (evento == null || usuarioAutenticado == null)
@@ -147,13 +144,31 @@ namespace CASE.Quermesse
             }
         }
 
-        private void btnNovaQuermesse_Click(object sender, EventArgs e)
+        private void AbrirResumoEvento(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
+            Evento selecionado = ObterEventoSelecionado();
+            if (selecionado == null)
             {
-                AbrirEventoDemo(null);
+                labelAviso.Text = "Selecione um evento para consultar o resumo.";
                 return;
             }
+            using (Form janela = new Form())
+            {
+                janela.Text = "Resumo do evento";
+                janela.StartPosition = FormStartPosition.CenterParent;
+                janela.Size = new System.Drawing.Size(1100, 760);
+                janela.MinimizeBox = false;
+                janela.Controls.Add(new QuermesseDashboardControl(usuarioAutenticado, selecionado)
+                {
+                    Dock = DockStyle.Fill
+                });
+                IconoAplicacao.Aplicar(janela);
+                janela.ShowDialog(this);
+            }
+        }
+
+        private void btnNovaQuermesse_Click(object sender, EventArgs e)
+        {
 
             if (!VerificarSessao())
             {
@@ -191,6 +206,10 @@ namespace CASE.Quermesse
                 evento = dgvQuermesses.CurrentRow.Tag as Evento;
             }
 
+            lblQuermessedeSaoJoao2026.Text = evento == null ? "Nenhum evento selecionado" : evento.Nome;
+            lblPatiodacomunidadeEmandamento.Text = evento == null ? string.Empty :
+                evento.Local + " · " + evento.Situacao;
+
             Action<Evento> eventoSelecionado = EventoSelecionado;
 
             if (eventoSelecionado != null)
@@ -211,11 +230,6 @@ namespace CASE.Quermesse
 
         private void AbrirEventoSelecionado()
         {
-            if (dadosDemo != null)
-            {
-                AbrirEventoDemo(ObterEventoSelecionado());
-                return;
-            }
 
             if (!VerificarSessao())
             {
@@ -271,31 +285,7 @@ namespace CASE.Quermesse
                 List<Evento> eventos = eventoService.Listar(usuarioAutenticado);
                 eventosCarregados = eventos;
 
-                dgvQuermesses.Rows.Clear();
-
-                foreach (Evento evento in eventos)
-                {
-                    string nomeTipo = "Tipo " + evento.IdTipoEvento;
-
-                    if (nomesTiposEvento.ContainsKey(evento.IdTipoEvento))
-                    {
-                        nomeTipo = nomesTiposEvento[evento.IdTipoEvento];
-                    }
-
-                    int indiceLinha = dgvQuermesses.Rows.Add(
-                        evento.Nome,
-                        nomeTipo,
-                        evento.Local,
-                        evento.DataInicio.ToString("dd/MM/yyyy"),
-                        evento.DataFim.ToString("dd/MM/yyyy"),
-                        evento.IdResponsavel.ToString(),
-                        evento.Situacao);
-
-                    dgvQuermesses.Rows[indiceLinha].Tag = evento;
-                }
-
-                dgvQuermesses.ClearSelection();
-                SelecionarPrimeiroEventoSeDisponivel();
+                Pesquisar(pesquisaAtual);
 
                 if (eventos.Count == 0)
                 {
@@ -308,10 +298,7 @@ namespace CASE.Quermesse
 
                 if (eventos.Count > 0)
                 {
-                    Evento eventoAtual = eventos[0];
-                    lblQuermessedeSaoJoao2026.Text = eventoAtual.Nome;
-                    lblPatiodacomunidadeEmandamento.Text =
-                        eventoAtual.Local + " · " + eventoAtual.Situacao;
+                    dgvQuermesses_SelectionChanged(this, EventArgs.Empty);
                 }
                 else
                 {
@@ -347,6 +334,8 @@ namespace CASE.Quermesse
 
         public void Pesquisar(string texto)
         {
+            Evento anterior = ObterEventoSelecionado();
+            pesquisaAtual = texto ?? string.Empty;
             dgvQuermesses.Rows.Clear();
             string termo = texto;
             if (termo == null)
@@ -381,6 +370,18 @@ namespace CASE.Quermesse
 
             dgvQuermesses.ClearSelection();
             SelecionarPrimeiroEventoSeDisponivel();
+            foreach (DataGridViewRow linha in dgvQuermesses.Rows)
+            {
+                Evento evento = linha.Tag as Evento;
+                if (anterior != null && evento != null && evento.IdEvento == anterior.IdEvento)
+                {
+                    dgvQuermesses.ClearSelection();
+                    dgvQuermesses.CurrentCell = linha.Cells[0];
+                    linha.Selected = true;
+                    break;
+                }
+            }
+            dgvQuermesses_SelectionChanged(this, EventArgs.Empty);
 
             if (dgvQuermesses.Rows.Count == 0)
             {

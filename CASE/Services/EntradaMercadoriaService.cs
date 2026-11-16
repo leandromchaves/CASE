@@ -96,8 +96,17 @@ namespace CASE.Services
             string justificativa)
         {
             autorizacaoService.ExigirAdministrador(usuario);
-            throw new InvalidOperationException(
-                "Movimentações confirmadas são imutáveis. A correção exige uma nova operação auditada.");
+            if (entrada == null || itens == null || itens.Count == 0)
+            {
+                throw new ArgumentException("Informe uma entrada e seus itens para corrigir.");
+            }
+            EntradaMercadoria atual = BuscarPorId(usuario, entrada.IdEntrada);
+            if (atual == null)
+            {
+                throw new InvalidOperationException("A entrada não foi encontrada.");
+            }
+            ControleCorrecaoOperacao.ValidarVersao(atual.Versao, entrada.Versao, justificativa);
+            entradaRepository.AtualizarComItens(entrada, itens, usuario.IdUsuario, justificativa);
         }
 
         public List<EntradaMercadoria> ListarPorLocalDestino(Usuario usuario, int idLocalEstoque)

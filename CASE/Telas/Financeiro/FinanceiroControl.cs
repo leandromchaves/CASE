@@ -17,10 +17,6 @@ namespace CASE.Quermesse
         {
         }
 
-        public FinanceiroControl(QuermessePreview exemplos) : this(null, null)
-        {
-        }
-
         public FinanceiroControl(Usuario usuario, Evento evento)
         {
             InitializeComponent();
@@ -43,6 +39,7 @@ namespace CASE.Quermesse
             btnAdicionarCusto.Enabled = false;
             txtDescricaoCusto.MaxLength = 255;
             Button apurar = new Button();
+            apurar.Name = "btnAbrirApuracao";
             apurar.Text = "Apuração por modalidade";
             apurar.SetBounds(700, 32, 240, 36);
             VisualUtils.EstilizarBotao(apurar);
@@ -86,11 +83,6 @@ namespace CASE.Quermesse
 
         private void AtualizarDados()
         {
-            if (dadosDemo != null)
-            {
-                AtualizarFinanceiroDemo();
-                return;
-            }
 
             Evento evento = cmbFiltroFinanceiro.SelectedItem as Evento;
             if (usuarioAutenticado == null || evento == null)
@@ -141,11 +133,6 @@ namespace CASE.Quermesse
 
         private void Filtros_Changed(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AtualizarFinanceiroDemo();
-                return;
-            }
 
             if (carregando)
             {
@@ -165,11 +152,6 @@ namespace CASE.Quermesse
 
         private void btnAdicionarCusto_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                SalvarCustoDemo();
-                return;
-            }
 
             Evento evento = cmbSetorCusto.SelectedItem as Evento;
             if (evento == null)
@@ -202,11 +184,6 @@ namespace CASE.Quermesse
 
         private void AbrirApuracao(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirApuracaoDemo();
-                return;
-            }
 
             Evento evento = cmbFiltroFinanceiro.SelectedItem as Evento;
             if (evento == null || usuarioAutenticado == null)
@@ -215,6 +192,7 @@ namespace CASE.Quermesse
             }
             using (Form janela = new Form())
             {
+                janela.Name = "ApuracaoEventoForm";
                 janela.Text = "Apuração do evento";
                 janela.ClientSize = new System.Drawing.Size(1100, 750);
                 janela.StartPosition = FormStartPosition.CenterParent;
@@ -222,6 +200,14 @@ namespace CASE.Quermesse
                 controle.Dock = DockStyle.Fill;
                 janela.Controls.Add(controle);
                 janela.ShowDialog(this);
+            }
+            try
+            {
+                AtualizarDados();
+            }
+            catch (Exception erro)
+            {
+                ExibirErro(erro);
             }
         }
 

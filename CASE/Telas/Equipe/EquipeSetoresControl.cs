@@ -18,12 +18,9 @@ namespace CASE.Quermesse
         private readonly JornadaSetorService jornadaService = new JornadaSetorService();
         private readonly TurnoRepository turnoRepository = new TurnoRepository();
         private bool podeAdministrarEvento;
+        private Setor setorEmEdicao;
 
         public EquipeSetoresControl() : this(null, null)
-        {
-        }
-
-        public EquipeSetoresControl(QuermessePreview exemplos) : this(null, null)
         {
         }
 
@@ -34,6 +31,8 @@ namespace CASE.Quermesse
             // O painel superior não pode crescer sobre a seção de setores ao redimensionar.
             panelEquipe.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panelSetores.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            SizeChanged += AjustarSecoes;
+            AjustarSecoes(this, EventArgs.Empty);
             lblSetoresbarracas.Width = 250;
             txtNovoSetor.MaxLength = 100;
             usuarioAutenticado = usuario;
@@ -85,6 +84,37 @@ namespace CASE.Quermesse
             configurarProduto.Click += (s, e) => ConfigurarProdutoDoSetor(s, null);
             configurarProduto.Enabled = podeAdministrarEvento;
             menuSetor.Items.Add(configurarProduto);
+            ToolStripMenuItem renomear = new ToolStripMenuItem("Renomear setor selecionado");
+            renomear.Enabled = podeAdministrarEvento;
+            renomear.Click += (s, e) =>
+            {
+                if (dgvSetores.SelectedRows.Count == 0)
+                {
+                    labelAviso.Text = "Selecione o setor que deseja renomear.";
+                    return;
+                }
+                setorEmEdicao = dgvSetores.SelectedRows[0].Tag as Setor;
+                if (setorEmEdicao != null)
+                {
+                    txtNovoSetor.Text = setorEmEdicao.Nome;
+                    btnAdicionarSetor.Text = "Salvar setor";
+                    labelAviso.Text = "Edite o nome e salve. Pressione Esc no campo para cancelar.";
+                    txtNovoSetor.Focus();
+                    txtNovoSetor.SelectAll();
+                }
+            };
+            menuSetor.Items.Add(renomear);
+            Disposed += (s, e) => menuSetor.Dispose();
+            txtNovoSetor.KeyDown += (s, e) =>
+            {
+                if (e.KeyCode == Keys.Escape)
+                {
+                    setorEmEdicao = null;
+                    txtNovoSetor.Clear();
+                    btnAdicionarSetor.Text = "Adicionar setor";
+                    e.SuppressKeyPress = true;
+                }
+            };
             dgvSetores.ContextMenuStrip = menuSetor;
             Disposed += (s, e) => menuSetor.Dispose();
 
@@ -96,22 +126,12 @@ namespace CASE.Quermesse
 
         private void btnNovoFuncionario_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirMembroDemo(false);
-                return;
-            }
 
             AbrirFormularioMembro(null);
         }
 
         private void btnEditarFuncionario_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirMembroDemo(true);
-                return;
-            }
 
             EquipeEvento vinculo = ObterVinculoSelecionado();
 
@@ -123,11 +143,6 @@ namespace CASE.Quermesse
 
         private void dgvEquipe_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirMembroDemo(true);
-                return;
-            }
 
             if (e.RowIndex < 0)
             {
@@ -170,11 +185,6 @@ namespace CASE.Quermesse
 
         private void btnAdicionarSetor_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AdicionarSetorDemo();
-                return;
-            }
 
             if (eventoSelecionado == null || usuarioAutenticado == null)
             {
@@ -195,10 +205,22 @@ namespace CASE.Quermesse
 
             try
             {
-                setorService.Criar(usuarioAutenticado, setor);
+                if (setorEmEdicao == null)
+                {
+                    setorService.Criar(usuarioAutenticado, setor);
+                    labelAviso.Text = "Setor cadastrado e local de estoque criado.";
+                }
+                else
+                {
+                    setorService.Renomear(usuarioAutenticado, setorEmEdicao.IdSetor,
+                        setor.Nome, setorEmEdicao.Nome);
+                    labelAviso.Text = "Nome do setor e do local atualizado. Saldos e vínculos preservados.";
+                }
+                setorEmEdicao = null;
+                btnAdicionarSetor.Text = "Adicionar setor";
                 txtNovoSetor.Clear();
-                labelAviso.Text = "Setor cadastrado e local de estoque criado.";
                 CarregarSetores();
+                CarregarEquipe();
             }
             catch (ArgumentException ex)
             {
@@ -227,10 +249,32 @@ namespace CASE.Quermesse
                 List<Setor> setores = setorService.ListarPorEvento(
                     usuarioAutenticado,
                     eventoSelecionado.IdEvento);
+                ConsultaOperacionalService consultas = new ConsultaOperacionalService();
+                System.Data.DataTable escalas = consultas.Escalas(usuarioAutenticado, eventoSelecionado.IdEvento);
+                System.Data.DataTable registros = consultas.Registros(usuarioAutenticado, eventoSelecionado.IdEvento,
+                    eventoSelecionado.DataInicio, eventoSelecionado.DataFim);
 
                 foreach (Setor setor in setores)
                 {
-                    int indiceLinha = dgvSetores.Rows.Add(setor.Nome, "—", "—");
+                    HashSet<int> pessoas = new HashSet<int>();
+                    HashSet<int> operacoes = new HashSet<int>();
+                    foreach (System.Data.DataRow escala in escalas.Rows)
+                    {
+                        if (Convert.ToInt32(escala["id_setor"]) == setor.IdSetor &&
+                            Convert.ToBoolean(escala["ativo"]) &&
+                            Convert.ToString(escala["situacao"]) != SituacoesEscala.Cancelada)
+                        {
+                            pessoas.Add(Convert.ToInt32(escala["id_pessoa"]));
+                        }
+                    }
+                    foreach (System.Data.DataRow registro in registros.Rows)
+                    {
+                        if (Convert.ToInt32(registro["id_setor"]) == setor.IdSetor)
+                        {
+                            operacoes.Add(Convert.ToInt32(registro["id_registro"]));
+                        }
+                    }
+                    int indiceLinha = dgvSetores.Rows.Add(setor.Nome, pessoas.Count, operacoes.Count);
                     dgvSetores.Rows[indiceLinha].Tag = setor;
                 }
 
@@ -268,6 +312,10 @@ namespace CASE.Quermesse
                 using (Button salvar = new Button())
                 {
                     dialogo.Text = "Produtos e preços — " + setor.Nome;
+                    dialogo.Name = "ProdutoSetorForm";
+                    produto.Name = "cmbProdutoSetor";
+                    preco.Name = "numPrecoSetor";
+                    salvar.Name = "btnSalvarPrecoSetor";
                     dialogo.ClientSize = new System.Drawing.Size(480, 190);
                     dialogo.StartPosition = FormStartPosition.CenterParent;
                     dialogo.FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -345,6 +393,14 @@ namespace CASE.Quermesse
                 labelAviso.Text = "Não foi possível carregar os produtos autorizados.";
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ConfigurarProdutoDoSetor");
             }
+        }
+
+        private void AjustarSecoes(object sender, EventArgs e)
+        {
+            panelCorpo.Height = Math.Max(590, ClientSize.Height - 170);
+            panelSetores.Height = Math.Max(230, panelCorpo.Height - panelSetores.Top);
+            labelAviso.Top = panelCorpo.Bottom + 12;
+            AutoScrollMinSize = new System.Drawing.Size(970, labelAviso.Bottom + 16);
         }
 
         private void CarregarEquipe()

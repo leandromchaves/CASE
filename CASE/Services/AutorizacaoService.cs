@@ -539,6 +539,10 @@ namespace CASE.Services
 
                 foreach (Escala escala in escalas)
                 {
+                    if (string.Equals(escala.Situacao, SituacoesEscala.Cancelada, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
                     JornadaSetor jornada = jornadaSetorRepository.BuscarPorId(escala.IdJornada);
 
                     if (jornada != null && jornada.IdSetor == setor.IdSetor)
@@ -574,7 +578,8 @@ namespace CASE.Services
 
                 foreach (Escala escala in escalas)
                 {
-                    if (escala.IdJornada == jornada.IdJornada)
+                    if (escala.IdJornada == jornada.IdJornada &&
+                        !string.Equals(escala.Situacao, SituacoesEscala.Cancelada, StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }

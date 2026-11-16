@@ -364,7 +364,11 @@ FodyWeavers.xsd
 # Arquivos locais de apoio
 *.md
 *.MD
-/scripts/
+/scripts/*
+!/scripts/case_ddl.sql
+!/scripts/case_dml.sql
+!/scripts/case_dql.sql
+!/scripts/case_completo.sql
 /.codex/
 /.agents/
 /.github/copilot-instructions.md

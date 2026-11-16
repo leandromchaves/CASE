@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Windows.Forms;
 using CASE.Models;
 using CASE.Services;
@@ -14,6 +15,9 @@ namespace CASE
         private Fornecedor fornecedorSelecionado;
         private readonly Usuario usuarioAutenticado;
         private readonly ToolTip dicasCampos = new ToolTip();
+        private bool salvando;
+        private Form formularioFornecedor;
+        private readonly Button btnEditarFornecedor = new Button();
 
         public FornecedoresControl()
             : this(null)
@@ -32,6 +36,7 @@ namespace CASE
             }
 
             FrontendTheme.Aplicar(this);
+            ConfigurarJanelaFornecedor();
             VisualUtils.ExibirEstadoVazio(
                 dgvFornecedores,
                 "Nenhum fornecedor encontrado. Altere a busca ou cadastre um novo.");
@@ -40,15 +45,31 @@ namespace CASE
             dicasCampos.SetToolTip(txtDocumento, "Opcional. Exemplo: CPF ou CNPJ do fornecedor");
             dicasCampos.SetToolTip(txtTelefone, "Opcional. Exemplo: (11) 3333-4444");
             dicasCampos.SetToolTip(txtEmail, "Opcional. Exemplo: contato@fornecedor.com.br");
+            Disposed += (s, e) => dicasCampos.Dispose();
+            txtNome.MaxLength = 150;
+            txtDocumento.MaxLength = 18;
+            txtTelefone.MaxLength = 20;
+            txtEmail.MaxLength = 150;
+            lblMensagem.AutoEllipsis = true;
+            pictureIconeTela.AccessibleName = "Ícone de fornecedores";
+            lblSubtitulo.Text = "Cadastro compartilhado da instituição. Use Novo fornecedor ou selecione uma linha e clique em Editar.";
+            lblBusca.Text = "Buscar por nome, documento, e-mail ou telefone";
 
             txtBusca.TextChanged += TxtBusca_TextChanged;
             btnNovo.Click += BtnNovo_Click;
             dgvFornecedores.SelectionChanged += DgvFornecedores_SelectionChanged;
+            dgvFornecedores.CellDoubleClick += (s, e) =>
+            {
+                if (e.RowIndex >= 0)
+                    AbrirJanelaFornecedor(true);
+            };
             btnSalvar.Click += BtnSalvar_Click;
+            ConfigurarExclusao();
 
             if (usuarioAutenticado == null)
             {
                 btnNovo.Enabled = false;
+                btnEditarFornecedor.Enabled = false;
                 btnSalvar.Enabled = false;
                 lblMensagem.Text = "Entre com uma conta autorizada para consultar fornecedores.";
                 return;
@@ -59,21 +80,254 @@ namespace CASE
             {
                 string perfil;
                 new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
-                if (perfil != "Administrador")
+                if (perfil != "Administrador" && perfil != "Gerente")
                 {
                     btnNovo.Enabled = false;
+                    btnEditarFornecedor.Enabled = false;
                     btnSalvar.Enabled = false;
                     txtNome.ReadOnly = true;
                     txtDocumento.ReadOnly = true;
                     txtTelefone.ReadOnly = true;
                     txtEmail.ReadOnly = true;
-                    lblMensagem.Text = "Consulta de fornecedores. A manutenção do cadastro é administrativa.";
+                    lblMensagem.Text = "Seu perfil não pode gerenciar fornecedores.";
+                }
+                else
+                {
+                    LimparCampos();
+                    lblMensagem.Text = "Administrador e gerente podem cadastrar e editar. Exclusão sem vínculos: apenas administrador, pelo botão direito.";
                 }
             }
             catch (Exception)
             {
                 btnNovo.Enabled = false;
+                btnEditarFornecedor.Enabled = false;
                 btnSalvar.Enabled = false;
+            }
+        }
+
+        private void ConfigurarJanelaFornecedor()
+        {
+            // Reutiliza os campos do Designer na janela de cadastro.
+            panelEdicao.Visible = false;
+            btnEditarFornecedor.Name = "btnEditarFornecedor";
+            btnEditarFornecedor.Text = "Editar selecionado";
+            btnEditarFornecedor.BackColor = btnNovo.BackColor;
+            btnEditarFornecedor.ForeColor = btnNovo.ForeColor;
+            btnEditarFornecedor.TabIndex = btnNovo.TabIndex + 1;
+            btnEditarFornecedor.Click += (s, e) => AbrirJanelaFornecedor(true);
+            panelBusca.Controls.Add(btnEditarFornecedor);
+            FrontendTheme.Aplicar(panelBusca);
+            SizeChanged += (s, e) => AjustarListagemFornecedores();
+            panelBusca.SizeChanged += (s, e) => AjustarListagemFornecedores();
+            AjustarListagemFornecedores();
+        }
+
+        private void AjustarListagemFornecedores()
+        {
+            btnNovo.SetBounds(Math.Max(24, panelBusca.ClientSize.Width - 208), 28, 184, 40);
+            btnEditarFornecedor.SetBounds(btnNovo.Left - 182, 28, 170, 40);
+            txtBusca.Width = Math.Max(120, btnEditarFornecedor.Left - txtBusca.Left - 20);
+            lblBusca.Width = txtBusca.Width;
+            panelLista.Height = Math.Max(150, ClientSize.Height - panelLista.Top - 72);
+        }
+
+        private void AbrirJanelaFornecedor(bool editar)
+        {
+            if (formularioFornecedor != null)
+            {
+                formularioFornecedor.Activate();
+                return;
+            }
+            try
+            {
+                new AutorizacaoService().ExigirAdministradorOuGerente(usuarioAutenticado);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                lblMensagem.Text = "Seu perfil não pode cadastrar ou editar fornecedores.";
+                return;
+            }
+            catch (Exception)
+            {
+                lblMensagem.Text = "Não foi possível validar sua conta. Tente novamente.";
+                return;
+            }
+            if (editar)
+            {
+                if (dgvFornecedores.SelectedRows.Count == 0)
+                {
+                    lblMensagem.Text = "Selecione o fornecedor que deseja editar.";
+                    return;
+                }
+                SelecionarFornecedor();
+                if (fornecedorSelecionado == null)
+                    return;
+            }
+            else
+                LimparCampos();
+
+            Rectangle limitesPainel = panelEdicao.Bounds;
+            Rectangle limitesMensagem = lblMensagem.Bounds;
+            AnchorStyles ancoraPainel = panelEdicao.Anchor;
+            AnchorStyles ancoraMensagem = lblMensagem.Anchor;
+            using (Form janela = new Form())
+            using (Button cancelar = new Button())
+            {
+                janela.Name = "FornecedorForm";
+                janela.Text = editar ? "Editar fornecedor" : "Novo fornecedor";
+                janela.Font = Font;
+                janela.AutoScaleMode = AutoScaleMode.Font;
+                janela.ClientSize = new Size(660, 460);
+                janela.FormBorderStyle = FormBorderStyle.FixedDialog;
+                janela.StartPosition = FormStartPosition.CenterParent;
+                janela.MaximizeBox = false;
+                janela.MinimizeBox = false;
+                janela.ShowInTaskbar = false;
+                IconoAplicacao.Aplicar(janela);
+                Label titulo = new Label { Text = janela.Text, Font = new Font("Segoe UI", 20, FontStyle.Bold), AutoSize = true };
+                titulo.SetBounds(24, 18, 600, 40);
+                janela.Controls.Add(titulo);
+                janela.Controls.Add(panelEdicao);
+                panelEdicao.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+                panelEdicao.SetBounds(24, 74, 612, 310);
+                lblNome.SetBounds(24, 18, 564, 24);
+                txtNome.SetBounds(24, 44, 564, 28);
+                lblDocumento.SetBounds(24, 86, 270, 24);
+                txtDocumento.SetBounds(24, 110, 270, 28);
+                lblTelefone.SetBounds(318, 86, 270, 24);
+                txtTelefone.SetBounds(318, 110, 270, 28);
+                lblEmail.SetBounds(24, 152, 564, 24);
+                txtEmail.SetBounds(24, 176, 564, 28);
+                btnSalvar.SetBounds(438, 240, 150, 40);
+                btnSalvar.Text = editar ? "Salvar alterações" : "Cadastrar";
+                panelEdicao.Visible = true;
+                janela.Controls.Add(lblMensagem);
+                lblMensagem.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+                lblMensagem.SetBounds(24, 398, 612, 48);
+                cancelar.Name = "btnCancelarFornecedor";
+                cancelar.Text = "Cancelar";
+                cancelar.DialogResult = DialogResult.Cancel;
+                cancelar.SetBounds(318, 240, 110, 40);
+                panelEdicao.Controls.Add(cancelar);
+                txtNome.TabIndex = 0;
+                txtDocumento.TabIndex = 1;
+                txtEmail.TabIndex = 2;
+                txtTelefone.TabIndex = 3;
+                btnSalvar.TabIndex = 4;
+                cancelar.TabIndex = 5;
+                janela.AcceptButton = btnSalvar;
+                janela.CancelButton = cancelar;
+                FrontendTheme.Aplicar(janela);
+                janela.Shown += (s, e) => txtNome.Focus();
+                formularioFornecedor = janela;
+                DialogResult resultado;
+                try
+                {
+                    resultado = janela.ShowDialog(FindForm());
+                }
+                finally
+                {
+                    formularioFornecedor = null;
+                    panelEdicao.Controls.Remove(cancelar);
+                    Controls.Add(panelEdicao);
+                    panelEdicao.Bounds = limitesPainel;
+                    panelEdicao.Anchor = ancoraPainel;
+                    panelEdicao.Visible = false;
+                    Controls.Add(lblMensagem);
+                    lblMensagem.Bounds = limitesMensagem;
+                    lblMensagem.Anchor = ancoraMensagem;
+                }
+                if (resultado == DialogResult.OK)
+                {
+                    CarregarFornecedores();
+                    lblMensagem.Text = "Fornecedor salvo com sucesso.";
+                }
+                else
+                    lblMensagem.Text = "Edição encerrada. Nenhuma alteração foi salva.";
+            }
+        }
+
+        private void ConfigurarExclusao()
+        {
+            ContextMenuStrip menu = new ContextMenuStrip();
+            ToolStripMenuItem excluir = new ToolStripMenuItem("Excluir fornecedor sem vínculos");
+            excluir.Name = "menuExcluirFornecedor";
+            excluir.Click += ExcluirFornecedor_Click;
+            menu.Items.Add(excluir);
+            menu.Opening += (s, e) =>
+            {
+                excluir.Enabled = false;
+                if (usuarioAutenticado == null || dgvFornecedores.SelectedRows.Count == 0)
+                {
+                    return;
+                }
+                try
+                {
+                    string perfil;
+                    new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
+                    excluir.Enabled = perfil == "Administrador";
+                }
+                catch (Exception erro)
+                {
+                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em MenuExcluirFornecedor");
+                }
+            };
+            dgvFornecedores.ContextMenuStrip = menu;
+            dgvFornecedores.CellMouseDown += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                {
+                    dgvFornecedores.CurrentCell = dgvFornecedores.Rows[e.RowIndex].Cells[0];
+                    dgvFornecedores.Rows[e.RowIndex].Selected = true;
+                }
+            };
+            Disposed += (s, e) => menu.Dispose();
+        }
+
+        private void ExcluirFornecedor_Click(object sender, EventArgs e)
+        {
+            if (dgvFornecedores.SelectedRows.Count == 0)
+            {
+                lblMensagem.Text = "Selecione um fornecedor para excluir.";
+                return;
+            }
+            Fornecedor fornecedor = dgvFornecedores.SelectedRows[0].Tag as Fornecedor;
+            if (fornecedor == null)
+            {
+                return;
+            }
+            if (MessageBox.Show(this,
+                "Excluir definitivamente o fornecedor selecionado? A exclusão só é permitida sem vínculos.",
+                "Excluir fornecedor", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            {
+                return;
+            }
+            try
+            {
+                bool excluido = fornecedorService.Excluir(usuarioAutenticado, fornecedor.IdFornecedor);
+                CarregarFornecedores();
+                LimparCampos();
+                if (excluido)
+                {
+                    lblMensagem.Text = "Fornecedor excluído do banco de dados.";
+                }
+                else
+                {
+                    lblMensagem.Text = "O fornecedor não existe mais. A lista foi atualizada.";
+                }
+            }
+            catch (Exception erro)
+            {
+                if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
+                {
+                    lblMensagem.Text = erro.Message;
+                }
+                else
+                {
+                    lblMensagem.Text = "Não foi possível excluir o fornecedor. Verifique a conexão.";
+                }
+                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExcluirFornecedor: " + erro.StackTrace);
             }
         }
 
@@ -117,6 +371,10 @@ namespace CASE
                 if (fornecedor.Email != null)
                 {
                     textoFornecedor += " " + fornecedor.Email;
+                }
+                if (fornecedor.Telefone != null)
+                {
+                    textoFornecedor += " " + fornecedor.Telefone;
                 }
 
                 bool correspondeBusca = textoFornecedor.IndexOf(
@@ -176,19 +434,17 @@ namespace CASE
 
         private void SalvarFornecedor()
         {
-            if (dadosDemo != null)
+            if (salvando)
             {
-                SalvarFornecedorDemo();
                 return;
             }
-
             if (string.IsNullOrWhiteSpace(txtNome.Text))
             {
                 lblMensagem.Text = "Informe o nome do fornecedor.";
                 return;
             }
 
-            Fornecedor fornecedor;
+            Fornecedor fornecedor = new Fornecedor();
             bool novoFornecedor = fornecedorSelecionado == null;
 
             if (novoFornecedor)
@@ -197,7 +453,7 @@ namespace CASE
             }
             else
             {
-                fornecedor = fornecedorSelecionado;
+                fornecedor.IdFornecedor = fornecedorSelecionado.IdFornecedor;
             }
 
             fornecedor.Nome = txtNome.Text.Trim();
@@ -207,6 +463,8 @@ namespace CASE
 
             try
             {
+                salvando = true;
+                btnSalvar.Enabled = false;
                 if (novoFornecedor)
                 {
                     fornecedorService.Cadastrar(usuarioAutenticado, fornecedor);
@@ -216,9 +474,9 @@ namespace CASE
                     fornecedorService.Atualizar(usuarioAutenticado, fornecedor);
                 }
 
-                CarregarFornecedores();
-                LimparCampos();
                 lblMensagem.Text = "Fornecedor salvo com sucesso.";
+                if (formularioFornecedor != null)
+                    formularioFornecedor.DialogResult = DialogResult.OK;
             }
             catch (ArgumentException erro)
             {
@@ -228,9 +486,26 @@ namespace CASE
             {
                 lblMensagem.Text = "Seu perfil não pode cadastrar ou editar fornecedores.";
             }
+            catch (InvalidOperationException erro)
+            {
+                lblMensagem.Text = erro.Message;
+            }
             catch (Exception)
             {
                 lblMensagem.Text = "Não foi possível salvar o fornecedor.";
+            }
+            finally
+            {
+                salvando = false;
+                try
+                {
+                    new AutorizacaoService().ExigirAdministradorOuGerente(usuarioAutenticado);
+                    btnSalvar.Enabled = true;
+                }
+                catch
+                {
+                    btnSalvar.Enabled = false;
+                }
             }
         }
 
@@ -251,8 +526,7 @@ namespace CASE
 
         private void BtnNovo_Click(object sender, EventArgs e)
         {
-            LimparCampos();
-            txtNome.Focus();
+            AbrirJanelaFornecedor(false);
         }
 
         private void DgvFornecedores_SelectionChanged(object sender, EventArgs e)

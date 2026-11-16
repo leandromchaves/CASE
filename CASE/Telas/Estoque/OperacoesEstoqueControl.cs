@@ -26,6 +26,7 @@ namespace CASE
         {
             InitializeComponent();
             usuarioAutenticado = usuario;
+            lblModoApresentacao.Visible = false;
 
             if (System.ComponentModel.LicenseManager.UsageMode ==
                 System.ComponentModel.LicenseUsageMode.Designtime)
@@ -33,13 +34,36 @@ namespace CASE
                 return;
             }
 
-            cmbLocal.DisplayMember = "Nome";
+            cmbLocal.DisplayMember = "Descricao";
             cmbLocal.SelectedIndexChanged += cmbLocal_SelectedIndexChanged;
             btnEntrada.Click += RegistrarEntrada;
             btnTransferir.Click += TransferirEstoque;
             dgvSaldos.CellDoubleClick += ConfigurarLimitesEstoque;
+            ContextMenuStrip menuSaldos = new ContextMenuStrip();
+            ToolStripMenuItem resumoSaldos = new ToolStripMenuItem("Visão geral dos saldos autorizados");
+            resumoSaldos.Click += (s, e) =>
+            {
+                using (Form janela = new Form())
+                {
+                    janela.Text = "Visão geral do estoque";
+                    janela.Size = new System.Drawing.Size(1100, 760);
+                    janela.StartPosition = FormStartPosition.CenterParent;
+                    janela.Controls.Add(new EstoqueControl(usuarioAutenticado) { Dock = DockStyle.Fill });
+                    IconoAplicacao.Aplicar(janela);
+                    janela.ShowDialog(this);
+                }
+            };
+            menuSaldos.Items.Add(resumoSaldos);
+            dgvSaldos.ContextMenuStrip = menuSaldos;
+            Disposed += (s, e) => menuSaldos.Dispose();
             btnFornecedores.Click += (s, e) => FornecedoresSolicitados?.Invoke(this, EventArgs.Empty);
             FrontendTheme.Aplicar(this);
+            AutoScrollMinSize = new System.Drawing.Size(760, 740);
+            panelAcoes.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            panelSaldos.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            panelHistorico.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            panelSaldos.Padding = panelHistorico.Padding = new Padding(24, 20, 24, 20);
+            dgvSaldos.Dock = dgvHistorico.Dock = DockStyle.Fill;
             VisualUtils.ExibirEstadoVazio(dgvHistorico, "O histórico consolidado ainda não está disponível.");
             dgvSaldos.Columns[0].FillWeight = 180;
             dgvSaldos.Columns[1].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
@@ -195,11 +219,6 @@ namespace CASE
 
         private void RegistrarEntrada(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirEntradaDemo();
-                return;
-            }
 
             using (var formulario = new EntradaMercadoriaForm(usuarioAutenticado))
             {
@@ -213,11 +232,6 @@ namespace CASE
 
         private void TransferirEstoque(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                AbrirTransferenciaDemo();
-                return;
-            }
 
             using (var formulario = new TransferenciaEstoqueForm(usuarioAutenticado))
             {
@@ -232,9 +246,32 @@ namespace CASE
         private void Organizar()
         {
             int altura = Math.Max(740, ClientSize.Height);
-            panelSaldos.Top = panelHistorico.Top = 280;
-            panelSaldos.Height = panelHistorico.Height = altura - 334;
-            lblMensagem.Top = altura - 40;
+            int largura = Math.Max(760, ClientSize.Width);
+            int deslocamentoX = AutoScrollPosition.X;
+            int deslocamentoY = AutoScrollPosition.Y;
+            bool compacto = largura < 1050;
+            int alturaAcoes = 96;
+            if (compacto)
+            {
+                alturaAcoes = 136;
+                btnEntrada.SetBounds(24, 84, btnEntrada.Width, 40);
+                btnTransferir.SetBounds(216, 84, btnTransferir.Width, 40);
+                btnFornecedores.SetBounds(408, 84, btnFornecedores.Width, 40);
+            }
+            else
+            {
+                btnEntrada.SetBounds(378, 40, btnEntrada.Width, 40);
+                btnTransferir.SetBounds(570, 40, btnTransferir.Width, 40);
+                btnFornecedores.SetBounds(762, 40, btnFornecedores.Width, 40);
+            }
+            panelAcoes.SetBounds(24 + deslocamentoX, 112 + deslocamentoY, largura - 48, alturaAcoes);
+            int topoAbas = 112 + alturaAcoes + 16;
+            btnAbaSaldo.Top = btnAbaHistorico.Top = topoAbas + deslocamentoY;
+            panelSaldos.Left = panelHistorico.Left = 24 + deslocamentoX;
+            panelSaldos.Width = panelHistorico.Width = largura - 48;
+            panelSaldos.Top = panelHistorico.Top = topoAbas + 56 + deslocamentoY;
+            panelSaldos.Height = panelHistorico.Height = altura - topoAbas - 110;
+            lblMensagem.Top = altura - 40 + deslocamentoY;
         }
 
         private void SelecionarAba(bool historico)
@@ -272,11 +309,6 @@ namespace CASE
 
         private void Atualizar()
         {
-            if (dadosDemo != null)
-            {
-                AtualizarEstoqueDemo();
-                return;
-            }
 
             dgvSaldos.Rows.Clear();
             dgvHistorico.Rows.Clear();
@@ -320,7 +352,7 @@ namespace CASE
 
                     int linha = dgvSaldos.Rows.Add(
                         nomeProduto,
-                        estoque.QuantidadeAtual.ToString("N2", CultureInfo.GetCultureInfo("pt-BR")),
+                        estoque.QuantidadeAtual.ToString("N0", CultureInfo.GetCultureInfo("pt-BR")),
                         unidade);
 
                     dgvSaldos.Rows[linha].Tag = estoque;

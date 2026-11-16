@@ -30,6 +30,9 @@ namespace CASE
             PrepararCampoLogin(textUsuario, panelUsuario, "Seu nome de usuário");
             PrepararCampoLogin(textSenha, panelSenha, "Sua senha");
             textSenha.UseSystemPasswordChar = true;
+            textUsuario.AccessibleName = "Usuário";
+            textUsuario.AccessibleDescription = "Nome de usuário da conta CASE";
+            textSenha.AccessibleName = "Senha";
             textUsuario.TabIndex = 0;
             textSenha.TabIndex = 1;
             Shown += (s, e) => textUsuario.Focus();

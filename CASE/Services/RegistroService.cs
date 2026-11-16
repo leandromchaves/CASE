@@ -42,7 +42,9 @@ namespace CASE.Services
 
             Escala escala = escalaRepository.BuscarPorId(registro.IdEscala);
 
-            if (escala == null || !autorizacaoService.PodeAcessarEscala(
+            if (escala == null ||
+                string.Equals(escala.Situacao, SituacoesEscala.Cancelada, StringComparison.OrdinalIgnoreCase) ||
+                !autorizacaoService.PodeAcessarEscala(
                 usuarioAtual,
                 nomePerfil,
                 escala))
@@ -135,9 +137,24 @@ namespace CASE.Services
             IList<RegistroItem> itens,
             string justificativa)
         {
-            autorizacaoService.ExigirAdministradorOuGerente(usuario);
-            throw new InvalidOperationException(
-                "Lançamentos confirmados são imutáveis. A correção exige uma nova operação auditada.");
+            if (registro == null || itens == null || itens.Count == 0)
+            {
+                throw new ArgumentException("Informe um registro e seus itens para corrigir.");
+            }
+            Registro atual = BuscarPorId(usuario, registro.IdRegistro);
+            if (atual == null)
+            {
+                throw new InvalidOperationException("O registro não foi encontrado.");
+            }
+            ControleCorrecaoOperacao.ValidarVersao(atual.Versao, registro.Versao, justificativa);
+            Evento evento = ObterEventoDoRegistro(atual);
+            if (evento == null ||
+                !string.Equals(evento.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("Registros só podem ser corrigidos enquanto o evento estiver em andamento.");
+            }
+            // A autoria e a data originais permanecem; o editor fica na auditoria.
+            registroRepository.AtualizarComItens(registro, itens, usuario.IdUsuario, justificativa);
         }
 
         private Evento ObterEventoDoRegistro(Registro registro)

@@ -109,9 +109,10 @@ namespace CASE.Services
                 throw new ArgumentException("O tipo de evento informado não foi encontrado.", nameof(evento));
             }
 
-            if (string.IsNullOrWhiteSpace(evento.Nome) || string.IsNullOrWhiteSpace(evento.Local))
+            if (string.IsNullOrWhiteSpace(evento.Nome) || string.IsNullOrWhiteSpace(evento.Local) ||
+                evento.Nome.Trim().Length > 150 || evento.Local.Trim().Length > 200)
             {
-                throw new ArgumentException("Informe o nome e o local do evento.", nameof(evento));
+                throw new ArgumentException("Informe nome de até 150 caracteres e local de até 200 caracteres.", nameof(evento));
             }
 
             if (evento.DataInicio == DateTime.MinValue ||
@@ -167,9 +168,10 @@ namespace CASE.Services
             }
 
             if (string.IsNullOrWhiteSpace(evento.Nome) ||
-                string.IsNullOrWhiteSpace(evento.Local))
+                string.IsNullOrWhiteSpace(evento.Local) ||
+                evento.Nome.Trim().Length > 150 || evento.Local.Trim().Length > 200)
             {
-                throw new ArgumentException("Informe o nome e o local do evento.", nameof(evento));
+                throw new ArgumentException("Informe nome de até 150 caracteres e local de até 200 caracteres.", nameof(evento));
             }
 
             if (evento.IdTipoEvento <= 0 ||
@@ -313,7 +315,7 @@ namespace CASE.Services
                     if (estoque.QuantidadeAtual != 0)
                     {
                         throw new InvalidOperationException(
-                            "O evento não pode ser finalizado enquanto houver produtos nos locais das barracas.");
+                            "O evento possui saldo no estoque geral ou nas barracas e não pode ser finalizado.");
                     }
                 }
             }

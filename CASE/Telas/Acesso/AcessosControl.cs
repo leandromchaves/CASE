@@ -198,11 +198,6 @@ namespace CASE
 
         private void Selecionar()
         {
-            if (dadosDemo != null)
-            {
-                SelecionarContaDemo();
-                return;
-            }
 
             selecionado = null;
 
@@ -262,11 +257,6 @@ namespace CASE
 
         private void AtualizarBotoes()
         {
-            if (dadosDemo != null)
-            {
-                SelecionarContaDemo();
-                return;
-            }
 
             bool pendente = selecionado != null && string.Equals(
                 selecionado.SituacaoConta,
@@ -282,11 +272,6 @@ namespace CASE
 
         private void btnAprovar_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                DecidirContaDemo(true);
-                return;
-            }
 
             if (selecionado == null || cmbPerfil.SelectedItem == null)
             {
@@ -303,8 +288,8 @@ namespace CASE
                     selecionado.IdUsuario,
                     perfil.IdPerfilSistema);
                 AcessosAlterados?.Invoke(this, EventArgs.Empty);
-                lblMensagem.Text = "Cadastro aprovado e decisão registrada.";
                 CarregarDados();
+                lblMensagem.Text = "Cadastro aprovado e decisão registrada.";
             }
             catch (UnauthorizedAccessException)
             {
@@ -312,8 +297,8 @@ namespace CASE
             }
             catch (InvalidOperationException ex)
             {
-                lblMensagem.Text = ex.Message;
                 CarregarDados();
+                lblMensagem.Text = ex.Message;
             }
             catch (Exception)
             {
@@ -323,11 +308,6 @@ namespace CASE
 
         private void btnRejeitar_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                DecidirContaDemo(false);
-                return;
-            }
 
             if (selecionado == null)
             {
@@ -342,8 +322,8 @@ namespace CASE
                     selecionado.IdUsuario,
                     txtMotivo.Text);
                 AcessosAlterados?.Invoke(this, EventArgs.Empty);
-                lblMensagem.Text = "Cadastro rejeitado e decisão registrada.";
                 CarregarDados();
+                lblMensagem.Text = "Cadastro rejeitado e decisão registrada.";
             }
             catch (ArgumentException ex)
             {
@@ -355,8 +335,8 @@ namespace CASE
             }
             catch (InvalidOperationException ex)
             {
-                lblMensagem.Text = ex.Message;
                 CarregarDados();
+                lblMensagem.Text = ex.Message;
             }
             catch (Exception)
             {

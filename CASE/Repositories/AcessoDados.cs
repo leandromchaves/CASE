@@ -7,7 +7,7 @@ namespace CASE.Repositories
 {
     internal static class AcessoDados
     {
-        // Executa um SELECT e converte cada linha em um objeto.
+
         internal static List<T> ConsultarLista<T>(
             string sql,
             Func<MySqlDataReader, T> converterLinha,
@@ -39,7 +39,7 @@ namespace CASE.Repositories
             }
         }
 
-        // Executa um SELECT que retorna no maximo uma linha.
+
         internal static T ConsultarUnico<T>(
             string sql,
             Func<MySqlDataReader, T> converterLinha,
@@ -69,7 +69,7 @@ namespace CASE.Repositories
             }
         }
 
-        // Executa um INSERT e devolve o identificador criado pelo MySQL.
+
         internal static int Inserir(string sql, Action<MySqlCommand> preencherParametros)
         {
             using (var conexao = Conexao.CriarConexao())
@@ -89,7 +89,7 @@ namespace CASE.Repositories
             }
         }
 
-        // Versao do INSERT que participa de uma transacao ja aberta.
+        // Usa a transação aberta pela operação principal.
         internal static int Inserir(
             MySqlConnection conexao,
             MySqlTransaction transacao,
@@ -108,7 +108,7 @@ namespace CASE.Repositories
             }
         }
 
-        // Executa INSERT, UPDATE ou DELETE e devolve o numero de linhas afetadas.
+
         internal static int Executar(string sql, Action<MySqlCommand> preencherParametros)
         {
             using (var conexao = Conexao.CriarConexao())
@@ -127,7 +127,7 @@ namespace CASE.Repositories
             }
         }
 
-        // Versao que executa o comando dentro de uma transacao ja aberta.
+        // Mantém o comando na transação da operação principal.
         internal static int Executar(
             MySqlConnection conexao,
             MySqlTransaction transacao,
@@ -141,7 +141,8 @@ namespace CASE.Repositories
             }
         }
 
-        // Associa um valor a um parametro do SQL. null e enviado como NULL.
+        // Envia os valores por parâmetros, sem concatená-los ao SQL.
+
         internal static void AdicionarParametro(MySqlCommand comando, string nome, object valor)
         {
             object valorParametro = valor;
@@ -167,7 +168,7 @@ namespace CASE.Repositories
             comando.Parameters.AddWithValue(nome, valor);
         }
 
-        // Texto vazio ou composto apenas por espacos e enviado como NULL.
+        // Salva texto vazio como NULL nos campos opcionais.
         internal static void AdicionarTextoOpcional(
             MySqlCommand comando,
             string nome,

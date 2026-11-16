@@ -310,7 +310,7 @@ namespace CASE.Repositories
                 "JOIN setor s ON s.id_setor=j.id_setor " +
                 "JOIN evento ev ON ev.id_evento=s.id_evento " +
                 "WHERE e.id_escala=@escala AND ee.id_pessoa=p.id_pessoa " +
-                "AND ee.id_evento=ev.id_evento AND ee.ativo=1 " +
+                "AND ee.id_evento=ev.id_evento AND ee.ativo=1 AND LOWER(e.situacao)<>'cancelada' " +
                 "AND u.situacao_conta='aprovado' AND ps.nome='Membro' " +
                 "AND ev.situacao IN ('planejado','em_andamento') FOR UPDATE",
                 conexao,

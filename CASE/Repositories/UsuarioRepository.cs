@@ -147,7 +147,7 @@ namespace CASE.Repositories
                         }
                         catch
                         {
-                            // Preserva o erro original da operação.
+                            // Preserva o erro original se o rollback também falhar.
                         }
 
                         throw;
@@ -286,7 +286,7 @@ namespace CASE.Repositories
                         }
                         catch
                         {
-                            // Mantem a excecao original do erro.
+                            // Preserva o erro original se o rollback também falhar.
                         }
 
                         throw;
@@ -400,7 +400,7 @@ namespace CASE.Repositories
                             }
                             catch
                             {
-                                // Preserva o erro original da operação.
+                                // Preserva o erro original se o rollback também falhar.
                             }
 
                             throw;

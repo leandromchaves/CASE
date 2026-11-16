@@ -211,7 +211,8 @@ namespace CASE.Services
 
             Escala escala = escalaRepository.BuscarPorId(solicitacao.IdEscala);
 
-            if (escala == null || !autorizacaoService.PodeAcessarEscala(
+            if (escala == null || string.Equals(escala.Situacao, SituacoesEscala.Cancelada, StringComparison.OrdinalIgnoreCase) ||
+                !autorizacaoService.PodeAcessarEscala(
                 usuarioAtual,
                 nomePerfil,
                 escala))

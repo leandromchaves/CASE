@@ -34,7 +34,19 @@ namespace CASE
             VisualUtils.Arredondar(panelListaMovimentacoes, 12);
             panelListaMovimentacoes.SizeChanged += AjustarArredondamento;
             VisualUtils.AplicarBorda(panelListaMovimentacoes);
-            lblSubtituloMovimentacoes.Text = "Histórico de entradas e saídas";
+            lblSubtituloMovimentacoes.Text = "Selecione uma linha e use Corrigir / histórico. O botão direito também está disponível.";
+            Button abrirCorrecao = new Button();
+            abrirCorrecao.Name = "btnCorrigirMovimentacao";
+            abrirCorrecao.Text = "Corrigir / histórico";
+            abrirCorrecao.SetBounds(Width - 250, 25, 220, 36);
+            abrirCorrecao.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            abrirCorrecao.Enabled = false;
+            abrirCorrecao.Click += CorrigirMovimentacao;
+            VisualUtils.EstilizarBotao(abrirCorrecao);
+            Controls.Add(abrirCorrecao);
+            abrirCorrecao.BringToFront();
+            dgvMovimentacoes.SelectionChanged += (s, e) =>
+                abrirCorrecao.Enabled = usuarioAutenticado != null && dgvMovimentacoes.SelectedRows.Count > 0;
             panelCardEntradasMes.Visible = panelCardSaidasMes.Visible = false;
             panelFiltrosMovimentacoes.Top = 115;
             panelListaMovimentacoes.Top = 225;
@@ -49,33 +61,48 @@ namespace CASE
             cmbTipoMovimentacao.SelectedIndex = 0;
             foreach (Control campo in new Control[] { cmbTipoMovimentacao, txtProdutoMovimentacao, dtpDataInicial, dtpDataFinal })
             {
-                string titulo = campo == cmbTipoMovimentacao ? "Tipo" : campo == txtProdutoMovimentacao ? "Produto" : campo == dtpDataInicial ? "Data inicial" : "Data final";
+                string titulo = campo == cmbTipoMovimentacao
+                    ? "Tipo"
+                    : campo == txtProdutoMovimentacao
+                        ? "Produto"
+                        : campo == dtpDataInicial
+                            ? "Data inicial"
+                            : "Data final";
                 panelFiltrosMovimentacoes.Controls.Add(FrontendTheme.Legenda(titulo,
                     new System.Drawing.Rectangle(campo.Left, 7, campo.Width, 20)));
             }
             btnNovaMovimentacao.Click += (s, e) =>
             {
                 CarregarMovimentacoes();
-                foreach (DataGridViewRow linha in dgvMovimentacoes.Rows)
-                {
-                    DateTime data = DateTime.ParseExact(Convert.ToString(linha.Cells[0].Value), "dd/MM/yyyy", System.Globalization.CultureInfo.InvariantCulture);
-                    linha.Visible = (cmbTipoMovimentacao.SelectedIndex <= 0 || Convert.ToString(linha.Cells[2].Value) == cmbTipoMovimentacao.Text)
-                        && Convert.ToString(linha.Cells[1].Value).IndexOf(txtProdutoMovimentacao.Text, StringComparison.CurrentCultureIgnoreCase) >= 0
-                        && data >= dtpDataInicial.Value.Date && data <= dtpDataFinal.Value.Date;
-                }
                 dgvMovimentacoes.ClearSelection();
             };
             txtProdutoMovimentacao.TextChanged += (s, e) => FiltrarProduto();
+            cmbTipoMovimentacao.SelectedIndexChanged += (s, e) => FiltrarProduto();
+            dgvMovimentacoes.Columns[0].MinimumWidth = 145;
+            dgvMovimentacoes.Columns[0].HeaderText = "Data / hora";
+            dgvMovimentacoes.Columns[1].MinimumWidth = 180;
+            dgvMovimentacoes.Columns[3].DefaultCellStyle.Format = "N0";
+            dgvMovimentacoes.Columns[5].MinimumWidth = 240;
+            ContextMenuStrip menu = new ContextMenuStrip();
+            ToolStripMenuItem corrigir = new ToolStripMenuItem("Corrigir operação / consultar histórico");
+            corrigir.Name = "menuCorrigirMovimentacao";
+            corrigir.Click += CorrigirMovimentacao;
+            menu.Items.Add(corrigir);
+            dgvMovimentacoes.ContextMenuStrip = menu;
+            dgvMovimentacoes.CellMouseDown += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+                {
+                    dgvMovimentacoes.CurrentCell = dgvMovimentacoes.Rows[e.RowIndex].Cells[0];
+                    dgvMovimentacoes.Rows[e.RowIndex].Selected = true;
+                }
+            };
+            Disposed += (s, e) => menu.Dispose();
             CarregarMovimentacoes();
         }
 
         private void CarregarMovimentacoes()
         {
-            if (dadosDemo != null)
-            {
-                CarregarMovimentosDemo();
-                return;
-            }
 
             dgvMovimentacoes.Rows.Clear();
             if (usuarioAutenticado == null)
@@ -90,9 +117,14 @@ namespace CASE
                     usuarioAutenticado, dtpDataInicial.Value, dtpDataFinal.Value);
                 foreach (DataRow movimento in movimentos.Rows)
                 {
-                    dgvMovimentacoes.Rows.Add(Convert.ToDateTime(movimento["data_hora"]).ToString("dd/MM/yyyy"),
-                        movimento["produto"], movimento["tipo"], movimento["quantidade"], movimento["responsavel"],
+                    int indice = dgvMovimentacoes.Rows.Add(
+Convert.ToDateTime(movimento["data_hora"]).ToString("dd/MM/yyyy HH:mm"),
+                        movimento["produto"],
+movimento["tipo"],
+movimento["quantidade"],
+movimento["responsavel"],
                         movimento["origem"] + " → " + movimento["destino"]);
+                    dgvMovimentacoes.Rows[indice].Tag = movimento;
                 }
                 dgvMovimentacoesColMotivo.Visible = true;
                 dgvMovimentacoesColMotivo.HeaderText = "Origem → destino";
@@ -107,6 +139,29 @@ namespace CASE
                     lblListaMovimentacoes.Text = erro.Message;
                 }
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em MovimentacoesControl: " + erro.StackTrace);
+            }
+        }
+
+        private void CorrigirMovimentacao(object sender, EventArgs e)
+        {
+            if (dgvMovimentacoes.SelectedRows.Count == 0 || usuarioAutenticado == null)
+            {
+                lblListaMovimentacoes.Text = "Selecione uma operação autorizada.";
+                return;
+            }
+            DataRow operacao = dgvMovimentacoes.SelectedRows[0].Tag as DataRow;
+            if (operacao == null)
+            {
+                return;
+            }
+            using (CorrecaoOperacaoForm formulario = new CorrecaoOperacaoForm(usuarioAutenticado,
+                Convert.ToString(operacao["entidade"]), Convert.ToInt32(operacao["id_operacao"])))
+            {
+                if (formulario.ShowDialog(this) == DialogResult.OK)
+                {
+                    CarregarMovimentacoes();
+                    lblListaMovimentacoes.Text = "Correção confirmada. Saldos e histórico atualizados.";
+                }
             }
         }
 

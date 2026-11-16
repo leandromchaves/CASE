@@ -578,8 +578,134 @@ namespace CASE.Repositories
             int idUsuarioAlteracao,
             string justificativa)
         {
-            throw new InvalidOperationException(
-                "Movimentações confirmadas são imutáveis. A correção exige uma nova operação auditada.");
+            if (transferencia == null || itens == null || itens.Count == 0)
+            {
+                throw new ArgumentException("Informe a transferência e seus itens para corrigir.");
+            }
+            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            {
+                conexao.Open();
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        string perfil = ControleCorrecaoOperacao.ValidarEditor(conexao, transacao, idUsuarioAlteracao);
+                        if (perfil == "Membro")
+                        {
+                            throw new UnauthorizedAccessException("Membros não podem corrigir transferências.");
+                        }
+                        TransferenciaEstoque atual = BuscarParaAtualizacao(conexao, transacao, transferencia.IdTransferencia);
+                        if (atual == null)
+                        {
+                            throw new InvalidOperationException("A transferência não foi encontrada.");
+                        }
+                        ControleCorrecaoOperacao.ValidarVersao(atual.Versao, transferencia.Versao, justificativa);
+                        if (atual.IdLocalOrigem != transferencia.IdLocalOrigem || atual.IdLocalDestino != transferencia.IdLocalDestino ||
+                            atual.IdSolicitacao != transferencia.IdSolicitacao ||
+                            atual.IdSolicitacaoEstoqueCentral != transferencia.IdSolicitacaoEstoqueCentral)
+                        {
+                            throw new ArgumentException("A correção deve manter os locais e as solicitações originais.");
+                        }
+                        using (var comando = new MySqlCommand(
+                            "SELECT ev.id_evento,o.eh_central AS central_origem,d.eh_central AS central_destino " +
+                            "FROM localestoque o JOIN localestoque d ON d.id_local_estoque=@destino " +
+                            "JOIN evento ev ON ev.id_evento=COALESCE(o.id_evento,d.id_evento) " +
+                            "AND ev.id_instituicao=o.id_instituicao " +
+                            "WHERE o.id_local_estoque=@origem AND o.id_instituicao=d.id_instituicao " +
+                            "AND ((o.eh_central=1 AND d.eh_geral_evento=1) OR " +
+                            "(d.eh_central=1 AND o.eh_geral_evento=1) OR " +
+                            "(o.eh_central=0 AND d.eh_central=0 AND o.id_evento=d.id_evento)) FOR UPDATE",
+                            conexao,
+transacao))
+                        {
+                            comando.Parameters.AddWithValue("@origem", atual.IdLocalOrigem);
+                            comando.Parameters.AddWithValue("@destino", atual.IdLocalDestino);
+                            int idEvento;
+                            bool central;
+                            using (var leitor = comando.ExecuteReader())
+                            {
+                                if (!leitor.Read())
+                                {
+                                    throw new InvalidOperationException("Os locais da transferência não são compatíveis.");
+                                }
+                                idEvento = leitor.GetInt32("id_evento");
+                                central = leitor.GetBoolean("central_origem") || leitor.GetBoolean("central_destino");
+                            }
+                            if (central && (perfil != "Administrador" || !atual.IdSolicitacaoEstoqueCentral.HasValue))
+                            {
+                                throw new UnauthorizedAccessException("Somente o administrador corrige operações autorizadas do central.");
+                            }
+                            ControleCorrecaoOperacao.ValidarEvento(conexao, transacao, idEvento, perfil, false, atual.IdUsuarioResponsavel);
+                        }
+                        string anterior = CriarSnapshot(conexao, transacao, atual.IdTransferencia);
+                        Dictionary<int, int> originais = ControleCorrecaoOperacao.LerItens(conexao, transacao,
+                            "SELECT id_transferencia_item AS id_item,id_produto FROM transferenciaitem " +
+                            "WHERE id_transferencia=@id FOR UPDATE", atual.IdTransferencia, itens.Count);
+                        HashSet<int> informados = new HashSet<int>();
+                        List<Tuple<int, int, decimal>> ajustes = CarregarAjustesAnteriores(conexao, transacao, atual.IdTransferencia);
+                        Dictionary<int, decimal> quantidadesAnteriores = new Dictionary<int, decimal>();
+                        foreach (var ajuste in ajustes)
+                        {
+                            if (ajuste.Item1 == atual.IdLocalOrigem)
+                            {
+                                quantidadesAnteriores.Add(ajuste.Item2, ajuste.Item3);
+                            }
+                        }
+                        foreach (TransferenciaItem item in itens)
+                        {
+                            if (item == null)
+                            {
+                                throw new ArgumentException("A correção contém um item nulo.");
+                            }
+                            ControleCorrecaoOperacao.ValidarItem(originais, informados, item.IdTransferenciaItem,
+                                item.IdProduto, item.Quantidade, null, false);
+                            if ((atual.IdSolicitacao.HasValue || atual.IdSolicitacaoEstoqueCentral.HasValue) &&
+                                item.Quantidade != quantidadesAnteriores[item.IdProduto])
+                            {
+                                throw new InvalidOperationException(
+                                    "Uma entrega vinculada deve manter as quantidades aprovadas. Nesta correção, altere apenas a observação.");
+                            }
+                            ajustes.Add(Tuple.Create(atual.IdLocalOrigem, item.IdProduto, -item.Quantidade));
+                            ajustes.Add(Tuple.Create(atual.IdLocalDestino, item.IdProduto, item.Quantidade));
+                            AcessoDados.Executar(conexao, transacao,
+                                "UPDATE transferenciaitem SET quantidade=@quantidade " +
+                                "WHERE id_transferencia_item=@item AND id_transferencia=@transferencia",
+                                comando =>
+                                {
+                                    comando.Parameters.AddWithValue("@quantidade", item.Quantidade);
+                                    comando.Parameters.AddWithValue("@item", item.IdTransferenciaItem);
+                                    comando.Parameters.AddWithValue("@transferencia", atual.IdTransferencia);
+                                });
+                        }
+                        ControleSaldoEstoque.AplicarAjustes(conexao, transacao, ajustes, true);
+                        AcessoDados.Executar(
+conexao,
+transacao,
+                            "UPDATE transferenciaestoque SET observacao=@observacao,id_usuario_alteracao=@usuario," +
+                            "atualizado_em=NOW(),versao=versao+1 WHERE id_transferencia=@id",
+                            comando =>
+                            {
+                                AcessoDados.AdicionarTextoOpcional(comando, "@observacao", transferencia.Observacao);
+                                comando.Parameters.AddWithValue("@usuario", idUsuarioAlteracao);
+                                comando.Parameters.AddWithValue("@id", atual.IdTransferencia);
+                            });
+                        RegistrarHistorico(
+conexao,
+transacao,
+atual.IdTransferencia,
+idUsuarioAlteracao,
+                            justificativa.Trim(),
+anterior,
+CriarSnapshot(conexao, transacao, atual.IdTransferencia));
+                        transacao.Commit();
+                    }
+                    catch
+                    {
+                        transacao.Rollback();
+                        throw;
+                    }
+                }
+            }
         }
 
         private static TransferenciaEstoque BuscarParaAtualizacao(
@@ -669,8 +795,10 @@ namespace CASE.Repositories
                 "SELECT CAST(JSON_OBJECT('id_local_origem',te.id_local_origem," +
                 "'id_local_destino',te.id_local_destino,'id_solicitacao',te.id_solicitacao," +
                 "'id_usuario_responsavel',te.id_usuario_responsavel,'data_hora',te.data_hora," +
+                "'id_solicitacao_estoque_central',te.id_solicitacao_estoque_central," +
+                "'versao',te.versao,'id_usuario_alteracao',te.id_usuario_alteracao,'atualizado_em',te.atualizado_em," +
                 "'observacao',te.observacao,'itens',(SELECT JSON_ARRAYAGG(JSON_OBJECT(" +
-                "'id_produto',ti.id_produto,'quantidade',ti.quantidade)) " +
+                "'id_item',ti.id_transferencia_item,'id_produto',ti.id_produto,'quantidade',ti.quantidade)) " +
                 "FROM transferenciaitem ti WHERE ti.id_transferencia=te.id_transferencia)) AS CHAR) " +
                 "FROM transferenciaestoque te WHERE te.id_transferencia=@id",
                 conexao,

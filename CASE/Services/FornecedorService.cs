@@ -46,16 +46,13 @@ namespace CASE.Services
 
         public void Cadastrar(Usuario usuario, Fornecedor fornecedor)
         {
-            autorizacaoService.ExigirAdministrador(usuario);
+            autorizacaoService.ExigirAdministradorOuGerente(usuario);
             if (fornecedor == null)
             {
                 throw new ArgumentNullException(nameof(fornecedor));
             }
 
-            if (string.IsNullOrWhiteSpace(fornecedor.Nome))
-            {
-                throw new ArgumentException("O nome do fornecedor é obrigatório.", nameof(fornecedor));
-            }
+            ValidarCampos(fornecedor);
 
             fornecedor.Nome = fornecedor.Nome.Trim();
             fornecedorRepository.Cadastrar(fornecedor);
@@ -68,7 +65,7 @@ namespace CASE.Services
 
         public void Atualizar(Usuario usuario, Fornecedor fornecedor)
         {
-            autorizacaoService.ExigirAdministrador(usuario);
+            autorizacaoService.ExigirAdministradorOuGerente(usuario);
             if (fornecedor == null)
             {
                 throw new ArgumentNullException(nameof(fornecedor));
@@ -81,13 +78,71 @@ namespace CASE.Services
                     nameof(fornecedor));
             }
 
-            if (string.IsNullOrWhiteSpace(fornecedor.Nome))
-            {
-                throw new ArgumentException("O nome do fornecedor é obrigatório.", nameof(fornecedor));
-            }
+            ValidarCampos(fornecedor);
 
             fornecedor.Nome = fornecedor.Nome.Trim();
             fornecedorRepository.Atualizar(fornecedor);
+        }
+
+        public bool Excluir(Usuario usuario, int idFornecedor)
+        {
+            autorizacaoService.ExigirAdministrador(usuario);
+            if (idFornecedor <= 0)
+            {
+                throw new ArgumentException("Selecione um fornecedor válido para excluir.");
+            }
+
+            try
+            {
+                // As FKs impedem remover fornecedores utilizados, inclusive sob concorrência.
+                return fornecedorRepository.Excluir(idFornecedor);
+            }
+            catch (MySql.Data.MySqlClient.MySqlException erro)
+            {
+                if (erro.Number == 1451)
+                {
+                    throw new InvalidOperationException(
+                        "O fornecedor possui vínculos com produtos, entradas ou despesas e não pode ser excluído.",
+                        erro);
+                }
+                throw;
+            }
+        }
+
+        private static void ValidarCampos(Fornecedor fornecedor)
+        {
+            if (string.IsNullOrWhiteSpace(fornecedor.Nome) || fornecedor.Nome.Trim().Length > 150)
+            {
+                throw new ArgumentException("Informe o nome do fornecedor com até 150 caracteres.");
+            }
+            if (fornecedor.Documento != null && fornecedor.Documento.Trim().Length > 18)
+            {
+                throw new ArgumentException("O documento pode ter até 18 caracteres.");
+            }
+            if (fornecedor.Telefone != null && fornecedor.Telefone.Trim().Length > 20)
+            {
+                throw new ArgumentException("O telefone pode ter até 20 caracteres.");
+            }
+            if (!string.IsNullOrWhiteSpace(fornecedor.Email))
+            {
+                string email = fornecedor.Email.Trim();
+                if (email.Length > 150)
+                {
+                    throw new ArgumentException("O e-mail pode ter até 150 caracteres.");
+                }
+                try
+                {
+                    var endereco = new System.Net.Mail.MailAddress(email);
+                    if (endereco.Address != email)
+                    {
+                        throw new ArgumentException("Informe um endereço de e-mail válido.");
+                    }
+                }
+                catch (FormatException)
+                {
+                    throw new ArgumentException("Informe um endereço de e-mail válido.");
+                }
+            }
         }
     }
 }

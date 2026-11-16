@@ -15,11 +15,16 @@ namespace CASE.Utils
 
         public static void Aplicar(Control raiz)
         {
-            if (raiz is UserControl || raiz is Form) raiz.BackColor = Fundo;
+            if (raiz is UserControl || raiz is Form)
+                raiz.BackColor = Fundo;
             foreach (Control controle in raiz.Controls)
             {
                 object aplicado;
-                if (Estilizados.TryGetValue(controle, out aplicado)) { Aplicar(controle); continue; }
+                if (Estilizados.TryGetValue(controle, out aplicado))
+                {
+                    Aplicar(controle);
+                    continue;
+                }
                 Estilizados.Add(controle, new object());
                 var painel = controle as Panel;
                 if (painel != null && painel.BackColor.ToArgb() == Color.White.ToArgb())
@@ -53,7 +58,8 @@ namespace CASE.Utils
                     grade.ColumnHeadersHeight = 42;
                     grade.ColumnHeadersDefaultCellStyle.ForeColor = VisualUtils.TextoSuave;
                     grade.DefaultCellStyle.ForeColor = Texto;
-                    foreach (DataGridViewRow linha in grade.Rows) linha.Height = 50;
+                    foreach (DataGridViewRow linha in grade.Rows)
+                        linha.Height = 50;
                     grade.CellPainting += PintarCelula;
                 }
                 var campo = controle as TextBox;
@@ -62,7 +68,8 @@ namespace CASE.Utils
                     VisualUtils.EstilizarCampo(campo);
                 }
                 var combo = controle as ComboBox;
-                if (combo != null) VisualUtils.EstilizarSelecao(combo);
+                if (combo != null)
+                    VisualUtils.EstilizarSelecao(combo);
                 var icone = controle as PictureBox;
                 if (icone != null && (icone.Image == null || icone.Name == "pictureIconeTela"))
                 {
@@ -83,15 +90,22 @@ namespace CASE.Utils
 
         private static void PintarCelula(object sender, DataGridViewCellPaintingEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0)
+                return;
             var grade = (DataGridView)sender;
             string valor = Convert.ToString(e.FormattedValue);
             bool acao = grade.Columns[e.ColumnIndex] is DataGridViewButtonColumn;
-            bool verde = valor == "Aprovado" || valor == "Entrada" || valor == "Em estoque" || valor == "Normal" || valor == "Ativo" || valor == "Confirmada" || valor == "Concluída";
-            bool vermelho = valor == "Rejeitado" || valor == "Suspenso" || valor == "Saída" || valor == "Baixo" || valor == "Estoque baixo" || valor == "Sem estoque" || valor == "Inativo";
+            bool verde = valor == "Aprovado" || valor == "Entrada" || valor == "Em estoque" || valor == "Normal" || valor == "Ativo" ||
+            valor == "Confirmada" ||
+            valor == "Concluída";
+            bool vermelho = valor == "Rejeitado" || valor == "Suspenso" || valor == "Saída" || valor == "Baixo" ||
+            valor == "Estoque baixo" ||
+            valor == "Sem estoque" ||
+            valor == "Inativo";
             bool pendente = valor == "Pendente" || valor == "A confirmar";
             bool azul = valor == "Em andamento" || valor == "Em atendimento" || valor == "Venda";
-            if (!acao && !verde && !vermelho && !pendente && !azul) return;
+            if (!acao && !verde && !vermelho && !pendente && !azul)
+                return;
             e.PaintBackground(e.ClipBounds, false);
             bool excluir = valor == "Excluir";
             Color fundo = acao ? (excluir ? Color.FromArgb(253, 238, 239) : Color.FromArgb(234, 242, 254))
@@ -104,7 +118,8 @@ namespace CASE.Utils
             var area = new Rectangle(e.CellBounds.Left + 6, e.CellBounds.Top + 10, largura, e.CellBounds.Height - 20);
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             using (var caminho = VisualUtils.CriarRetanguloArredondado(area, 5))
-            using (var pincel = new SolidBrush(fundo)) e.Graphics.FillPath(pincel, caminho);
+            using (var pincel = new SolidBrush(fundo))
+                e.Graphics.FillPath(pincel, caminho);
             TextRenderer.DrawText(e.Graphics, valor, grade.Font, area, texto,
                 TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             e.Handled = true;
@@ -112,14 +127,14 @@ namespace CASE.Utils
 
         public static Label Legenda(string texto, Rectangle area)
         {
-            return new Label { Text = texto, Bounds = area, ForeColor = Texto,
-                Font = new Font("Segoe UI", 9), BackColor = Color.Transparent };
-        }
-
-        public static void Grafico(Panel painel, string tipo)
-        {
-            painel.Controls.Add(new GraficoPreview { Dock = DockStyle.Fill, Tipo = tipo,
-                AccessibleName = "Gráfico ilustrativo com dados de demonstração" });
+            return new Label
+            {
+                Text = texto,
+                Bounds = area,
+                ForeColor = Texto,
+                Font = new Font("Segoe UI", 9),
+                BackColor = Color.Transparent
+            };
         }
     }
 }

@@ -361,11 +361,6 @@ namespace CASE
 
         private void BtnCadastrar_Click(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                CadastrarDemo();
-                return;
-            }
 
             ExibirMensagem(string.Empty, false);
 

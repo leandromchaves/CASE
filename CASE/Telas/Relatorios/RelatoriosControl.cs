@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 using CASE.Utils;
 using System.Data;
@@ -15,6 +15,7 @@ namespace CASE
         private readonly DataGridView gradeRelatorio = new DataGridView();
         private readonly Label resumoRelatorio = new Label();
         private DataTable dadosRelatorio;
+        private readonly ContextMenuStrip menuExportacoes = new ContextMenuStrip();
 
         public RelatoriosControl() : this(null)
         {
@@ -24,6 +25,7 @@ namespace CASE
         {
             InitializeComponent();
             usuarioAutenticado = usuario;
+            Disposed += (s, e) => menuExportacoes.Dispose();
             CASE.Utils.FrontendTheme.Aplicar(this);
             VisualUtils.Arredondar(panelAcoesRelatorios, 12);
             panelAcoesRelatorios.SizeChanged += AjustarArredondamento;
@@ -56,12 +58,18 @@ namespace CASE
             panelGraficoEsquerdoArea.BackColor = System.Drawing.Color.White;
             panelGraficoDireitoArea.BackColor = System.Drawing.Color.White;
             gradeRelatorio.Dock = DockStyle.Fill;
+            gradeRelatorio.Name = "dgvRelatorio";
+            gradeRelatorio.BackgroundColor = System.Drawing.Color.White;
+            gradeRelatorio.RowHeadersVisible = false;
+            gradeRelatorio.EnableHeadersVisualStyles = false;
             gradeRelatorio.ReadOnly = true;
             gradeRelatorio.AllowUserToAddRows = false;
             gradeRelatorio.AllowUserToDeleteRows = false;
             gradeRelatorio.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
             panelGraficoEsquerdoArea.Controls.Add(gradeRelatorio);
+            FrontendTheme.Aplicar(panelGraficoEsquerdoArea);
             resumoRelatorio.Dock = DockStyle.Fill;
+            resumoRelatorio.Name = "lblResumoRelatorio";
             resumoRelatorio.AutoEllipsis = true;
             panelGraficoDireitoArea.Controls.Add(resumoRelatorio);
             lblGraficoEsquerdo.Text = "Dados autorizados";
@@ -77,14 +85,47 @@ namespace CASE
             panelGraficoEsquerdo.Height = panelGraficoDireito.Height = 330;
             panelGraficoEsquerdoArea.Height = panelGraficoDireitoArea.Height = 250;
             cmbRelatorioCategoria.Items.Clear();
-            cmbRelatorioCategoria.Items.AddRange(new object[] { "Movimentações", "Estoque" });
+            cmbRelatorioCategoria.Items.AddRange(new object[] {
+                "Movimentações", "Estoque", "Vendas e perdas", "Solicitações de reposição" });
+            if (usuario != null)
+            {
+                try
+                {
+                    string perfil;
+                    new AutorizacaoService().ValidarUsuarioEObterPerfil(usuario, out perfil);
+                    if (perfil != "Membro")
+                    {
+                        cmbRelatorioCategoria.Items.AddRange(new object[] {
+                            "Eventos", "Solicitações ao central", "Despesas", "Apurações" });
+                    }
+                }
+                catch (Exception erro)
+                {
+                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ConfigurarRelatorios");
+                }
+            }
             cmbRelatorioCategoria.SelectedIndex = 0;
+            cmbRelatorioCategoria.SelectedIndexChanged += (s, e) =>
+            {
+                bool utilizaPeriodo = cmbRelatorioCategoria.Text != "Estoque";
+                dtpRelatorioInicio.Enabled = utilizaPeriodo;
+                dtpRelatorioFim.Enabled = utilizaPeriodo;
+                dadosRelatorio = null;
+                gradeRelatorio.DataSource = null;
+                btnExportarCsv.Enabled = false;
+                resumoRelatorio.Text = "Clique em Gerar para consultar o relatório selecionado.";
+            };
             dtpRelatorioInicio.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             dtpRelatorioFim.Value = DateTime.Today;
             foreach (Control campo in new Control[] { cmbRelatorioCategoria, dtpRelatorioInicio, dtpRelatorioFim })
             {
                 campo.Top = 30;
-                panelAcoesRelatorios.Controls.Add(FrontendTheme.Legenda(campo == cmbRelatorioCategoria ? "Tipo de relatório" : campo == dtpRelatorioInicio ? "Data inicial" : "Data final",
+                panelAcoesRelatorios.Controls.Add(FrontendTheme.Legenda(
+                    campo == cmbRelatorioCategoria
+                        ? "Tipo de relatório"
+                        : campo == dtpRelatorioInicio
+                            ? "Data inicial"
+                            : "Data final",
                     new System.Drawing.Rectangle(campo.Left, 6, campo.Width, 20)));
             }
             if (usuario != null)
@@ -100,11 +141,6 @@ namespace CASE
 
         private void GerarRelatorio(object sender, EventArgs e)
         {
-            if (dadosDemo != null)
-            {
-                GerarRelatorioDemo();
-                return;
-            }
 
             btnExportarCsv.Enabled = false;
             gradeRelatorio.DataSource = null;
@@ -112,18 +148,23 @@ namespace CASE
             try
             {
                 ConsultaOperacionalService consulta = new ConsultaOperacionalService();
-                if (cmbRelatorioCategoria.SelectedIndex == 1)
+                dadosRelatorio = consulta.Relatorio(usuarioAutenticado, cmbRelatorioCategoria.Text,
+                    dtpRelatorioInicio.Value, dtpRelatorioFim.Value);
+                if (cmbRelatorioCategoria.Text == "Estoque")
                 {
-                    dadosRelatorio = consulta.Estoques(usuarioAutenticado);
                     resumoRelatorio.Text = "Saldo atual por produto e local. O filtro de datas não se aplica ao saldo atual.";
+                }
+                else if (cmbRelatorioCategoria.Text == "Apurações")
+                {
+                    resumoRelatorio.Text = "Conferências preservadas. Diferença atual = informado − vendas atuais da jornada, incluindo correções. " +
+                        "Não some conferências sucessivas como receitas. Campos sem dados válidos permanecem vazios.";
                 }
                 else
                 {
-                    dadosRelatorio = consulta.Movimentacoes(usuarioAutenticado,
-                        dtpRelatorioInicio.Value, dtpRelatorioFim.Value);
-                    resumoRelatorio.Text = "Histórico do período. Transferências são exibidas uma vez, com origem e destino.";
+                    resumoRelatorio.Text = "Registros autorizados do período selecionado. Valores históricos preservados.";
                 }
                 gradeRelatorio.DataSource = dadosRelatorio;
+                FormatarColunasRelatorio();
                 resumoRelatorio.Text += Environment.NewLine + Environment.NewLine +
                     dadosRelatorio.Rows.Count + " linha(s) autorizada(s).";
                 btnExportarCsv.Enabled = dadosRelatorio.Rows.Count > 0;
@@ -142,107 +183,113 @@ namespace CASE
             }
         }
 
-        private void ExportarCsv(object sender, EventArgs e)
+        private void FormatarColunasRelatorio()
         {
-            // Revalida a autorização para não exportar dados de uma sessão revogada.
-            GerarRelatorio(sender, e);
-            if (dadosRelatorio == null || dadosRelatorio.Rows.Count == 0)
+            foreach (DataGridViewColumn coluna in gradeRelatorio.Columns)
             {
-                return;
-            }
-            using (SaveFileDialog dialogo = new SaveFileDialog())
-            {
-                dialogo.Filter = "CSV compatível com Excel (*.csv)|*.csv";
-                dialogo.FileName = "CASE_relatorio_" + DateTime.Today.ToString("yyyyMMdd") + ".csv";
-                if (dadosDemo != null)
+                string nome = coluna.Name;
+                coluna.Visible = !nome.StartsWith("id_", StringComparison.OrdinalIgnoreCase) && nome != "entidade";
+                coluna.HeaderText = System.Globalization.CultureInfo.GetCultureInfo("pt-BR").TextInfo.ToTitleCase(nome.Replace('_', ' '));
+                if (nome == "data_hora")
                 {
-                    dialogo.FileName = "CASE_DEMONSTRACAO_" + DateTime.Today.ToString("yyyyMMdd") + ".csv";
+                    coluna.HeaderText = "Data / hora";
+                    coluna.DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
+                    coluna.MinimumWidth = 145;
                 }
-                if (dialogo.ShowDialog(this) != DialogResult.OK)
+                else if (nome == "preco_unitario_praticado")
                 {
-                    return;
+                    coluna.HeaderText = "Preço praticado";
                 }
-                try
+                else if (nome == "forma_pagamento")
                 {
-                    if (dadosDemo != null)
-                    {
-                        ExportadorRelatorio.ExportarCsv(dadosRelatorio, dialogo.FileName);
-                    }
-                    else
-                    {
-                        new ConsultaOperacionalService().ExportarCsv(usuarioAutenticado,
-                            cmbRelatorioCategoria.SelectedIndex == 1, dtpRelatorioInicio.Value,
-                            dtpRelatorioFim.Value, dialogo.FileName);
-                    }
-                    resumoRelatorio.Text = "Relatório exportado para CSV.";
+                    coluna.HeaderText = "Pagamento";
                 }
-                catch (Exception erro)
+                else if (nome == "responsavel")
                 {
-                    resumoRelatorio.Text = "Não foi possível salvar o arquivo. Verifique a pasta e se ele está aberto.";
-                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExportarCsv");
+                    coluna.HeaderText = "Responsável";
+                }
+                else if (nome == "descricao")
+                {
+                    coluna.HeaderText = "Descrição";
+                }
+                if (nome == "quantidade" || nome == "quantidade_atual" || nome == "quantidade_minima" ||
+                    nome == "quantidade_ideal")
+                {
+                    coluna.DefaultCellStyle.Format = "N0";
+                }
+                if (nome == "valor" || nome == "total" || nome == "esperado_atual" || nome.StartsWith("valor_") ||
+                    nome.StartsWith("preco_") || nome.StartsWith("diferenca_"))
+                {
+                    coluna.DefaultCellStyle.Format = "C2";
                 }
             }
         }
 
-        private void MostrarExportacoes(object sender, EventArgs e)
+        private void ExportarCsv(object sender, EventArgs e)
         {
-            ContextMenuStrip menu = new ContextMenuStrip();
-            ToolStripMenuItem csv = new ToolStripMenuItem("CSV compatível com Excel");
-            ToolStripMenuItem pdf = new ToolStripMenuItem("PDF");
-            csv.Click += ExportarCsv;
-            pdf.Click += ExportarPdf;
-            menu.Items.Add(csv);
-            menu.Items.Add(pdf);
-            menu.Closed += (s, argumentos) => BeginInvoke(new Action(menu.Dispose));
-            menu.Show(btnExportarCsv, new System.Drawing.Point(0, btnExportarCsv.Height));
+            ExportarFormato("csv");
         }
 
         private void ExportarPdf(object sender, EventArgs e)
         {
-            using (SaveFileDialog dialogo = new SaveFileDialog())
+            ExportarFormato("pdf");
+        }
+
+        private void ExportarExcel()
+        {
+            ExportarFormato("xlsx");
+        }
+
+        private void MostrarExportacoes(object sender, EventArgs e)
+        {
+            if (menuExportacoes.Items.Count == 0)
             {
-                dialogo.Filter = "Documento PDF (*.pdf)|*.pdf";
-                dialogo.FileName = "CASE_relatorio_" + DateTime.Today.ToString("yyyyMMdd") + ".pdf";
-                if (dadosDemo != null)
-                {
-                    dialogo.FileName = "CASE_DEMONSTRACAO_" + DateTime.Today.ToString("yyyyMMdd") + ".pdf";
-                }
+                var csv = new ToolStripMenuItem("CSV compatível com Excel");
+                var excel = new ToolStripMenuItem("Excel (.xlsx)");
+                var pdf = new ToolStripMenuItem("PDF");
+                csv.Click += ExportarCsv;
+                excel.Click += (s, args) => ExportarExcel();
+                pdf.Click += ExportarPdf;
+                menuExportacoes.Items.AddRange(new ToolStripItem[] { csv, excel, pdf });
+            }
+            menuExportacoes.Show(btnExportarCsv, new System.Drawing.Point(0, btnExportarCsv.Height));
+        }
+
+        private void ExportarFormato(string formato)
+        {
+            using (var dialogo = new SaveFileDialog())
+            {
+                dialogo.Filter = formato == "xlsx" ? "Planilha Excel (*.xlsx)|*.xlsx" :
+                    formato == "pdf" ? "Documento PDF (*.pdf)|*.pdf" : "CSV compatível com Excel (*.csv)|*.csv";
+                dialogo.DefaultExt = formato;
+                dialogo.AddExtension = true;
+                dialogo.FileName = "CASE_relatorio_" + DateTime.Today.ToString("yyyyMMdd") + "." + formato;
                 if (dialogo.ShowDialog(this) != DialogResult.OK)
-                {
                     return;
-                }
-                btnExportarCsv.Enabled = false;
+                btnExportarCsv.Enabled = btnExportarPdf.Enabled = false;
+                UseWaitCursor = true;
                 try
                 {
-                    if (dadosDemo != null)
-                    {
-                        GerarRelatorioDemo();
-                        ExportadorRelatorio.ExportarPdf(dadosRelatorio, dialogo.FileName);
-                    }
-                    else
-                    {
-                        new ConsultaOperacionalService().ExportarPdf(usuarioAutenticado,
-                            cmbRelatorioCategoria.SelectedIndex == 1, dtpRelatorioInicio.Value,
-                            dtpRelatorioFim.Value, dialogo.FileName);
-                    }
-                    resumoRelatorio.Text = "Relatório enviado para o arquivo PDF selecionado.";
+                    // Consulta novamente e revalida a sessão depois do diálogo de salvar.
+                    new ConsultaOperacionalService().ExportarRelatorio(usuarioAutenticado,
+                        cmbRelatorioCategoria.Text, dtpRelatorioInicio.Value,
+                        dtpRelatorioFim.Value, dialogo.FileName, formato);
+                    resumoRelatorio.Text = "Relatório exportado para " + formato.ToUpperInvariant() + ".";
                 }
                 catch (Exception erro)
                 {
-                    resumoRelatorio.Text = "Não foi possível gerar o PDF.";
-                    if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
-                    {
-                        resumoRelatorio.Text = erro.Message;
-                    }
-                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExportarPdf");
+                    resumoRelatorio.Text = erro is UnauthorizedAccessException || erro is ArgumentException
+                        ? erro.Message : "Não foi possível salvar o relatório. Verifique a pasta e se o arquivo está aberto.";
+                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExportarRelatorio");
                 }
                 finally
                 {
+                    UseWaitCursor = false;
+                    btnExportarPdf.Enabled = usuarioAutenticado != null;
                     btnExportarCsv.Enabled = dadosRelatorio != null && dadosRelatorio.Rows.Count > 0;
                 }
             }
         }
-
         private void AjustarArredondamento(object sender, EventArgs e)
         {
             Control controle = (Control)sender;
