@@ -33,6 +33,7 @@ namespace CASE
 
             usuarioAutenticado = usuario;
             FrontendTheme.Aplicar(this);
+            dgvContas.Columns.Remove("col2");
             lblModoApresentacao.Visible = false;
             VisualUtils.ExibirEstadoVazio(
                 dgvContas,
@@ -102,19 +103,16 @@ namespace CASE
                         usuarioAutenticado,
                         usuario.IdPessoa);
                     string nome = "Pessoa " + usuario.IdPessoa;
-                    string email = string.Empty;
 
                     if (pessoa != null)
                     {
                         nome = pessoa.Nome;
-                        email = pessoa.Email;
                     }
 
                     string nomePerfil = ObterNomePerfil(usuario.IdPerfilSistema);
                     int indice = dgvContas.Rows.Add(
                         nome,
                         usuario.Login,
-                        email,
                         usuario.SituacaoConta,
                         nomePerfil,
                         usuario.SolicitadoEm.ToString("dd/MM/yyyy"));
@@ -174,7 +172,7 @@ namespace CASE
 
             foreach (DataGridViewRow linha in dgvContas.Rows)
             {
-                string situacao = Convert.ToString(linha.Cells[3].Value);
+                string situacao = Convert.ToString(linha.Cells["col3"].Value);
                 string nome = Convert.ToString(linha.Cells[0].Value);
                 string login = Convert.ToString(linha.Cells[1].Value);
                 bool situacaoCorresponde = cmbSituacao.SelectedIndex == 0 ||

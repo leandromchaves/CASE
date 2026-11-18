@@ -32,11 +32,13 @@ namespace CASE.Services
 
             Evento evento = eventoRepository.BuscarPorId(setor.IdEvento);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
-                evento == null || evento.IdResponsavel != usuarioAtual.IdPessoa)
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (evento == null || (!administrador &&
+                (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
+                evento.IdResponsavel != usuarioAtual.IdPessoa)))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente o gerente responsável pode criar setores neste evento.");
+                    "Somente o administrador ou o gerente responsável pode criar setores neste evento.");
             }
 
             bool eventoPermiteSetores = string.Equals(
@@ -107,9 +109,10 @@ namespace CASE.Services
                 throw new InvalidOperationException("O setor não foi encontrado.");
             }
             Evento evento = eventoRepository.BuscarPorId(setor.IdEvento);
-            if (perfil != "Gerente" || evento == null || evento.IdResponsavel != atual.IdPessoa)
+            if (evento == null || (perfil != "Administrador" &&
+                (perfil != "Gerente" || evento.IdResponsavel != atual.IdPessoa)))
             {
-                throw new UnauthorizedAccessException("Somente o gerente responsável pode renomear o setor.");
+                throw new UnauthorizedAccessException("Somente o administrador ou o gerente responsável pode renomear o setor.");
             }
             if (evento.Situacao != SituacoesEvento.Planejado && evento.Situacao != SituacoesEvento.EmAndamento)
             {

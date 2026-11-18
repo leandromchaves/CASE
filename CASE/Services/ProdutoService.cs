@@ -82,9 +82,10 @@ namespace CASE.Services
                 throw new ArgumentException("O setor não foi encontrado.");
             }
             Evento evento = new EventoRepository().BuscarPorId(setor.IdEvento);
-            if (perfil != "Gerente" || evento == null || evento.IdResponsavel != atual.IdPessoa)
+            if (evento == null || (perfil != "Administrador" &&
+                (perfil != "Gerente" || evento.IdResponsavel != atual.IdPessoa)))
             {
-                throw new UnauthorizedAccessException("Somente o gerente responsável configura os produtos deste setor.");
+                throw new UnauthorizedAccessException("Somente o administrador ou o gerente responsável configura os produtos deste setor.");
             }
             return evento;
         }

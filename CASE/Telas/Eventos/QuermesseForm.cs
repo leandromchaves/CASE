@@ -15,6 +15,7 @@ namespace CASE.Quermesse
         private readonly Evento eventoEmEdicao;
         private readonly EventoService eventoService = new EventoService();
         private readonly TipoEventoService tipoEventoService = new TipoEventoService();
+        private ComboBox gerenteResponsavel;
 
         public QuermesseForm() : this(null, null)
         {
@@ -88,7 +89,11 @@ namespace CASE.Quermesse
                         txtResponsavelQuermesse.Text = eventoService.ConsultarNomeResponsavel(
                             usuarioAutenticado, eventoEmEdicao.IdEvento);
                     }
-                    if (perfil != "Gerente")
+                    if (perfil == "Administrador" && eventoEmEdicao == null)
+                    {
+                        ConfigurarGerenteResponsavel();
+                    }
+                    else if (perfil != "Gerente")
                     {
                         btnSalvarVisual.Enabled = false;
                         txtNomeQuermesse.ReadOnly = true;
@@ -132,6 +137,40 @@ namespace CASE.Quermesse
                 rotulos[i].Height = 21;
                 rotulos[i].Anchor = campos[i].Anchor;
             }
+        }
+
+        private void ConfigurarGerenteResponsavel()
+        {
+            lblResponsavel.Text = "Gerente responsável";
+            txtResponsavelQuermesse.Visible = false;
+            gerenteResponsavel = new ComboBox
+            {
+                Name = "cmbGerenteResponsavel",
+                Bounds = txtResponsavelQuermesse.Bounds,
+                Anchor = txtResponsavelQuermesse.Anchor,
+                Font = txtResponsavelQuermesse.Font,
+                DisplayMember = "Nome",
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                TabIndex = 5
+            };
+            panelFormulario.Controls.Add(gerenteResponsavel);
+            VisualUtils.EstilizarSelecao(gerenteResponsavel);
+            foreach (Pessoa gerente in eventoService.ListarGerentesResponsaveis(usuarioAutenticado))
+            {
+                gerenteResponsavel.Items.Add(gerente);
+            }
+            gerenteResponsavel.SelectedIndexChanged += (s, e) =>
+            {
+                if (gerenteResponsavel.SelectedItem != null)
+                {
+                    ExibirAviso("O evento será vinculado ao gerente selecionado.", false);
+                }
+            };
+            btnSalvarVisual.Enabled = cmbTipoEvento.Items.Count > 0 && gerenteResponsavel.Items.Count > 0;
+            ExibirAviso(gerenteResponsavel.Items.Count == 0
+                ? "Aprove uma conta com perfil Gerente antes de cadastrar o evento."
+                : "Selecione o gerente que ficará responsável pela organização do evento.",
+                gerenteResponsavel.Items.Count == 0);
         }
 
         private void PrepararFormulario()
@@ -207,6 +246,17 @@ namespace CASE.Quermesse
                     evento = new Evento();
                     evento.IdInstituicao = eventoService.ObterIdInstituicaoUnica(
                         usuarioAutenticado);
+                    if (gerenteResponsavel != null)
+                    {
+                        Pessoa gerente = gerenteResponsavel.SelectedItem as Pessoa;
+                        if (gerente == null)
+                        {
+                            ExibirAviso("Selecione o gerente responsável pelo evento.", true);
+                            gerenteResponsavel.Focus();
+                            return;
+                        }
+                        evento.IdResponsavel = gerente.IdPessoa;
+                    }
                 }
                 else
                 {

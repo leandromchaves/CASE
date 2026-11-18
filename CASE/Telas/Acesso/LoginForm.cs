@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using CASE.Models;
 using CASE.Services;
@@ -12,6 +13,7 @@ namespace CASE
     public partial class LoginForm : Form
     {
         private readonly AutenticacaoService autenticacaoService = new AutenticacaoService();
+        private bool autenticando;
 
         public LoginForm()
         {
@@ -35,6 +37,8 @@ namespace CASE
             textSenha.AccessibleName = "Senha";
             textUsuario.TabIndex = 0;
             textSenha.TabIndex = 1;
+            lblMensagem.SetBounds(60, 354, 300, 52);
+            linkLabel1.Top = 418;
             Shown += (s, e) => textUsuario.Focus();
         }
 
@@ -49,8 +53,12 @@ namespace CASE
             VisualUtils.DefinirPlaceholder(campo, placeholder);
         }
 
-        private void BtnEntrar_Click(object sender, EventArgs e)
+        private async void BtnEntrar_Click(object sender, EventArgs e)
         {
+            if (autenticando)
+            {
+                return;
+            }
             DefinirMensagem(string.Empty);
 
             if (string.IsNullOrWhiteSpace(textUsuario.Text))
@@ -67,11 +75,20 @@ namespace CASE
                 return;
             }
 
+            string login = textUsuario.Text;
+            string senha = textSenha.Text;
+            DefinirEstadoLogin(true);
+            DefinirMensagem("Verificando acesso…", true);
             try
             {
-                Usuario usuario = autenticacaoService.Autenticar(
-                    textUsuario.Text,
-                    textSenha.Text);
+                Usuario usuario = await Task.Run(() => autenticacaoService.Autenticar(login, senha));
+                senha = null;
+
+                if (IsDisposed)
+                {
+                    autenticacaoService.EncerrarSessao();
+                    return;
+                }
 
                 if (usuario == null)
                 {
@@ -81,35 +98,69 @@ namespace CASE
                 }
 
                 textSenha.Clear();
-                Hide();
+                DefinirMensagem("Carregando o sistema…", true);
+                btnEntrar.Text = "Abrindo…";
+                btnEntrar.Refresh();
 
                 try
                 {
                     using (PrincipalForm formularioPrincipal = new PrincipalForm(usuario))
                     {
+                        Hide();
+                        UseWaitCursor = false;
                         formularioPrincipal.ShowDialog(this);
                     }
                 }
                 finally
                 {
                     autenticacaoService.EncerrarSessao();
-                    Show();
-                    textSenha.Clear();
-                    textUsuario.Focus();
+                    if (!IsDisposed)
+                    {
+                        Show();
+                        DefinirMensagem(string.Empty);
+                        textSenha.Clear();
+                    }
                 }
             }
             catch (MySqlException erro)
             {
                 RegistrarErroDeDesenvolvimento(erro);
-                DefinirMensagem("Não foi possível acessar o banco de dados.");
-                textSenha.Clear();
+                if (!IsDisposed)
+                {
+                    DefinirMensagem("Não foi possível acessar o banco de dados. Verifique se o MySQL está iniciado e tente novamente.");
+                    textSenha.Clear();
+                }
             }
             catch (Exception erro)
             {
                 RegistrarErroDeDesenvolvimento(erro);
-                DefinirMensagem("Não foi possível concluir o login.");
-                textSenha.Clear();
+                if (!IsDisposed)
+                {
+                    DefinirMensagem("Não foi possível concluir o login.");
+                    textSenha.Clear();
+                }
             }
+            finally
+            {
+                senha = null;
+                autenticando = false;
+                if (!IsDisposed)
+                {
+                    DefinirEstadoLogin(false);
+                    if (string.IsNullOrEmpty(textSenha.Text))
+                        textSenha.Focus();
+                }
+            }
+        }
+
+        private void DefinirEstadoLogin(bool emAndamento)
+        {
+            autenticando = emAndamento;
+            btnEntrar.Enabled = !emAndamento;
+            textUsuario.Enabled = textSenha.Enabled = !emAndamento;
+            linkLabel1.Enabled = !emAndamento;
+            btnEntrar.Text = emAndamento ? "Entrando…" : "Entrar";
+            UseWaitCursor = emAndamento;
         }
 
         [Conditional("DEBUG")]
@@ -130,9 +181,10 @@ namespace CASE
             }
         }
 
-        private void DefinirMensagem(string mensagem)
+        private void DefinirMensagem(string mensagem, bool informativa = false)
         {
             lblMensagem.Text = mensagem;
+            lblMensagem.ForeColor = informativa ? VisualUtils.TextoSuave : Color.Firebrick;
 
             if (string.IsNullOrEmpty(mensagem))
             {

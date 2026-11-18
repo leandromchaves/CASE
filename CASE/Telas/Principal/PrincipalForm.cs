@@ -501,6 +501,7 @@ namespace CASE
             using (Button rejeitar = new Button())
             using (Button cancelar = new Button())
             {
+                IconoAplicacao.Aplicar(dialogo);
                 dialogo.Text = "Motivo da rejeição";
                 dialogo.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dialogo.StartPosition = FormStartPosition.CenterParent;
@@ -805,7 +806,6 @@ namespace CASE
             if (string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
                 ordem = new[] { "buttonDashboard",
-"buttonAcessos",
                     "buttonFornecedores",
 "buttonProdutos",
 "buttonQuermesses",
@@ -817,6 +817,7 @@ namespace CASE
                     "buttonFinanceiro",
 "buttonHistorico",
 "buttonRelatorios",
+"buttonAcessos",
 "buttonConfiguracoes" };
             }
             else if (string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase))

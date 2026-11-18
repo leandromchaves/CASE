@@ -54,7 +54,8 @@ namespace CASE.Quermesse
                     nomePerfil,
                     "Membro",
                     StringComparison.OrdinalIgnoreCase);
-                podeAdministrarEscalas = string.Equals(
+                bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+                podeAdministrarEscalas = administrador || string.Equals(
                     nomePerfil,
                     "Gerente",
                     StringComparison.OrdinalIgnoreCase);
@@ -66,7 +67,7 @@ namespace CASE.Quermesse
                         eventoSelecionado.IdEvento);
 
                     podeAdministrarEscalas = eventoAutorizado != null &&
-                        eventoAutorizado.IdResponsavel == usuarioAutenticado.IdPessoa;
+                        (administrador || eventoAutorizado.IdResponsavel == usuarioAutenticado.IdPessoa);
                 }
             }
             catch (Exception)
@@ -74,10 +75,7 @@ namespace CASE.Quermesse
                 podeAdministrarEscalas = false;
             }
 
-            if (!podeAdministrarEscalas || eventoSelecionado == null)
-            {
-                btnNovaAlocacao.Enabled = false;
-            }
+            btnNovaAlocacao.Enabled = podeAdministrarEscalas && eventoSelecionado != null;
 
             if (eventoSelecionado == null && !usuarioEhMembro)
             {
@@ -93,7 +91,7 @@ namespace CASE.Quermesse
 
             if (eventoSelecionado == null || !podeAdministrarEscalas)
             {
-                labelAviso.Text = "Somente o gerente responsável pode criar escalas do evento.";
+                labelAviso.Text = "Selecione um evento e entre como administrador ou gerente responsável para alocar funcionários.";
                 return;
             }
 
@@ -103,7 +101,7 @@ namespace CASE.Quermesse
         private void dgvEscala_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
 
-            if (e.RowIndex < 0 || eventoSelecionado == null)
+            if (e.RowIndex < 0 || eventoSelecionado == null || !podeAdministrarEscalas)
             {
                 return;
             }

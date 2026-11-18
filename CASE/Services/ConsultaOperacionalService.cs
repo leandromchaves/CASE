@@ -127,12 +127,19 @@ namespace CASE.Services
         public void ExportarRelatorio(Usuario usuario, string tipo, DateTime inicio, DateTime fim,
             string caminho, string formato)
         {
+            ExportarRelatorio(usuario, tipo, inicio, fim, caminho, formato, null);
+        }
+
+        public void ExportarRelatorio(Usuario usuario, string tipo, DateTime inicio, DateTime fim,
+            string caminho, string formato, string tipoGrafico)
+        {
             DataTable dados = Relatorio(usuario, tipo, inicio, fim);
             string perfil;
             Usuario atual = autorizacao.ValidarUsuarioEObterPerfil(usuario, out perfil);
             var contexto = new CASE.Utils.ContextoRelatorio
             {
                 Titulo = tipo,
+                TipoGrafico = tipoGrafico,
                 Instituicao = repository.InstituicoesDoRelatorio(perfil, atual.IdPessoa),
                 Filtros = tipo == "Estoque" ? "Saldo atual — locais autorizados" :
                     "Período: " + inicio.ToString("dd/MM/yyyy") + " a " + fim.ToString("dd/MM/yyyy") +

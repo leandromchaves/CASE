@@ -38,6 +38,7 @@ namespace CASE.Quermesse
             AjustarSecoes(this, EventArgs.Empty);
             lblSetoresbarracas.Width = 250;
             txtNovoSetor.MaxLength = 100;
+            txtNovoSetor.Enabled = false;
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
 
@@ -65,10 +66,12 @@ namespace CASE.Quermesse
                 new AutorizacaoService().ValidarUsuarioEObterPerfil(
                     usuarioAutenticado,
                     out nomePerfil);
-                podeAdministrarEvento = string.Equals(
+                podeAdministrarEvento = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase) ||
+                    (string.Equals(
                     nomePerfil,
                     "Gerente",
-                    StringComparison.OrdinalIgnoreCase);
+                    StringComparison.OrdinalIgnoreCase) &&
+                    eventoSelecionado.IdResponsavel == usuarioAutenticado.IdPessoa);
             }
             catch (Exception)
             {
@@ -78,6 +81,7 @@ namespace CASE.Quermesse
             btnAdicionarSetor.Enabled = podeAdministrarEvento;
             btnNovoFuncionario.Enabled = podeAdministrarEvento;
             btnEditarFuncionario.Enabled = podeAdministrarEvento;
+            txtNovoSetor.Enabled = podeAdministrarEvento;
 
             CarregarSetores();
             CarregarEquipe();
@@ -315,6 +319,7 @@ namespace CASE.Quermesse
                 using (NumericUpDown preco = new NumericUpDown())
                 using (Button salvar = new Button())
                 {
+                    IconoAplicacao.Aplicar(dialogo);
                     dialogo.Text = "Produtos e preços — " + setor.Nome;
                     dialogo.Name = "ProdutoSetorForm";
                     produto.Name = "cmbProdutoSetor";

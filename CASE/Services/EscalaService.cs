@@ -170,9 +170,10 @@ namespace CASE.Services
                 usuario,
                 out nomePerfil);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (!administrador && !string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
             {
-                throw new UnauthorizedAccessException("Somente gerentes podem administrar escalas.");
+                throw new UnauthorizedAccessException("Somente administradores e gerentes podem administrar escalas.");
             }
 
             equipe = equipeRepository.BuscarPorId(idEquipe);
@@ -192,7 +193,7 @@ namespace CASE.Services
 
             Evento evento = eventoRepository.BuscarPorId(equipe.IdEvento);
 
-            if (evento == null || evento.IdResponsavel != usuarioAtual.IdPessoa)
+            if (evento == null || (!administrador && evento.IdResponsavel != usuarioAtual.IdPessoa))
             {
                 throw new UnauthorizedAccessException("Você não pode administrar escalas deste evento.");
             }

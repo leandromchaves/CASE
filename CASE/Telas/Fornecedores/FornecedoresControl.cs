@@ -126,12 +126,12 @@ namespace CASE
 
         private void AjustarListagemFornecedores()
         {
-            btnNovo.SetBounds(Math.Max(24, panelBusca.ClientSize.Width - 208), 28, 184, 40);
-            btnEditarFornecedor.SetBounds(btnNovo.Left - 182, 28, 170, 40);
+            btnEditarFornecedor.SetBounds(Math.Max(220, panelBusca.ClientSize.Width - 194), 28, 170, 40);
+            btnNovo.SetBounds(btnEditarFornecedor.Left - 196, 28, 184, 40);
             Control areaBusca = txtBusca.Parent.Name == "panelPesquisa_" + txtBusca.Name
                 ? txtBusca.Parent
                 : txtBusca;
-            areaBusca.Width = Math.Max(120, btnEditarFornecedor.Left - areaBusca.Left - 20);
+            areaBusca.Width = Math.Max(120, btnNovo.Left - areaBusca.Left - 20);
             lblBusca.Width = areaBusca.Width;
             panelLista.Height = Math.Max(150, ClientSize.Height - panelLista.Top - 72);
         }

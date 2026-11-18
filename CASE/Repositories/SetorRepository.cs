@@ -139,7 +139,7 @@ namespace CASE.Repositories
                         int locais = AcessoDados.Executar(conexao, transacao,
                             "UPDATE localestoque l JOIN estoquesetor es ON es.id_local_estoque=l.id_local_estoque " +
                             "SET l.nome=@nome WHERE es.id_setor=@setor AND es.id_evento=@evento " +
-                            "AND l.id_evento=@evento AND l.eh_central=0 AND l.eh_geral_evento=0",
+                            "AND l.id_evento=@evento AND l.id_instituicao_central IS NULL AND l.eh_geral_evento=0",
                             comando =>
                             {
                                 AcessoDados.AdicionarParametro(comando, "@setor", setor.IdSetor);
@@ -181,9 +181,10 @@ namespace CASE.Repositories
                 "JOIN usuario u ON u.id_usuario=@usuario " +
                 "JOIN pessoa p ON p.id_pessoa=u.id_pessoa " +
                 "JOIN perfilsistema ps ON ps.id_perfil_sistema=u.id_perfil_sistema " +
-                "WHERE ev.id_evento=@evento AND ev.id_responsavel=p.id_pessoa " +
+                "WHERE ev.id_evento=@evento AND (ps.nome='Administrador' OR " +
+                "(ps.nome='Gerente' AND ev.id_responsavel=p.id_pessoa)) " +
                 "AND ev.situacao IN ('planejado','em_andamento') " +
-                "AND u.situacao_conta='aprovado' AND ps.nome='Gerente' FOR UPDATE",
+                "AND u.situacao_conta='aprovado' FOR UPDATE",
                 conexao,
                 transacao))
             {
@@ -193,7 +194,7 @@ namespace CASE.Repositories
                 if (comando.ExecuteScalar() == null)
                 {
                     throw new UnauthorizedAccessException(
-                        "Somente o gerente responsável por um evento operacional pode criar setores.");
+                        "Somente o administrador ou o gerente responsável por um evento operacional pode alterar setores.");
                 }
             }
         }

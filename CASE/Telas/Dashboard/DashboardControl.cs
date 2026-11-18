@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.DataVisualization.Charting;
 using CASE.Models;
 using CASE.Services;
 
@@ -16,6 +17,14 @@ namespace CASE
     {
         private readonly Usuario usuarioAutenticado;
         private readonly Dictionary<DateTime, decimal> quantidadesPorDia = new Dictionary<DateTime, decimal>();
+        private ComboBox cmbPeriodoGrafico;
+        private ComboBox cmbTipoMovimento;
+        private ComboBox cmbTipoGrafico;
+        private Chart grafico;
+        private ListBox movimentacoesRecentes;
+        private DataTable movimentosConsultados;
+        private DateTime inicioGrafico;
+        private Label avisoGrafico;
 
         public DashboardControl() : this(null)
         {
@@ -57,6 +66,7 @@ namespace CASE
             lblTituloGrafico.Text = "Movimentações sem dados consolidados";
             lblTituloMovimentacoes.Text = "Sem dados disponíveis";
             lblTituloMovimentacoes.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+            ConfigurarGrafico();
             CarregarMovimentosReais();
             EventHandler ajustar = (s, e) =>
             {
@@ -75,6 +85,7 @@ namespace CASE
                 panelMovimentacoesRecentes.SetBounds(30 + largura - direita, 244, direita, altura);
                 CASE.Utils.VisualUtils.Arredondar(panelGraficoMovimentacoes, 12);
                 CASE.Utils.VisualUtils.Arredondar(panelMovimentacoesRecentes, 12);
+                AjustarGrafico();
             };
             SizeChanged += ajustar;
             ajustar(this, EventArgs.Empty);
@@ -140,133 +151,281 @@ namespace CASE
             }
         }
 
+        private void ConfigurarGrafico()
+        {
+            cmbPeriodoGrafico = CriarFiltro("cmbPeriodoGrafico", "Período",
+                new[] { "Este mês", "Últimos 7 dias", "Últimos 30 dias" }, 20);
+            cmbTipoMovimento = CriarFiltro("cmbTipoMovimento", "Movimentações",
+                new[] { "Todas", "Entradas", "Transferências", "Vendas", "Perdas" }, 180);
+            cmbTipoGrafico = CriarFiltro("cmbTipoGrafico", "Tipo de gráfico",
+                new[] { "Colunas", "Barras", "Linhas", "Área", "Pizza", "Rosca" }, 340);
+            cmbTipoGrafico.SelectedIndex = 5;
+
+            grafico = new Chart { Name = "graficoMovimentacoes", BackColor = Color.White };
+            var area = new ChartArea("Movimentos");
+            area.AxisX.MajorGrid.Enabled = false;
+            area.AxisX.Interval = 1;
+            area.AxisX.LabelStyle.Font = new Font("Segoe UI", 9F);
+            area.AxisY.LabelStyle.Font = new Font("Segoe UI", 9F);
+            area.AxisY.LabelStyle.Format = "0.###";
+            area.AxisX.LabelStyle.ForeColor = area.AxisY.LabelStyle.ForeColor = CASE.Utils.VisualUtils.TextoSuave;
+            area.AxisX.LineWidth = area.AxisY.LineWidth = 0;
+            area.AxisY.Minimum = 0;
+            area.AxisY.MajorGrid.LineColor = Color.FromArgb(232, 238, 246);
+            area.AxisX.LineColor = area.AxisY.LineColor = CASE.Utils.VisualUtils.Borda;
+            area.AxisX.MajorTickMark.Enabled = area.AxisY.MajorTickMark.Enabled = false;
+            grafico.ChartAreas.Add(area);
+            grafico.AntiAliasing = AntiAliasingStyles.All;
+            grafico.TextAntiAliasingQuality = TextAntiAliasingQuality.High;
+            grafico.Palette = ChartColorPalette.None;
+            grafico.PaletteCustomColors = new[]
+            {
+                CASE.Utils.VisualUtils.Azul, Color.FromArgb(30, 163, 147),
+                Color.FromArgb(242, 174, 65), Color.FromArgb(136, 103, 201),
+                Color.FromArgb(75, 159, 210), Color.FromArgb(207, 119, 141)
+            };
+            grafico.Legends.Add(new Legend("Produtos")
+            {
+                Docking = Docking.Bottom, Alignment = StringAlignment.Center,
+                Font = new Font("Segoe UI", 9F), ForeColor = CASE.Utils.VisualUtils.Texto,
+                MaximumAutoSize = 28, Enabled = false
+            });
+            var serie = new Series("Unidades")
+            {
+                ChartType = SeriesChartType.Column,
+                Color = CASE.Utils.VisualUtils.Azul,
+                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                IsXValueIndexed = true,
+                ToolTip = "#AXISLABEL: #VALY{0.###} unidades"
+            };
+            serie["PointWidth"] = "0.6";
+            grafico.Series.Add(serie);
+            panelGraficoMovimentacoes.Controls.Add(grafico);
+            avisoGrafico = new Label
+            {
+                Name = "lblAvisoGrafico", Text = "Sem movimentações no período e filtro selecionados.",
+                AutoSize = false, ForeColor = CASE.Utils.VisualUtils.TextoSuave,
+                TextAlign = ContentAlignment.MiddleCenter, BackColor = Color.White
+            };
+            panelGraficoMovimentacoes.Controls.Add(avisoGrafico);
+            movimentacoesRecentes = new ListBox
+            {
+                Name = "lstMovimentacoesRecentes", BorderStyle = BorderStyle.None,
+                Font = new Font("Segoe UI", 10F), ItemHeight = 25,
+                ForeColor = CASE.Utils.VisualUtils.Texto, HorizontalScrollbar = true,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
+            };
+            movimentacoesRecentes.SetBounds(20, 62,
+                panelMovimentacoesRecentes.Width - 40, panelMovimentacoesRecentes.Height - 82);
+            panelMovimentacoesRecentes.Controls.Add(movimentacoesRecentes);
+            cmbPeriodoGrafico.SelectedIndexChanged += (s, e) => CarregarMovimentosReais();
+            cmbTipoMovimento.SelectedIndexChanged += (s, e) => AtualizarGrafico();
+            cmbTipoGrafico.SelectedIndexChanged += (s, e) => AtualizarGrafico();
+        }
+
+        private ComboBox CriarFiltro(string nome, string legenda, string[] opcoes, int esquerda)
+        {
+            var label = new Label
+            {
+                Name = "lbl_" + nome, Text = legenda,
+                ForeColor = CASE.Utils.VisualUtils.TextoSuave, AutoSize = true
+            };
+            label.SetBounds(esquerda, 51, 148, 18);
+            var combo = new ComboBox
+            {
+                Name = nome, DropDownStyle = ComboBoxStyle.DropDownList,
+                Font = new Font("Segoe UI", 9F), AccessibleName = legenda
+            };
+            var painel = new Panel
+            {
+                Name = "panelFiltro_" + nome, BackColor = CASE.Utils.VisualUtils.Fundo,
+                Padding = new Padding(8, 0, 8, 0)
+            };
+            painel.SetBounds(esquerda, 73, 148, 40);
+            combo.Items.AddRange(opcoes);
+            combo.SelectedIndex = 0;
+            panelGraficoMovimentacoes.Controls.Add(label);
+            painel.Controls.Add(combo);
+            panelGraficoMovimentacoes.Controls.Add(painel);
+            CASE.Utils.VisualUtils.EstilizarSelecao(combo);
+            combo.FlatStyle = FlatStyle.Flat;
+            combo.BackColor = painel.BackColor;
+            combo.Font = new Font("Segoe UI", 10F);
+            CASE.Utils.VisualUtils.Arredondar(painel, 10);
+            painel.SizeChanged += (s, e) => CASE.Utils.VisualUtils.Arredondar(painel, 10);
+            painel.Paint += (s, e) =>
+            {
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (var borda = new Pen(combo.ContainsFocus ? CASE.Utils.VisualUtils.Azul : CASE.Utils.VisualUtils.Borda))
+                using (var contorno = CASE.Utils.VisualUtils.CriarRetanguloArredondado(
+                    new Rectangle(0, 0, painel.Width - 1, painel.Height - 1), 10))
+                    e.Graphics.DrawPath(borda, contorno);
+            };
+            combo.GotFocus += (s, e) => painel.Invalidate();
+            combo.LostFocus += (s, e) => painel.Invalidate();
+            return combo;
+        }
+
+        private void AjustarGrafico()
+        {
+            int largura = (panelGraficoMovimentacoes.Width - 64) / 3;
+            ComboBox[] filtros = { cmbPeriodoGrafico, cmbTipoMovimento, cmbTipoGrafico };
+            for (int i = 0; i < filtros.Length; i++)
+            {
+                filtros[i].Parent.SetBounds(20 + i * (largura + 12), 73, largura, 40);
+                panelGraficoMovimentacoes.Controls["lbl_" + filtros[i].Name].Left = filtros[i].Parent.Left;
+            }
+            grafico.SetBounds(12, 130, panelGraficoMovimentacoes.Width - 24,
+                Math.Max(160, panelGraficoMovimentacoes.Height - 142));
+            avisoGrafico.Bounds = grafico.Bounds;
+        }
+
         private void CarregarMovimentosReais()
         {
             try
             {
-                DateTime inicio = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
-                DataTable movimentos = new ConsultaOperacionalService().Movimentacoes(
-                    usuarioAutenticado, inicio, DateTime.Today);
+                DateTime inicioMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+                inicioGrafico = cmbPeriodoGrafico.SelectedIndex == 1 ? DateTime.Today.AddDays(-6) :
+                    cmbPeriodoGrafico.SelectedIndex == 2 ? DateTime.Today.AddDays(-29) : inicioMes;
+                var consulta = new ConsultaOperacionalService();
+                DataTable movimentosMes = consulta.Movimentacoes(usuarioAutenticado, inicioMes, DateTime.Today);
+                movimentosConsultados = inicioGrafico == inicioMes ? movimentosMes :
+                    consulta.Movimentacoes(usuarioAutenticado, inicioGrafico, DateTime.Today);
                 decimal entradas = 0;
                 decimal saidas = 0;
-                ListBox recentes = new ListBox();
-                recentes.BorderStyle = BorderStyle.None;
-                recentes.Font = new Font("Segoe UI", 9F);
-                recentes.SetBounds(16, 62, panelMovimentacoesRecentes.Width - 32, panelMovimentacoesRecentes.Height - 80);
-                recentes.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-                recentes.HorizontalScrollbar = true;
-                foreach (DataRow movimento in movimentos.Rows)
+                foreach (DataRow movimento in movimentosMes.Rows)
                 {
                     decimal quantidade = Convert.ToDecimal(movimento["quantidade"]);
                     string tipo = Convert.ToString(movimento["tipo"]);
                     if (tipo == "entrada")
-                    {
                         entradas += quantidade;
-                    }
                     else if (tipo == "venda" || tipo == "perda")
-                    {
                         saidas += quantidade;
-                    }
-                    DateTime dia = Convert.ToDateTime(movimento["data_hora"]).Date;
-                    if (!quantidadesPorDia.ContainsKey(dia))
-                    {
-                        quantidadesPorDia.Add(dia, 0);
-                    }
-                    quantidadesPorDia[dia] += quantidade;
-                    if (recentes.Items.Count < 20)
-                    {
-                        recentes.Items.Add(dia.ToString("dd/MM") + " · " + tipo + " · " +
-                            movimento["produto"] + " · " + quantidade.ToString("N0"));
-                    }
                 }
                 lblEntradasMesValor.Text = entradas.ToString("N0");
                 lblSaidasMesValor.Text = saidas.ToString("N0");
-                lblSubtituloDashboard.Text = "Entradas: recebimentos externos. Saídas: vendas e perdas. Transferências não são somadas nesses cards.";
+                lblSubtituloDashboard.Text = "Indicadores do mês. Os filtros abaixo alteram o gráfico e as movimentações recentes.";
                 lblTituloGrafico.Text = "Unidades movimentadas por dia";
                 lblTituloMovimentacoes.Text = "Movimentações recentes";
-                if (recentes.Items.Count == 0)
-                {
-                    recentes.Items.Add("Nenhuma movimentação autorizada neste mês.");
-                }
-                panelMovimentacoesRecentes.Controls.Add(recentes);
-                panelGraficoMovimentacoes.Paint += PintarMovimentosReais;
-                panelGraficoMovimentacoes.Resize += (s, e) => panelGraficoMovimentacoes.Invalidate();
+                AtualizarGrafico();
             }
             catch (Exception erro)
             {
+                movimentosConsultados = null;
+                grafico.Series[0].Points.Clear();
+                movimentacoesRecentes.Items.Clear();
+                avisoGrafico.Text = "Não foi possível carregar as movimentações. Troque o período para tentar novamente.";
+                avisoGrafico.Visible = true;
+                avisoGrafico.BringToFront();
                 lblEntradasMesValor.Text = "—";
                 lblSaidasMesValor.Text = "—";
                 lblTituloMovimentacoes.Text = "Não foi possível consultar o histórico";
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em DashboardControl: " + erro.StackTrace);
+                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em DashboardControl");
             }
         }
 
-        private void PintarMovimentosReais(object sender, PaintEventArgs e)
+        private void AtualizarGrafico()
         {
-            if (quantidadesPorDia.Count == 0)
-            {
-                e.Graphics.DrawString("Sem movimentações neste mês.", Font, Brushes.Gray, 20, 90);
+            if (movimentosConsultados == null)
                 return;
-            }
-            decimal maior = 1;
-            foreach (decimal quantidade in quantidadesPorDia.Values)
+            quantidadesPorDia.Clear();
+            movimentacoesRecentes.Items.Clear();
+            string[] tipos = { "", "entrada", "transferencia", "venda", "perda" };
+            string filtro = tipos[cmbTipoMovimento.SelectedIndex];
+            var movimentos = movimentosConsultados.Rows.Cast<DataRow>()
+                .Where(r => filtro == "" || Convert.ToString(r["tipo"]) == filtro)
+                .OrderByDescending(r => Convert.ToDateTime(r["data_hora"])).ToList();
+            foreach (DataRow movimento in movimentos)
             {
-                maior = Math.Max(maior, quantidade);
+                DateTime dia = Convert.ToDateTime(movimento["data_hora"]).Date;
+                decimal quantidade = Convert.ToDecimal(movimento["quantidade"]);
+                if (!quantidadesPorDia.ContainsKey(dia))
+                    quantidadesPorDia.Add(dia, 0);
+                quantidadesPorDia[dia] += quantidade;
+                if (movimentacoesRecentes.Items.Count < 20)
+                    movimentacoesRecentes.Items.Add(dia.ToString("dd/MM") + " · " +
+                        NomeMovimento(Convert.ToString(movimento["tipo"])) + " · " +
+                        movimento["produto"] + " · " + quantidade.ToString("0.###"));
             }
-            List<DateTime> dias = new List<DateTime>(quantidadesPorDia.Keys);
-            dias.Sort();
-            Rectangle area = new Rectangle(64, 90,
-                Math.Max(1, panelGraficoMovimentacoes.Width - 100),
-                Math.Max(1, panelGraficoMovimentacoes.Height - 145));
-            PointF[] pontos = new PointF[dias.Count];
-            double intervalo = Math.Max(1, (dias[dias.Count - 1] - dias[0]).TotalDays);
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            using (Pen grade = new Pen(Color.FromArgb(232, 238, 246)))
-            using (Pen linha = new Pen(CASE.Utils.VisualUtils.Azul, 3F))
-            using (Brush pincel = new SolidBrush(CASE.Utils.VisualUtils.Azul))
-            using (Font fonte = new Font("Segoe UI", 9F))
+            Series serie = grafico.Series[0];
+            serie.Points.Clear();
+            SeriesChartType[] formatos =
             {
-                for (int nivel = 0; nivel <= 4; nivel++)
+                SeriesChartType.Column, SeriesChartType.Bar, SeriesChartType.Line,
+                SeriesChartType.Area, SeriesChartType.Pie, SeriesChartType.Doughnut
+            };
+            serie.ChartType = formatos[cmbTipoGrafico.SelectedIndex];
+            bool circular = serie.ChartType == SeriesChartType.Pie || serie.ChartType == SeriesChartType.Doughnut;
+            bool linhas = serie.ChartType == SeriesChartType.Line;
+            serie.MarkerStyle = linhas ? MarkerStyle.Circle : MarkerStyle.None;
+            serie.MarkerSize = 8;
+            serie.MarkerColor = Color.White;
+            serie.MarkerBorderColor = CASE.Utils.VisualUtils.Azul;
+            serie.MarkerBorderWidth = 2;
+            serie.BorderWidth = 3;
+            serie.Color = circular ? Color.Empty : CASE.Utils.VisualUtils.Azul;
+            serie.BackSecondaryColor = Color.FromArgb(230, 240, 255);
+            serie.BackGradientStyle = serie.ChartType == SeriesChartType.Area ? GradientStyle.TopBottom : GradientStyle.None;
+            serie.BorderColor = circular ? Color.White : CASE.Utils.VisualUtils.Azul;
+            serie.IsVisibleInLegend = circular;
+            serie.Label = circular ? "#PERCENT{P0}" : "";
+            serie.LabelForeColor = Color.White;
+            serie.LegendText = "#AXISLABEL";
+            serie["PieLabelStyle"] = "Inside";
+            serie["DoughnutRadius"] = "65";
+            if (circular)
+            {
+                var produtos = movimentos.GroupBy(r => Convert.ToString(r["produto"]))
+                    .Select(g => new { Nome = g.Key, Quantidade = g.Sum(r => Convert.ToDecimal(r["quantidade"])) })
+                    .OrderByDescending(p => p.Quantidade).ToList();
+                foreach (var produto in produtos.Take(5))
+                    serie.Points.AddXY(produto.Nome, produto.Quantidade);
+                if (produtos.Count > 5)
+                    serie.Points.AddXY("Outros produtos", produtos.Skip(5).Sum(p => p.Quantidade));
+            }
+            else
+            {
+                for (DateTime dia = inicioGrafico; dia <= DateTime.Today; dia = dia.AddDays(1))
                 {
-                    float y = area.Bottom - area.Height * nivel / 4F;
-                    e.Graphics.DrawLine(grade, area.Left, y, area.Right, y);
-                    string valor = (maior * nivel / 4).ToString("N0");
-                    SizeF tamanho = e.Graphics.MeasureString(valor, fonte);
-                    e.Graphics.DrawString(valor, fonte, Brushes.Gray,
-                        area.Left - tamanho.Width - 8, y - tamanho.Height / 2);
+                    decimal quantidade;
+                    bool temMovimento = quantidadesPorDia.TryGetValue(dia, out quantidade);
+                    if (linhas && !temMovimento)
+                        continue;
+                    int ponto = serie.Points.AddXY(dia.ToString("dd/MM"), quantidade);
+                    if (linhas && quantidade == 0)
+                        serie.Points[ponto].MarkerStyle = MarkerStyle.None;
                 }
+            }
+            var area = grafico.ChartAreas[0];
+            area.AxisX.Enabled = area.AxisY.Enabled = circular ? AxisEnabled.False : AxisEnabled.True;
+            grafico.Legends[0].Enabled = circular;
+            lblTituloGrafico.Text = circular ? "Unidades movimentadas por produto" :
+                linhas ? "Unidades por dia com movimentação" : "Unidades movimentadas por dia";
+            lblTituloGrafico.AutoSize = false;
+            lblTituloGrafico.Width = panelGraficoMovimentacoes.Width - 40;
+            lblTituloGrafico.AutoEllipsis = true;
+            area.AxisX.LabelStyle.Interval = Math.Max(1, (int)Math.Ceiling(serie.Points.Count / 10.0));
+            area.AxisY.Maximum = double.NaN;
+            grafico.ResetAutoValues();
+            avisoGrafico.Text = "Sem movimentações no período e filtro selecionados.";
+            avisoGrafico.Visible = movimentos.Count == 0;
+            if (avisoGrafico.Visible)
+            {
+                avisoGrafico.BringToFront();
+                movimentacoesRecentes.Items.Add("Nenhuma movimentação neste período e filtro.");
+            }
+            grafico.Invalidate();
+        }
 
-                int ultimoRotulo = -100;
-                for (int i = 0; i < dias.Count; i++)
-                {
-                    float x = area.Left + (float)((dias[i] - dias[0]).TotalDays / intervalo * area.Width);
-                    if (dias.Count == 1)
-                    {
-                        x = area.Left + area.Width / 2F;
-                    }
-
-                    float y = area.Bottom - (float)(quantidadesPorDia[dias[i]] / maior) * area.Height;
-                    pontos[i] = new PointF(x, y);
-                    if (x - ultimoRotulo >= 58 || i == dias.Count - 1)
-                    {
-                        string data = dias[i].ToString("dd/MM");
-                        SizeF tamanho = e.Graphics.MeasureString(data, fonte);
-                        e.Graphics.DrawString(data, fonte, Brushes.Gray,
-                            x - tamanho.Width / 2, area.Bottom + 12);
-                        ultimoRotulo = (int)x;
-                    }
-                }
-
-                if (pontos.Length > 1)
-                {
-                    e.Graphics.DrawLines(linha, pontos);
-                }
-
-                foreach (PointF ponto in pontos)
-                {
-                    e.Graphics.FillEllipse(Brushes.White, ponto.X - 5, ponto.Y - 5, 10, 10);
-                    e.Graphics.FillEllipse(pincel, ponto.X - 3, ponto.Y - 3, 6, 6);
-                }
+        private static string NomeMovimento(string tipo)
+        {
+            switch (tipo)
+            {
+                case "entrada": return "Entrada";
+                case "transferencia": return "Transferência";
+                case "venda": return "Venda";
+                case "perda": return "Perda";
+                default: return tipo;
             }
         }
     }

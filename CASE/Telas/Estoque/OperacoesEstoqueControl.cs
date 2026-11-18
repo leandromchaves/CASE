@@ -138,6 +138,7 @@ namespace CASE
             using (NumericUpDown ideal = new NumericUpDown())
             using (Button salvar = new Button())
             {
+                IconoAplicacao.Aplicar(janela);
                 janela.Text = "Mínimo e ideal do produto neste local";
                 janela.StartPosition = FormStartPosition.CenterParent;
                 janela.ClientSize = new System.Drawing.Size(430, 200);

@@ -52,19 +52,7 @@ namespace CASE.Services
 
         public int ObterIdInstituicaoUnica(Usuario usuario)
         {
-            string nomePerfil;
-            autorizacaoService.ValidarUsuarioEObterPerfil(usuario, out nomePerfil);
-
-            bool podeCriarEvento = string.Equals(
-                nomePerfil,
-                "Gerente",
-                StringComparison.OrdinalIgnoreCase);
-
-            if (!podeCriarEvento)
-            {
-                throw new UnauthorizedAccessException(
-                    "Somente um gerente pode criar eventos.");
-            }
+            autorizacaoService.ExigirAdministradorOuGerente(usuario);
 
             List<Instituicao> instituicoes = instituicaoRepository.Listar();
 
@@ -75,6 +63,34 @@ namespace CASE.Services
             }
 
             return instituicoes[0].IdInstituicao;
+        }
+
+        public List<Pessoa> ListarGerentesResponsaveis(Usuario administrador)
+        {
+            autorizacaoService.ExigirAdministrador(administrador);
+            List<Pessoa> gerentes = new List<Pessoa>();
+            PerfilSistemaRepository perfis = new PerfilSistemaRepository();
+            PessoaRepository pessoas = new PessoaRepository();
+            foreach (Usuario usuario in new UsuarioRepository().Listar())
+            {
+                if (!string.Equals(usuario.SituacaoConta, SituacoesUsuario.Aprovado,
+                    StringComparison.OrdinalIgnoreCase) || !usuario.IdPerfilSistema.HasValue)
+                {
+                    continue;
+                }
+                PerfilSistema perfil = perfis.BuscarPorId(usuario.IdPerfilSistema.Value);
+                if (perfil != null && string.Equals(perfil.Nome, "Gerente", StringComparison.OrdinalIgnoreCase))
+                {
+                    Pessoa pessoa = pessoas.BuscarPorId(usuario.IdPessoa);
+                    if (pessoa != null)
+                    {
+                        gerentes.Add(pessoa);
+                    }
+                }
+            }
+            gerentes.Sort((primeiro, segundo) => string.Compare(primeiro.Nome, segundo.Nome,
+                StringComparison.CurrentCultureIgnoreCase));
+            return gerentes;
         }
 
         public int Criar(Usuario usuario, Evento evento)
@@ -89,10 +105,23 @@ namespace CASE.Services
                 usuario,
                 out nomePerfil);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (!administrador && !string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente gerentes podem criar eventos.");
+                    "Somente administradores e gerentes podem criar eventos.");
+            }
+
+            if (administrador)
+            {
+                if (!ListarGerentesResponsaveis(usuario).Exists(pessoa => pessoa.IdPessoa == evento.IdResponsavel))
+                {
+                    throw new ArgumentException("Selecione um gerente aprovado como responsável pelo evento.");
+                }
+            }
+            else
+            {
+                evento.IdResponsavel = usuarioAtual.IdPessoa;
             }
 
             List<Instituicao> instituicoes = instituicaoRepository.Listar();
@@ -122,7 +151,6 @@ namespace CASE.Services
                 throw new ArgumentException("As datas do evento são inválidas.", nameof(evento));
             }
 
-            evento.IdResponsavel = usuarioAtual.IdPessoa;
             evento.IdUsuarioCriacao = usuarioAtual.IdUsuario;
             evento.CriadoEm = DateTime.Now;
             evento.Situacao = SituacoesEvento.Planejado;

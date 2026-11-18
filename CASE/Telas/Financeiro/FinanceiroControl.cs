@@ -192,6 +192,7 @@ namespace CASE.Quermesse
             }
             using (Form janela = new Form())
             {
+                IconoAplicacao.Aplicar(janela);
                 janela.Name = "ApuracaoEventoForm";
                 janela.Text = "Apuração do evento";
                 janela.ClientSize = new System.Drawing.Size(1100, 750);

@@ -15,6 +15,7 @@ namespace CASE.Utils
     {
         public string Titulo { get; set; } = "Relatório";
         public string Instituicao { get; set; }
+        public string TipoGrafico { get; set; }
         public string Filtros { get; set; } = "Dados autorizados da consulta";
         public DateTime Emissao { get; set; } = DateTime.Now;
     }
@@ -183,6 +184,27 @@ namespace CASE.Utils
                     }
                 if (tabela.Rows.Count == 0)
                     folha.Cell(7, 1).Value = "Nenhum registro encontrado.";
+                if (!string.IsNullOrWhiteSpace(contexto.TipoGrafico))
+                {
+                    var resumo = GraficoRelatorio.Resumir(dados, contexto.Titulo, contexto.TipoGrafico);
+                    int inicioResumo = quantidade + 2;
+                    folha.Cell(5, inicioResumo).Value = resumo.Titulo;
+                    folha.Cell(5, inicioResumo).Style.Font.Bold = true;
+                    using (var imagem = new MemoryStream(GraficoRelatorio.CriarImagem(dados, contexto.Titulo, contexto.TipoGrafico)))
+                        folha.AddPicture(imagem).MoveTo(folha.Cell(6, inicioResumo)).WithSize(600, 372);
+                    folha.Cell(30, inicioResumo).Value = "Grupo";
+                    folha.Cell(30, inicioResumo + 1).Value = resumo.Monetario ? "Valor (R$)" : "Quantidade";
+                    folha.Range(30, inicioResumo, 30, inicioResumo + 1).Style.Font.Bold = true;
+                    for (int i = 0; i < resumo.Valores.Rows.Count; i++)
+                    {
+                        folha.Cell(31 + i, inicioResumo).Value = Convert.ToString(resumo.Valores.Rows[i][0]);
+                        folha.Cell(31 + i, inicioResumo + 1).Value = Convert.ToDouble(resumo.Valores.Rows[i][1]);
+                        folha.Cell(31 + i, inicioResumo + 1).Style.NumberFormat.Format =
+                            resumo.Monetario ? "\"R$\" #,##0.00" : "0.###";
+                    }
+                    folha.Column(inicioResumo).Width = 45;
+                    folha.Column(inicioResumo + 1).Width = 20;
+                }
                 livro.SaveAs(caminho);
             }
         }
@@ -200,37 +222,64 @@ namespace CASE.Utils
             documento.Info.Title = contexto.Titulo;
             documento.Info.Author = "CASE";
             documento.Styles["Normal"].Font.Name = "Arial";
-            documento.Styles["Normal"].Font.Size = 8;
+            documento.Styles["Normal"].Font.Size = 8.5;
+            documento.Styles["Normal"].Font.Color = Color.FromRgb(31, 49, 68);
             var secao = documento.AddSection();
             bool muitoLargo = tabela.Columns.Count > 12;
             secao.PageSetup.PageFormat = muitoLargo ? PageFormat.A3 : PageFormat.A4;
-            bool paisagem = tabela.Columns.Count > 6;
+            bool paisagem = tabela.Columns.Count > 6 || !string.IsNullOrWhiteSpace(contexto.TipoGrafico);
             secao.PageSetup.Orientation = paisagem ? Orientation.Landscape : Orientation.Portrait;
             secao.PageSetup.LeftMargin = secao.PageSetup.RightMargin = Unit.FromCentimeter(1.3);
-            secao.PageSetup.TopMargin = Unit.FromCentimeter(1.8);
+            secao.PageSetup.TopMargin = Unit.FromCentimeter(2.2);
             secao.PageSetup.BottomMargin = Unit.FromCentimeter(1.6);
-            var identidade = secao.Headers.Primary.AddParagraph("CASE" +
-                (string.IsNullOrWhiteSpace(contexto.Instituicao) ? "" : " | " + contexto.Instituicao));
+            secao.PageSetup.HeaderDistance = Unit.FromCentimeter(0.8);
+            var identidade = secao.Headers.Primary.AddParagraph("CASE  /  GESTÃO DE ESTOQUE E EVENTOS");
             identidade.Format.Font.Bold = true;
+            identidade.Format.Font.Size = 9;
             identidade.Format.Font.Color = Color.FromRgb(23, 100, 192);
+            identidade.Format.Borders.Bottom.Color = Color.FromRgb(23, 100, 192);
+            identidade.Format.Borders.Bottom.Width = 1.2;
+            identidade.Format.Borders.DistanceFromBottom = Unit.FromMillimeter(2);
+            if (!string.IsNullOrWhiteSpace(contexto.Instituicao))
+            {
+                var instituicao = secao.AddParagraph(contexto.Instituicao);
+                instituicao.Format.Font.Size = 9;
+                instituicao.Format.Font.Color = Color.FromRgb(91, 111, 132);
+                instituicao.Format.SpaceAfter = Unit.FromMillimeter(2);
+                instituicao.Format.KeepWithNext = true;
+            }
             var titulo = secao.AddParagraph(contexto.Titulo);
-            titulo.Format.Font.Size = 17;
+            titulo.Format.Font.Size = 22;
             titulo.Format.Font.Bold = true;
-            titulo.Format.SpaceAfter = Unit.FromCentimeter(0.2);
-            secao.AddParagraph("Emissão: " + contexto.Emissao.ToString("dd/MM/yyyy HH:mm", Cultura));
+            titulo.Format.SpaceAfter = Unit.FromCentimeter(0.3);
+            titulo.Format.KeepWithNext = true;
+            var emissao = secao.AddParagraph("Emitido em " + contexto.Emissao.ToString("dd/MM/yyyy 'às' HH:mm", Cultura));
+            emissao.Format.Font.Color = Color.FromRgb(91, 111, 132);
+            emissao.Format.SpaceAfter = Unit.FromMillimeter(1.5);
+            emissao.Format.KeepWithNext = true;
             var filtros = secao.AddParagraph(contexto.Filtros);
-            filtros.Format.SpaceAfter = Unit.FromCentimeter(0.4);
-            var rodape = secao.Footers.Primary.AddParagraph("CASE • Página ");
+            filtros.Format.Font.Color = Color.FromRgb(91, 111, 132);
+            filtros.Format.SpaceAfter = Unit.FromCentimeter(0.6);
+            filtros.Format.KeepWithNext = true;
+            double largura = (muitoLargo ? 42 : paisagem ? 29.7 : 21) - 2.6;
+            if (!string.IsNullOrWhiteSpace(contexto.TipoGrafico))
+                AdicionarGraficoPdf(secao, dados, contexto, largura);
+            var rodape = secao.Footers.Primary.AddParagraph("CASE  |  Página ");
             rodape.AddPageField();
             rodape.AddText(" de ");
             rodape.AddNumPagesField();
             rodape.Format.Alignment = ParagraphAlignment.Right;
             rodape.Format.Font.Size = 8;
+            rodape.Format.Font.Color = Color.FromRgb(91, 111, 132);
+            rodape.Format.Borders.Top.Color = Color.FromRgb(220, 228, 237);
+            rodape.Format.Borders.Top.Width = 0.5;
+            rodape.Format.Borders.DistanceFromTop = Unit.FromMillimeter(2);
             var grade = secao.AddTable();
-            grade.Borders.Color = Colors.LightGray;
-            grade.Borders.Width = 0.25;
-            grade.TopPadding = grade.BottomPadding = Unit.FromMillimeter(1.3);
-            double largura = (muitoLargo ? 42 : paisagem ? 29.7 : 21) - 2.6;
+            grade.Borders.Color = Color.FromRgb(220, 228, 237);
+            grade.Borders.Width = 0;
+            grade.Borders.Bottom.Width = 0.4;
+            grade.TopPadding = grade.BottomPadding = Unit.FromMillimeter(1);
+            grade.LeftPadding = grade.RightPadding = Unit.FromMillimeter(1.5);
             double[] pesos = tabela.Columns.Cast<DataColumn>().Select(c =>
                 c.DataType == typeof(string)
                     ? (c.ColumnName.Contains("observacao") || c.ColumnName.Contains("descricao")
@@ -241,13 +290,17 @@ namespace CASE.Utils
                 grade.AddColumn(Unit.FromCentimeter(largura * pesos[c] / pesos.Sum()));
             var header = grade.AddRow();
             header.HeadingFormat = true;
-            header.Shading.Color = Color.FromRgb(235, 241, 249);
+            header.Shading.Color = Color.FromRgb(17, 46, 77);
             header.Format.Font.Bold = true;
+            header.Format.Font.Color = Colors.White;
             for (int c = 0; c < tabela.Columns.Count; c++)
                 header.Cells[c].AddParagraph(Cabecalho(tabela.Columns[c]));
+            int indiceLinha = 0;
             foreach (DataRow registro in tabela.Rows)
             {
                 var linha = grade.AddRow();
+                if (indiceLinha++ % 2 == 1)
+                    linha.Shading.Color = Color.FromRgb(245, 248, 252);
                 for (int c = 0; c < tabela.Columns.Count; c++)
                 {
                     string texto = Formatar(registro[c], tabela.Columns[c]);
@@ -260,14 +313,66 @@ namespace CASE.Utils
             }
             if (tabela.Rows.Count == 0)
                 secao.AddParagraph("Nenhum registro encontrado.");
-            secao.AddParagraph(tabela.Rows.Count + " registro(s).");
+            var quantidade = secao.AddParagraph(tabela.Rows.Count + " registro(s) no relatório.");
+            quantidade.Format.SpaceBefore = Unit.FromMillimeter(3);
+            quantidade.Format.Font.Color = Color.FromRgb(91, 111, 132);
             foreach (DataColumn c in tabela.Columns)
                 if (Totalizavel(tabela, c, contexto))
-                    secao.AddParagraph("Total — " + Cabecalho(c) + ": " + Somar(tabela, c).ToString("C2", Cultura));
+                {
+                    var total = secao.AddParagraph("Total — " + Cabecalho(c) + ": " + Somar(tabela, c).ToString("C2", Cultura));
+                    total.Format.Font.Bold = true;
+                    total.Format.SpaceBefore = Unit.FromMillimeter(2);
+                }
             var renderizador = new PdfDocumentRenderer { Document = documento };
             renderizador.RenderDocument();
             renderizador.PdfDocument.Save(caminho);
             renderizador.PdfDocument.Dispose();
+        }
+
+        private static void AdicionarGraficoPdf(Section secao, DataTable dados, ContextoRelatorio contexto, double largura)
+        {
+            var resumo = GraficoRelatorio.Resumir(dados, contexto.Titulo, contexto.TipoGrafico);
+            var titulo = secao.AddParagraph(resumo.Titulo);
+            titulo.Format.Font.Bold = true;
+            titulo.Format.SpaceAfter = Unit.FromMillimeter(3);
+            titulo.Format.KeepWithNext = true;
+            if (resumo.Valores.Rows.Count == 0)
+            {
+                secao.AddParagraph("Sem valores para representar no gráfico.");
+                return;
+            }
+            var composicao = secao.AddTable();
+            composicao.AddColumn(Unit.FromCentimeter(largura * 0.38));
+            composicao.AddColumn(Unit.FromCentimeter(largura * 0.62));
+            var linha = composicao.AddRow();
+            var valores = linha.Cells[0].Elements.AddTable();
+            valores.AddColumn(Unit.FromCentimeter(largura * 0.25));
+            valores.AddColumn(Unit.FromCentimeter(largura * 0.12));
+            var cabecalho = valores.AddRow();
+            cabecalho.Shading.Color = Color.FromRgb(235, 241, 249);
+            cabecalho.Format.Font.Bold = true;
+            cabecalho.Cells[0].AddParagraph("Grupo");
+            cabecalho.Cells[1].AddParagraph(resumo.Monetario ? "Valor (R$)" : "Quantidade");
+            valores.TopPadding = valores.BottomPadding = Unit.FromMillimeter(1.4);
+            foreach (DataRow item in resumo.Valores.Rows.Cast<DataRow>().Take(8))
+            {
+                var registro = valores.AddRow();
+                registro.Cells[0].AddParagraph(Convert.ToString(item[0]));
+                registro.Cells[1].AddParagraph(Convert.ToDecimal(item[1]).ToString(resumo.Monetario ? "C2" : "0.###", Cultura));
+                registro.Cells[1].Format.Alignment = ParagraphAlignment.Right;
+            }
+            if (resumo.Valores.Rows.Count > 8)
+                linha.Cells[0].AddParagraph("Primeiros 8 grupos. O gráfico considera todos os grupos.");
+            byte[] imagem = GraficoRelatorio.CriarImagem(dados, contexto.Titulo, contexto.TipoGrafico);
+            linha.Cells[1].Format.Alignment = ParagraphAlignment.Center;
+            var figura = linha.Cells[1].AddImage("base64:" + Convert.ToBase64String(imagem));
+            figura.Width = Unit.FromCentimeter(Math.Min(12, largura * 0.62 - 0.4));
+            figura.LockAspectRatio = true;
+            var detalhe = secao.AddParagraph("Dados detalhados");
+            detalhe.Format.Font.Bold = true;
+            detalhe.Format.SpaceBefore = Unit.FromMillimeter(4);
+            detalhe.Format.SpaceAfter = Unit.FromMillimeter(2);
+            detalhe.Format.KeepWithNext = true;
         }
     }
 }

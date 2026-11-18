@@ -193,15 +193,16 @@ namespace CASE.Services
                 usuario,
                 out nomePerfil);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (!administrador && !string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente o gerente responsável pode administrar a equipe do evento.");
+                    "Somente o administrador ou o gerente responsável pode administrar a equipe do evento.");
             }
 
             Evento evento = eventoRepository.BuscarPorId(idEvento);
 
-            if (evento == null || evento.IdResponsavel != usuarioAtual.IdPessoa)
+            if (evento == null || (!administrador && evento.IdResponsavel != usuarioAtual.IdPessoa))
             {
                 throw new UnauthorizedAccessException(
                     "Você não pode administrar a equipe deste evento.");

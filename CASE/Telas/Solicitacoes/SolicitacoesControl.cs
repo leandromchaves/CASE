@@ -320,6 +320,7 @@ namespace CASE.Quermesse
             using (Button confirmar = new Button())
             using (Button cancelar = new Button())
             {
+                IconoAplicacao.Aplicar(dialogo);
                 dialogo.Text = "Motivo da rejeição";
                 dialogo.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dialogo.StartPosition = FormStartPosition.CenterParent;

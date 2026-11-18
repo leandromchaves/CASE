@@ -4,6 +4,8 @@ using CASE.Utils;
 using System.Data;
 using System.IO;
 using System.Text;
+using System.Drawing;
+using System.Windows.Forms.DataVisualization.Charting;
 using CASE.Models;
 using CASE.Services;
 
@@ -16,6 +18,10 @@ namespace CASE
         private readonly Label resumoRelatorio = new Label();
         private DataTable dadosRelatorio;
         private readonly ContextMenuStrip menuExportacoes = new ContextMenuStrip();
+        private readonly CheckBox chkIncluirGrafico = new CheckBox();
+        private readonly ComboBox cmbGraficoRelatorio = new ComboBox();
+        private readonly Panel opcoesGrafico = new Panel();
+        private Chart graficoRelatorio;
 
         public RelatoriosControl() : this(null)
         {
@@ -114,6 +120,8 @@ namespace CASE
                 gradeRelatorio.DataSource = null;
                 btnExportarCsv.Enabled = false;
                 resumoRelatorio.Text = "Clique em Gerar para consultar o relatório selecionado.";
+                AtualizarTiposGrafico();
+                AtualizarGraficoRelatorio();
             };
             dtpRelatorioInicio.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             dtpRelatorioFim.Value = DateTime.Today;
@@ -128,6 +136,9 @@ namespace CASE
                             : "Data final",
                     new System.Drawing.Rectangle(campo.Left, 6, campo.Width, 20)));
             }
+            ConfigurarGraficoRelatorio();
+            dtpRelatorioInicio.ValueChanged += InvalidarConsulta;
+            dtpRelatorioFim.ValueChanged += InvalidarConsulta;
             if (usuario != null)
             {
                 GerarRelatorio(this, EventArgs.Empty);
@@ -168,9 +179,11 @@ namespace CASE
                 resumoRelatorio.Text += Environment.NewLine + Environment.NewLine +
                     dadosRelatorio.Rows.Count + " linha(s) autorizada(s).";
                 btnExportarCsv.Enabled = dadosRelatorio.Rows.Count > 0;
+                AtualizarGraficoRelatorio();
             }
             catch (Exception erro)
             {
+                AtualizarGraficoRelatorio();
                 if (erro is ArgumentException || erro is UnauthorizedAccessException)
                 {
                     resumoRelatorio.Text = erro.Message;
@@ -273,7 +286,8 @@ namespace CASE
                     // Consulta novamente e revalida a sessão depois do diálogo de salvar.
                     new ConsultaOperacionalService().ExportarRelatorio(usuarioAutenticado,
                         cmbRelatorioCategoria.Text, dtpRelatorioInicio.Value,
-                        dtpRelatorioFim.Value, dialogo.FileName, formato);
+                        dtpRelatorioFim.Value, dialogo.FileName, formato,
+                        chkIncluirGrafico.Checked ? cmbGraficoRelatorio.Text : null);
                     resumoRelatorio.Text = "Relatório exportado para " + formato.ToUpperInvariant() + ".";
                 }
                 catch (Exception erro)
@@ -295,6 +309,97 @@ namespace CASE
             Control controle = (Control)sender;
             VisualUtils.Arredondar(controle, controle is Panel ? 12 : 8);
             controle.Invalidate();
+        }
+
+        private void ConfigurarGraficoRelatorio()
+        {
+            chkIncluirGrafico.Name = "chkIncluirGrafico";
+            chkIncluirGrafico.Text = "Incluir gráfico";
+            chkIncluirGrafico.Checked = true;
+            chkIncluirGrafico.SetBounds(0, 8, 155, 28);
+            cmbGraficoRelatorio.Name = "cmbGraficoRelatorio";
+            cmbGraficoRelatorio.AccessibleName = "Tipo de gráfico do relatório";
+            cmbGraficoRelatorio.DropDownStyle = ComboBoxStyle.DropDownList;
+            var painel = new Panel { Name = "panelTipoGraficoRelatorio", BackColor = VisualUtils.Fundo,
+                Padding = new Padding(8, 0, 8, 0) };
+            painel.SetBounds(160, 2, 175, 40);
+            painel.Controls.Add(cmbGraficoRelatorio);
+            VisualUtils.EstilizarSelecao(cmbGraficoRelatorio);
+            cmbGraficoRelatorio.FlatStyle = FlatStyle.Flat;
+            cmbGraficoRelatorio.BackColor = painel.BackColor;
+            VisualUtils.Arredondar(painel, 10);
+            VisualUtils.AplicarBorda(painel);
+            var orientacao = new Label { Text = "Disponível também no PDF e no Excel. CSV mantém somente os dados.",
+                AutoSize = false, ForeColor = VisualUtils.TextoSuave };
+            orientacao.SetBounds(355, 12, 530, 26);
+            opcoesGrafico.Controls.AddRange(new Control[] { chkIncluirGrafico, painel, orientacao });
+            Controls.Add(opcoesGrafico);
+            resumoRelatorio.Parent = this;
+            resumoRelatorio.Dock = DockStyle.None;
+            resumoRelatorio.ForeColor = VisualUtils.TextoSuave;
+            resumoRelatorio.Font = new Font("Segoe UI", 9F);
+            lblGraficoDireito.Text = "Gráfico do relatório";
+            lblGraficoDireito.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
+            AtualizarTiposGrafico();
+            chkIncluirGrafico.CheckedChanged += (s, e) =>
+            {
+                cmbGraficoRelatorio.Enabled = chkIncluirGrafico.Checked;
+                AtualizarGraficoRelatorio();
+                AjustarLayoutRelatorio();
+            };
+            cmbGraficoRelatorio.SelectedIndexChanged += (s, e) => AtualizarGraficoRelatorio();
+            SizeChanged += (s, e) => AjustarLayoutRelatorio();
+            AjustarLayoutRelatorio();
+        }
+
+        private void AtualizarTiposGrafico()
+        {
+            string anterior = cmbGraficoRelatorio.Text;
+            cmbGraficoRelatorio.Items.Clear();
+            cmbGraficoRelatorio.Items.AddRange(GraficoRelatorio.TiposDisponiveis(cmbRelatorioCategoria.Text));
+            cmbGraficoRelatorio.SelectedItem = cmbGraficoRelatorio.Items.Contains(anterior) ? anterior : "Rosca";
+        }
+
+        private void InvalidarConsulta(object sender, EventArgs e)
+        {
+            dadosRelatorio = null;
+            gradeRelatorio.DataSource = null;
+            btnExportarCsv.Enabled = false;
+            resumoRelatorio.Text = "Filtros alterados. Clique em Gerar para atualizar os dados e o gráfico.";
+            AtualizarGraficoRelatorio();
+        }
+
+        private void AtualizarGraficoRelatorio()
+        {
+            if (graficoRelatorio != null)
+            {
+                graficoRelatorio.Dispose();
+                graficoRelatorio = null;
+            }
+            panelGraficoDireitoArea.Controls.Clear();
+            if (!chkIncluirGrafico.Checked || dadosRelatorio == null)
+                return;
+            graficoRelatorio = GraficoRelatorio.Criar(dadosRelatorio,
+                cmbRelatorioCategoria.Text, cmbGraficoRelatorio.Text);
+            graficoRelatorio.Name = "graficoRelatorio";
+            graficoRelatorio.Dock = DockStyle.Fill;
+            panelGraficoDireitoArea.Controls.Add(graficoRelatorio);
+        }
+
+        private void AjustarLayoutRelatorio()
+        {
+            int largura = Math.Max(970, ClientSize.Width) - 60;
+            int altura = Math.Max(330, ClientSize.Height - 350);
+            opcoesGrafico.SetBounds(30, 190, largura, 44);
+            bool incluir = chkIncluirGrafico.Checked;
+            int esquerda = incluir ? (largura - 16) * 55 / 100 : largura;
+            panelGraficoEsquerdo.SetBounds(30, 248, esquerda, altura);
+            panelGraficoDireito.Visible = incluir;
+            panelGraficoDireito.SetBounds(30 + esquerda + 16, 248, Math.Max(1, largura - esquerda - 16), altura);
+            panelGraficoEsquerdoArea.SetBounds(16, 60, esquerda - 32, altura - 76);
+            panelGraficoDireitoArea.SetBounds(16, 60, Math.Max(1, panelGraficoDireito.Width - 32), altura - 76);
+            resumoRelatorio.SetBounds(30, panelGraficoEsquerdo.Bottom + 10, largura, 65);
+            AutoScrollMinSize = new Size(970, resumoRelatorio.Bottom + 12);
         }
     }
 }

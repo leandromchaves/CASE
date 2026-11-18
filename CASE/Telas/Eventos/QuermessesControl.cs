@@ -15,6 +15,7 @@ namespace CASE.Quermesse
         private readonly EventoService eventoService = new EventoService();
         private readonly TipoEventoService tipoEventoService = new TipoEventoService();
         private readonly Dictionary<int, string> nomesTiposEvento = new Dictionary<int, string>();
+        private readonly Dictionary<int, string> nomesResponsaveis = new Dictionary<int, string>();
         private List<Evento> eventosCarregados = new List<Evento>();
         private string pesquisaAtual = string.Empty;
 
@@ -34,10 +35,10 @@ namespace CASE.Quermesse
                 {
                     string perfil;
                     new AutorizacaoService().ValidarUsuarioEObterPerfil(usuario, out perfil);
-                    btnNovaQuermesse.Enabled = perfil == "Gerente";
+                    btnNovaQuermesse.Enabled = perfil == "Gerente" || perfil == "Administrador";
                     if (perfil == "Administrador")
                     {
-                        lblSubtitulo.Text = "Consulta administrativa: os eventos são criados e gerenciados pelo gerente responsável.";
+                        lblSubtitulo.Text = "Cadastre eventos, defina o gerente responsável e acompanhe a organização.";
                     }
                 }
                 catch (Exception)
@@ -48,6 +49,8 @@ namespace CASE.Quermesse
             dgvQuermesses.CellDoubleClick += dgvQuermesses_CellDoubleClick;
             dgvQuermesses.SelectionChanged += dgvQuermesses_SelectionChanged;
             ConfigurarTransicoesEvento();
+            OrganizarListagemEventos();
+            SizeChanged += (s, e) => OrganizarListagemEventos();
 
             VisualUtils.AdicionarPesquisa(this, "txtPesquisarEvento", "Pesquisar nome, local ou situação", Pesquisar);
 
@@ -117,6 +120,33 @@ namespace CASE.Quermesse
             lblEventoscadastrados.Width = 480;
             VisualUtils.EstilizarBotao(situacao);
             Disposed += (s, e) => menu.Dispose();
+        }
+
+        private void OrganizarListagemEventos()
+        {
+            panelEventoResumo.Visible = false;
+            pictureIconeTela.Image = Properties.Resources.LucideAzulEscala;
+            if (btnNovaQuermesse.Parent != panelListaQuermesses)
+            {
+                panelListaQuermesses.Controls.Add(btnNovaQuermesse);
+            }
+
+            int largura = Math.Max(760, ClientSize.Width - 60);
+            int altura = Math.Max(300, ClientSize.Height - 170);
+            panelCorpo.SetBounds(30, 112, largura, altura);
+            panelListaQuermesses.SetBounds(0, 0, largura, altura);
+            Control situacao = panelListaQuermesses.Controls["btnSituacaoEvento"];
+            situacao.SetBounds(largura - 204, 18, 180, 40);
+            btnEditarQuermesse.SetBounds(situacao.Left - 182, 18, 170, 40);
+            btnNovaQuermesse.SetBounds(btnEditarQuermesse.Left - 182, 18, 170, 40);
+            btnNovaQuermesse.TabIndex = 0;
+            btnEditarQuermesse.TabIndex = 1;
+            situacao.TabIndex = 2;
+            lblEventoscadastrados.SetBounds(18, 25, Math.Max(140, btnNovaQuermesse.Left - 36), 28);
+            dgvQuermesses.SetBounds(12, 76, largura - 24, altura - 90);
+            dgvQuermesses.TabIndex = 3;
+            labelAviso.SetBounds(30, panelCorpo.Bottom + 12, largura, 28);
+            AutoScrollMinSize = new System.Drawing.Size(820, labelAviso.Bottom + 12);
         }
 
         private void AlterarSituacaoSelecionada(string situacao)
@@ -290,6 +320,15 @@ namespace CASE.Quermesse
 
                 List<Evento> eventos = eventoService.Listar(usuarioAutenticado);
                 eventosCarregados = eventos;
+                nomesResponsaveis.Clear();
+                foreach (Evento evento in eventos)
+                {
+                    if (!nomesResponsaveis.ContainsKey(evento.IdResponsavel))
+                    {
+                        nomesResponsaveis[evento.IdResponsavel] = eventoService.ConsultarNomeResponsavel(
+                            usuarioAutenticado, evento.IdEvento);
+                    }
+                }
 
                 Pesquisar(pesquisaAtual);
 
@@ -369,7 +408,9 @@ namespace CASE.Quermesse
                     evento.Local,
                     evento.DataInicio.ToString("dd/MM/yyyy"),
                     evento.DataFim.ToString("dd/MM/yyyy"),
-                    evento.IdResponsavel.ToString(),
+                    nomesResponsaveis.ContainsKey(evento.IdResponsavel)
+                        ? nomesResponsaveis[evento.IdResponsavel]
+                        : "Responsável não encontrado",
                     evento.Situacao);
                 dgvQuermesses.Rows[indiceLinha].Tag = evento;
             }

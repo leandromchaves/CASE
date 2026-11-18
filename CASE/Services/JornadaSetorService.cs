@@ -78,11 +78,13 @@ namespace CASE.Services
 
             Evento evento = eventoRepository.BuscarPorId(idEvento);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
-                evento == null || evento.IdResponsavel != usuarioAtual.IdPessoa)
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (evento == null || (!administrador &&
+                (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
+                evento.IdResponsavel != usuarioAtual.IdPessoa)))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente o gerente responsável pode organizar jornadas deste evento.");
+                    "Somente o administrador ou o gerente responsável pode organizar jornadas deste evento.");
             }
 
             if (!string.Equals(evento.Situacao, SituacoesEvento.Planejado,

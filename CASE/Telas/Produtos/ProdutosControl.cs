@@ -51,6 +51,8 @@ namespace CASE
             colunaImagem.ImageLayout = DataGridViewImageCellLayout.Zoom;
             colunaImagem.FillWeight = 65;
             colunaImagem.DefaultCellStyle.NullValue = null;
+            colunaImagem.DefaultCellStyle.Padding = new Padding(4);
+            colunaImagem.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dgvProdutos.Columns.Insert(0, colunaImagem);
 
             colAcoes.Text = "Editar";
@@ -332,7 +334,19 @@ namespace CASE
                     double proporcao = Math.Min(64.0 / original.Width, 64.0 / original.Height);
                     var tamanho = new System.Drawing.Size(Math.Max(1, (int)(original.Width * proporcao)),
                         Math.Max(1, (int)(original.Height * proporcao)));
-                    var miniatura = new System.Drawing.Bitmap(original, tamanho);
+                    var miniatura = new System.Drawing.Bitmap(tamanho.Width, tamanho.Height,
+                        System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                    using (var redimensionada = new System.Drawing.Bitmap(original, tamanho))
+                    using (var desenho = System.Drawing.Graphics.FromImage(miniatura))
+                    using (var textura = new System.Drawing.TextureBrush(redimensionada,
+                        System.Drawing.Drawing2D.WrapMode.Clamp))
+                    using (var contorno = VisualUtils.CriarRetanguloArredondado(
+                        new System.Drawing.Rectangle(0, 0, tamanho.Width, tamanho.Height), 10))
+                    {
+                        desenho.Clear(System.Drawing.Color.Transparent);
+                        desenho.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        desenho.FillPath(textura, contorno);
+                    }
                     imagensDaGrade.Add(miniatura);
                     return miniatura;
                 }
