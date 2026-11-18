@@ -69,24 +69,12 @@ namespace CASE.Repositories
                             conexao,
                             transacao,
                             "INSERT INTO solicitacaoestoquecentral " +
-                            "(tipo,id_instituicao,id_evento,id_local_origem,id_local_destino," +
+                            "(id_local_origem,id_local_destino," +
                             "id_usuario_solicitante,data_hora,situacao,versao) " +
-                            "VALUES (@tipo,@instituicao,@evento,@origem,@destino," +
+                            "VALUES (@origem,@destino," +
                             "@solicitante,@data,@situacao,1)",
                             comando =>
                             {
-                                AcessoDados.AdicionarTextoObrigatorio(
-                                    comando,
-                                    "@tipo",
-                                    solicitacao.Tipo);
-                                AcessoDados.AdicionarParametro(
-                                    comando,
-                                    "@instituicao",
-                                    solicitacao.IdInstituicao);
-                                AcessoDados.AdicionarParametro(
-                                    comando,
-                                    "@evento",
-                                    solicitacao.IdEvento);
                                 AcessoDados.AdicionarParametro(
                                     comando,
                                     "@origem",
@@ -150,7 +138,7 @@ namespace CASE.Repositories
         {
             return AcessoDados.ConsultarLista(
                 "SELECT " + Colunas +
-                " FROM solicitacaoestoquecentral " +
+                " FROM vw_solicitacaoestoquecentral " +
                 "WHERE situacao=@situacao ORDER BY data_hora,id_solicitacao_estoque_central",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarTextoObrigatorio(
@@ -163,7 +151,7 @@ namespace CASE.Repositories
         {
             return AcessoDados.ConsultarLista(
                 "SELECT " + Colunas +
-                " FROM solicitacaoestoquecentral s " +
+                " FROM vw_solicitacaoestoquecentral s " +
                 "WHERE s.situacao=@situacao AND NOT EXISTS (" +
                 "SELECT 1 FROM transferenciaestoque t " +
                 "WHERE t.id_solicitacao_estoque_central=s.id_solicitacao_estoque_central) " +
@@ -180,7 +168,7 @@ namespace CASE.Repositories
         {
             return AcessoDados.ConsultarLista(
                 "SELECT " + Colunas +
-                " FROM solicitacaoestoquecentral " +
+                " FROM vw_solicitacaoestoquecentral " +
                 "WHERE id_usuario_solicitante=@usuario " +
                 "ORDER BY data_hora DESC,id_solicitacao_estoque_central DESC",
                 ConverterLinha,
@@ -194,7 +182,7 @@ namespace CASE.Repositories
         {
             return AcessoDados.ConsultarUnico(
                 "SELECT " + Colunas +
-                " FROM solicitacaoestoquecentral " +
+                " FROM vw_solicitacaoestoquecentral " +
                 "WHERE id_solicitacao_estoque_central=@id",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(
@@ -288,7 +276,7 @@ namespace CASE.Repositories
                         using (MySqlCommand comando = new MySqlCommand(
                             "SELECT tipo,id_instituicao,id_evento,id_local_origem," +
                             "id_local_destino,id_usuario_solicitante,situacao,versao " +
-                            "FROM solicitacaoestoquecentral " +
+                            "FROM vw_solicitacaoestoquecentral " +
                             "WHERE id_solicitacao_estoque_central=@id FOR UPDATE",
                             conexao,
                             transacao))
@@ -492,9 +480,9 @@ namespace CASE.Repositories
                 "FROM evento ev " +
                 "JOIN usuario u ON u.id_usuario=@solicitante " +
                 "JOIN pessoa p ON p.id_pessoa=u.id_pessoa " +
-                "JOIN localestoque origem " +
+                "JOIN vw_localestoque origem " +
                 "ON origem.id_local_estoque=@origem " +
-                "JOIN localestoque destino " +
+                "JOIN vw_localestoque destino " +
                 "ON destino.id_local_estoque=@destino " +
                 "JOIN perfilsistema perfil ON perfil.id_perfil_sistema=u.id_perfil_sistema " +
                 "WHERE ev.id_evento=@evento " +

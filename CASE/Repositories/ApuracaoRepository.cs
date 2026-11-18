@@ -26,7 +26,7 @@ namespace CASE.Repositories
                         ValidarResponsavel(conexao, transacao, item);
                         int ultima = 0;
                         using (var consulta = new MySqlCommand(
-                            "SELECT id_apuracao FROM apuracao WHERE id_jornada=@jornada " +
+                            "SELECT id_apuracao FROM vw_apuracao WHERE id_jornada=@jornada " +
                             "ORDER BY id_apuracao DESC LIMIT 1 FOR UPDATE", conexao, transacao))
                         {
                             consulta.Parameters.AddWithValue("@jornada", item.IdJornada);
@@ -41,14 +41,13 @@ namespace CASE.Repositories
                             throw new InvalidOperationException("Outra conferência foi registrada. Atualize a jornada antes de conferir novamente.");
                         }
                         using (var comando = new MySqlCommand(
-                            "INSERT INTO apuracao (id_jornada,valor_informado,data_hora,id_usuario_responsavel," +
+                            "INSERT INTO apuracao (id_jornada,data_hora,id_usuario_responsavel," +
                             "observacao,valor_dinheiro,valor_pix,valor_cartao) " +
-                            "VALUES (@jornada,@total,NOW(),@usuario,@observacao,@dinheiro,@pix,@cartao)",
+                            "VALUES (@jornada,NOW(),@usuario,@observacao,@dinheiro,@pix,@cartao)",
 conexao,
 transacao))
                         {
                             comando.Parameters.AddWithValue("@jornada", item.IdJornada);
-                            comando.Parameters.AddWithValue("@total", item.ValorInformado);
                             comando.Parameters.AddWithValue("@usuario", item.IdUsuarioResponsavel);
                             AcessoDados.AdicionarTextoOpcional(comando, "@observacao", item.Observacao);
                             comando.Parameters.AddWithValue("@dinheiro", item.ValorDinheiro);
@@ -168,7 +167,7 @@ transacao))
         public List<Apuracao> ListarPorJornada(int idJornada)
         {
             return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM apuracao WHERE id_jornada=@id ORDER BY id_apuracao",
+                "SELECT " + Colunas + " FROM vw_apuracao WHERE id_jornada=@id ORDER BY id_apuracao",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@id", idJornada));
         }
@@ -176,7 +175,7 @@ transacao))
         public Apuracao BuscarPorId(int idApuracao)
         {
             return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM apuracao WHERE id_apuracao=@id",
+                "SELECT " + Colunas + " FROM vw_apuracao WHERE id_apuracao=@id",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@id", idApuracao));
         }

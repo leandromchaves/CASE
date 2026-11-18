@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using CASE.Models;
 using MySql.Data.MySqlClient;
 
@@ -26,7 +26,7 @@ transacao))
                     }
                     int idCentral = 0;
                     using (var comando = new MySqlCommand(
-                        "SELECT id_local_estoque,ativo FROM localestoque WHERE id_instituicao=@id AND eh_central=1 FOR UPDATE",
+                        "SELECT id_local_estoque,ativo FROM vw_localestoque WHERE id_instituicao=@id AND eh_central=1 FOR UPDATE",
 conexao,
 transacao))
                     {
@@ -46,8 +46,8 @@ transacao))
                     if (idCentral == 0)
                     {
                         using (var comando = new MySqlCommand(
-                            "INSERT INTO localestoque(id_instituicao,nome,ativo,eh_central,eh_geral_evento,id_evento) " +
-                            "VALUES (@id,'Estoque central',1,1,0,NULL)",
+                            "INSERT INTO localestoque(id_instituicao_central,nome,ativo,eh_geral_evento,id_evento) " +
+                            "VALUES (@id,'Estoque central',1,0,NULL)",
 conexao,
 transacao))
                         {
@@ -65,7 +65,7 @@ transacao))
         public List<LocalEstoque> Listar()
         {
             return AcessoDados.ConsultarLista(
-                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM localestoque ORDER BY id_local_estoque",
+                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM vw_localestoque ORDER BY id_local_estoque",
                 ConverterLinha
             );
         }
@@ -73,7 +73,7 @@ transacao))
         public List<LocalEstoque> ListarCentrais(int idInstituicao)
         {
             return AcessoDados.ConsultarLista(
-                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM localestoque WHERE id_instituicao=@instituicao AND eh_central=1 ORDER BY id_local_estoque",
+                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM vw_localestoque WHERE id_instituicao=@instituicao AND eh_central=1 ORDER BY id_local_estoque",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@instituicao", idInstituicao)
             );
@@ -83,7 +83,7 @@ transacao))
         {
             return AcessoDados.ConsultarLista(
                 "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento " +
-                "FROM localestoque WHERE id_evento=@evento ORDER BY id_local_estoque",
+                "FROM vw_localestoque WHERE id_evento=@evento ORDER BY id_local_estoque",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@evento", idEvento)
             );
@@ -93,7 +93,7 @@ transacao))
         {
             return AcessoDados.ConsultarLista(
                 "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento " +
-                "FROM localestoque WHERE id_evento=@evento AND eh_geral_evento=1 " +
+                "FROM vw_localestoque WHERE id_evento=@evento AND eh_geral_evento=1 " +
                 "ORDER BY id_local_estoque",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@evento", idEvento)
@@ -103,7 +103,7 @@ transacao))
         public LocalEstoque BuscarPorId(int id)
         {
             return AcessoDados.ConsultarUnico(
-                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM localestoque WHERE id_local_estoque=@id",
+                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM vw_localestoque WHERE id_local_estoque=@id",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@id", id)
             );
@@ -112,7 +112,7 @@ transacao))
         public int Cadastrar(LocalEstoque item)
         {
             return AcessoDados.Inserir(
-                "INSERT INTO localestoque (id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento) VALUES (@instituicao,@evento,@nome,@ativo,@central,@geralEvento)",
+                "INSERT INTO localestoque (id_instituicao_central,id_evento,nome,ativo,eh_geral_evento) VALUES (@instituicao,@evento,@nome,@ativo,@geralEvento)",
                 comando => Vincular(comando, item)
             );
         }
@@ -120,7 +120,7 @@ transacao))
         public bool Atualizar(LocalEstoque item)
         {
             return AcessoDados.Executar(
-                "UPDATE localestoque SET id_instituicao=@instituicao,id_evento=@evento,nome=@nome,ativo=@ativo,eh_central=@central,eh_geral_evento=@geralEvento WHERE id_local_estoque=@id",
+                "UPDATE localestoque SET nome=@nome,ativo=@ativo WHERE id_local_estoque=@id AND id_instituicao_central <=> @instituicao AND id_evento <=> @evento AND eh_geral_evento=@geralEvento",
                 comando =>
                 {
                     AcessoDados.AdicionarParametro(comando, "@id", item.IdLocalEstoque);
@@ -131,11 +131,10 @@ transacao))
 
         private static void Vincular(MySqlCommand comando, LocalEstoque item)
         {
-            AcessoDados.AdicionarParametro(comando, "@instituicao", item.IdInstituicao);
+            AcessoDados.AdicionarParametro(comando, "@instituicao", item.EhCentral ? (int?)item.IdInstituicao : null);
             AcessoDados.AdicionarParametro(comando, "@evento", item.IdEvento);
             AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", item.Nome);
             AcessoDados.AdicionarParametro(comando, "@ativo", item.Ativo);
-            AcessoDados.AdicionarParametro(comando, "@central", item.EhCentral);
             AcessoDados.AdicionarParametro(comando, "@geralEvento", item.EhGeralEvento);
         }
 

@@ -1,12 +1,15 @@
 -- Consultas das telas do CASE.
 -- As variáveis abaixo representam os filtros usados nas telas.
 -- Senhas e imagens não são exibidas nas consultas.
-USE case_entrega_bd1;
+SET SESSION transaction_read_only = IF(COALESCE(@case_instalacao_bloqueada, 0)=1,
+    1, @@session.transaction_read_only);
+USE case_commercial;
 
 SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
 -- 01 — Contas e pessoas
 -- 1. AnaliseUsuarioRepository.ListarPorUsuario
+-- Lista as decisões de aprovação ou rejeição de uma conta, em ordem de registro.
 SET @id = (
     SELECT MIN(id_usuario)
     FROM usuario);
@@ -22,12 +25,14 @@ WHERE id_usuario = @id
 ORDER BY data_hora, id_analise;
 
 -- 2. PerfilSistemaRepository.Listar
+-- Lista os perfis de acesso ao sistema.
 SELECT id_perfil_sistema,
     nome
 FROM perfilsistema
 ORDER BY id_perfil_sistema;
 
 -- 3. PerfilSistemaRepository.BuscarPorId
+-- Busca um perfil de acesso pelo seu identificador.
 SET @id = (
     SELECT MIN(id_perfil_sistema)
     FROM perfilsistema);
@@ -38,6 +43,7 @@ FROM perfilsistema
 WHERE id_perfil_sistema = @id;
 
 -- 4. PessoaRepository.Listar
+-- Lista as pessoas cadastradas e seus dados de contato.
 SELECT id_pessoa,
     nome,
     telefone,
@@ -46,6 +52,7 @@ FROM pessoa
 ORDER BY id_pessoa;
 
 -- 5. PessoaRepository.BuscarPorId / EquipeEventoRepository.BuscarPessoaPorId
+-- Busca os dados de contato de uma pessoa pelo seu identificador.
 SET @id = (
     SELECT MIN(id_pessoa)
     FROM pessoa);
@@ -58,6 +65,7 @@ FROM pessoa
 WHERE id_pessoa = @id;
 
 -- 6. PessoaRepository.BuscarFotoPerfil
+-- Informa o tamanho, em bytes, da foto de perfil de uma pessoa.
 SET @idPessoa = (
     SELECT id_pessoa
     FROM usuario
@@ -68,6 +76,7 @@ FROM pessoa
 WHERE id_pessoa = @idPessoa;
 
 -- 7. UsuarioRepository.Listar
+-- Lista as contas de usuário, seus perfis e a situação de cada cadastro.
 SELECT id_usuario,
     id_pessoa,
     id_perfil_sistema,
@@ -78,6 +87,7 @@ FROM usuario
 ORDER BY id_usuario;
 
 -- 8. UsuarioRepository.BuscarPorId
+-- Busca os dados de uma conta pelo seu identificador, sem exibir a senha.
 SET @id = (
     SELECT MIN(id_usuario)
     FROM usuario);
@@ -92,6 +102,7 @@ FROM usuario
 WHERE id_usuario = @id;
 
 -- 9. UsuarioRepository.BuscarPorLogin
+-- Busca uma conta pelo login, sem exibir a senha.
 SET @login = 'pedro.almeida';
 
 SELECT id_usuario,
@@ -104,6 +115,7 @@ FROM usuario
 WHERE login = @login;
 
 -- 10. UsuarioRepository.BuscarLoginPorPessoa
+-- Consulta o login vinculado a uma pessoa.
 SET @pessoa = (
     SELECT id_pessoa
     FROM usuario
@@ -115,6 +127,7 @@ WHERE id_pessoa = @pessoa;
 
 -- 02 — Instituição e cadastros de apoio
 -- 11. InstituicaoRepository.Listar
+-- Lista as instituições cadastradas e seus dados de contato.
 SELECT id_instituicao,
     nome,
     documento,
@@ -124,6 +137,7 @@ FROM instituicao
 ORDER BY id_instituicao;
 
 -- 12. InstituicaoRepository.BuscarPorId
+-- Busca os dados de uma instituição pelo seu identificador.
 SET @id = (
     SELECT MIN(id_instituicao)
     FROM instituicao);
@@ -137,12 +151,14 @@ FROM instituicao
 WHERE id_instituicao = @id;
 
 -- 13. PerfilRepository.Listar
+-- Lista as funções de participação nas equipes dos eventos.
 SELECT id_perfil,
     nome
 FROM perfil
 ORDER BY id_perfil;
 
 -- 14. PerfilRepository.BuscarPorId
+-- Busca uma função de participação na equipe pelo seu identificador.
 SET @id = (
     SELECT MIN(id_perfil)
     FROM perfil);
@@ -153,12 +169,14 @@ FROM perfil
 WHERE id_perfil = @id;
 
 -- 15. TipoEventoRepository.Listar
+-- Lista os tipos de evento cadastrados.
 SELECT id_tipo_evento,
     nome
 FROM tipoevento
 ORDER BY id_tipo_evento;
 
 -- 16. TipoEventoRepository.BuscarPorId
+-- Busca um tipo de evento pelo seu identificador.
 SET @id = (
     SELECT MIN(id_tipo_evento)
     FROM tipoevento);
@@ -169,12 +187,14 @@ FROM tipoevento
 WHERE id_tipo_evento = @id;
 
 -- 17. TurnoRepository.Listar
+-- Lista os turnos cadastrados.
 SELECT id_turno,
     nome
 FROM turno
 ORDER BY id_turno;
 
 -- 18. TurnoRepository.BuscarPorId
+-- Busca um turno pelo seu identificador.
 SET @id = (
     SELECT MIN(id_turno)
     FROM turno);
@@ -186,12 +206,14 @@ WHERE id_turno = @id;
 
 -- 03 — Produtos, categorias e fornecedores
 -- 19. CategoriaRepository.Listar
+-- Lista as categorias de produtos em ordem alfabética.
 SELECT id_categoria,
     nome
 FROM categoria
 ORDER BY nome, id_categoria;
 
 -- 20. CategoriaRepository.BuscarPorId
+-- Busca uma categoria de produto pelo seu identificador.
 SET @id = (
     SELECT MIN(id_categoria)
     FROM categoria);
@@ -202,6 +224,7 @@ FROM categoria
 WHERE id_categoria = @id;
 
 -- 21. FornecedorRepository.Listar
+-- Lista os fornecedores cadastrados e seus dados de contato.
 SELECT id_fornecedor,
     nome,
     documento,
@@ -210,6 +233,7 @@ SELECT id_fornecedor,
 FROM fornecedor;
 
 -- 22. FornecedorRepository.BuscarPorId
+-- Busca os dados de um fornecedor pelo seu identificador.
 SET @id = (
     SELECT MIN(id_fornecedor)
     FROM fornecedor);
@@ -223,6 +247,7 @@ FROM fornecedor
 WHERE id_fornecedor = @id;
 
 -- 23. ProdutoFornecedorRepository.ListarPorProduto
+-- Lista os fornecedores vinculados a um produto e o código usado por cada fornecedor.
 SET @id = (
     SELECT MIN(id_produto)
     FROM produtofornecedor);
@@ -235,6 +260,7 @@ WHERE id_produto = @id
 ORDER BY id_fornecedor;
 
 -- 24. ProdutoFornecedorRepository.BuscarPorChave
+-- Consulta o vínculo entre um produto e um fornecedor.
 SET @fornecedor = (
     SELECT MIN(id_fornecedor)
     FROM fornecedor);
@@ -251,6 +277,7 @@ WHERE id_produto = @produto
     AND id_fornecedor = @fornecedor;
 
 -- 25. ProdutoRepository.Listar
+-- Lista os produtos com categoria, descrição, unidade de medida, situação e imagem.
 SELECT id_produto,
     id_categoria,
     nome,
@@ -262,10 +289,12 @@ FROM produto
 ORDER BY nome, id_produto;
 
 -- 26. ProdutoRepository.Contar
+-- Conta o total de produtos cadastrados.
 SELECT COUNT(*)
 FROM produto;
 
 -- 27. ProdutoRepository.BuscarPorId
+-- Busca os dados de um produto pelo seu identificador.
 SET @id = (
     SELECT MIN(id_produto)
     FROM produtofornecedor);
@@ -282,6 +311,7 @@ WHERE id_produto = @id;
 
 -- 04 — Eventos, equipes e escalas
 -- 28. ConsultaOperacionalRepository.Escalas
+-- Lista as escalas de trabalho do evento, respeitando o perfil e os vínculos do usuário.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -323,6 +353,7 @@ WHERE eq.id_evento = ev.id_evento
 ORDER BY j.data, s.nome, p.nome;
 
 -- 29. EquipeEventoRepository.ListarPorEvento
+-- Lista os integrantes da equipe de um evento, incluindo a situação do vínculo.
 SET @id = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -342,6 +373,7 @@ WHERE id_evento = @id
 ORDER BY id_equipe;
 
 -- 30. EquipeEventoRepository.ListarPorPessoa
+-- Lista os vínculos ativos de uma pessoa nas equipes dos eventos.
 SET @pessoa = (
     SELECT id_pessoa
     FROM usuario
@@ -363,6 +395,7 @@ WHERE id_pessoa = @pessoa
 ORDER BY id_evento, id_equipe;
 
 -- 31. EquipeEventoRepository.ListarPessoasDisponiveis
+-- Lista os membros com conta aprovada que ainda não possuem vínculo ativo na equipe do evento.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -385,6 +418,7 @@ WHERE LOWER(u.situacao_conta) = 'aprovado'
 ORDER BY p.nome;
 
 -- 32. EquipeEventoRepository.BuscarPessoaDisponivelPorLogin
+-- Busca pelo login um membro aprovado que possa ser incluído na equipe do evento.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -409,6 +443,7 @@ WHERE u.login = @login
         AND ee.ativo = 1);
 
 -- 33. EquipeEventoRepository.BuscarPorId
+-- Busca um vínculo de equipe pelo seu identificador, incluindo os dados de criação e alteração.
 SET @id = (
     SELECT MIN(id_equipe)
     FROM equipeevento);
@@ -427,6 +462,7 @@ FROM equipeevento
 WHERE id_equipe = @id;
 
 -- 34. EscalaRepository.ListarPorJornada
+-- Lista as escalas de trabalho de uma jornada, em ordem de horário de entrada.
 SET @id = (
     SELECT MIN(id_jornada)
     FROM jornadasetor);
@@ -442,6 +478,7 @@ WHERE id_jornada = @id
 ORDER BY entrada_prevista, id_escala;
 
 -- 35. EscalaRepository.ListarPorEquipe
+-- Lista as escalas de um integrante da equipe, por jornada e horário de entrada.
 SET @id = (
     SELECT MIN(id_equipe)
     FROM equipeevento);
@@ -457,6 +494,7 @@ WHERE id_equipe = @id
 ORDER BY id_jornada, entrada_prevista;
 
 -- 36. EscalaRepository.ListarPorEvento
+-- Lista as escalas cujas equipes e setores pertencem ao evento selecionado.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -476,6 +514,7 @@ WHERE ee.id_evento = @evento
 ORDER BY js.`data`, e.entrada_prevista, e.id_escala;
 
 -- 37. EscalaRepository.BuscarPorId
+-- Busca uma escala de trabalho pelo seu identificador.
 SET @id = (
     SELECT MIN(id_escala)
     FROM escala);
@@ -490,6 +529,7 @@ FROM escala
 WHERE id_escala = @id;
 
 -- 38. EventoRepository.ListarTodos
+-- Lista todos os eventos, em ordem de data de início.
 SELECT id_evento,
     id_instituicao,
     id_tipo_evento,
@@ -507,6 +547,7 @@ FROM evento
 ORDER BY data_inicio, id_evento;
 
 -- 39. EventoRepository.ListarPorInstituicao
+-- Lista os eventos de uma instituição, em ordem de data de início.
 SET @id = (
     SELECT MIN(id_instituicao)
     FROM instituicao);
@@ -529,6 +570,7 @@ WHERE id_instituicao = @id
 ORDER BY data_inicio, id_evento;
 
 -- 40. EventoRepository.ListarPorResponsavel
+-- Lista os eventos gerenciados pela pessoa responsável selecionada.
 SET @responsavel = (
     SELECT id_pessoa
     FROM usuario
@@ -552,6 +594,7 @@ WHERE id_responsavel = @responsavel
 ORDER BY data_inicio, id_evento;
 
 -- 41. EventoRepository.BuscarPorId
+-- Busca os dados de um evento pelo seu identificador.
 SET @id = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -573,6 +616,7 @@ FROM evento
 WHERE id_evento = @id;
 
 -- 42. JornadaSetorRepository.ListarPorSetor
+-- Lista as jornadas de um setor, em ordem de data.
 SET @id = (
     SELECT MIN(id_setor)
     FROM estoquesetor);
@@ -586,6 +630,7 @@ WHERE id_setor = @id
 ORDER BY `data`, id_jornada;
 
 -- 43. JornadaSetorRepository.BuscarPorId
+-- Busca uma jornada de setor pelo seu identificador.
 SET @id = (
     SELECT MIN(id_jornada)
     FROM jornadasetor);
@@ -598,15 +643,25 @@ FROM jornadasetor
 WHERE id_jornada = @id;
 
 -- 44. JornadaSetorRepository.BuscarPorSetorDataTurno
-SET @data = CURDATE();
+-- Busca a jornada correspondente ao setor, à data e ao turno selecionados.
+SET @jornada = (
+    SELECT MIN(id_jornada)
+    FROM jornadasetor);
 
 SET @setor = (
-    SELECT MIN(id_setor)
-    FROM setor);
+    SELECT id_setor
+    FROM jornadasetor
+    WHERE id_jornada = @jornada);
+
+SET @data = (
+    SELECT `data`
+    FROM jornadasetor
+    WHERE id_jornada = @jornada);
 
 SET @turno = (
-    SELECT MIN(id_turno)
-    FROM turno);
+    SELECT id_turno
+    FROM jornadasetor
+    WHERE id_jornada = @jornada);
 
 SELECT id_jornada,
     id_setor,
@@ -618,6 +673,7 @@ WHERE id_setor = @setor
     AND id_turno = @turno;
 
 -- 45. SetorRepository.ListarPorEvento
+-- Lista os setores de um evento em ordem alfabética.
 SET @id = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -630,6 +686,7 @@ WHERE id_evento = @id
 ORDER BY nome, id_setor;
 
 -- 46. SetorRepository.BuscarPorId
+-- Busca um setor pelo seu identificador.
 SET @id = (
     SELECT MIN(id_setor)
     FROM estoquesetor);
@@ -642,6 +699,7 @@ WHERE id_setor = @id;
 
 -- 05 — Locais e saldos de estoque
 -- 47. ConsultaOperacionalRepository.Estoques
+-- Lista os saldos e limites de estoque dos locais que o perfil do usuário pode consultar.
 SET @perfil = 'Administrador';
 
 SET @pessoa = (
@@ -658,7 +716,7 @@ SELECT l.id_local_estoque,
     es.quantidade_minima,
     es.quantidade_ideal
 FROM estoque es
-JOIN localestoque l ON l.id_local_estoque = es.id_local_estoque
+JOIN vw_localestoque l ON l.id_local_estoque = es.id_local_estoque
 JOIN produto p ON p.id_produto = es.id_produto
 LEFT JOIN evento ev ON ev.id_evento = l.id_evento
 WHERE (@perfil = 'Administrador'
@@ -685,9 +743,10 @@ WHERE (@perfil = 'Administrador'
 ORDER BY l.nome, p.nome;
 
 -- 48. EstoqueRepository.ListarPorLocal
+-- Lista os produtos e suas quantidades atual, mínima e ideal em um local de estoque.
 SET @id = (
     SELECT MIN(id_local_estoque)
-    FROM localestoque);
+    FROM vw_localestoque);
 
 SELECT id_estoque,
     id_local_estoque,
@@ -700,6 +759,7 @@ WHERE id_local_estoque = @id
 ORDER BY id_produto;
 
 -- 49. EstoqueRepository.BuscarPorId
+-- Busca um saldo de estoque pelo seu identificador.
 SET @id = (
     SELECT MIN(id_estoque)
     FROM estoque);
@@ -714,9 +774,10 @@ FROM estoque
 WHERE id_estoque = @id;
 
 -- 50. EstoqueRepository.BuscarPorLocalEProduto
+-- Consulta as quantidades de um produto em um local de estoque específico.
 SET @local = (
     SELECT MIN(id_local_estoque)
-    FROM localestoque);
+    FROM vw_localestoque);
 
 SET @produto = (
     SELECT MIN(id_produto)
@@ -733,6 +794,7 @@ WHERE id_local_estoque = @local
     AND id_produto = @produto;
 
 -- 51. EstoqueSetorRepository.Listar
+-- Lista os vínculos entre setores, locais de estoque e eventos.
 SELECT id_setor,
     id_local_estoque,
     id_evento
@@ -740,6 +802,7 @@ FROM estoquesetor
 ORDER BY id_setor;
 
 -- 52. EstoqueSetorRepository.BuscarPorSetor
+-- Consulta o local de estoque e o evento vinculados a um setor.
 SET @id = (
     SELECT MIN(id_setor)
     FROM estoquesetor);
@@ -751,6 +814,7 @@ FROM estoquesetor
 WHERE id_setor = @id;
 
 -- 53. LocalEstoqueRepository.Listar
+-- Lista os locais de estoque com sua instituição, evento e indicação de central ou geral.
 SELECT id_local_estoque,
     id_instituicao,
     id_evento,
@@ -758,10 +822,11 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 ORDER BY id_local_estoque;
 
 -- 54. LocalEstoqueRepository.ListarCentrais
+-- Lista os estoques centrais de uma instituição.
 SET @instituicao = (
     SELECT MIN(id_instituicao)
     FROM instituicao);
@@ -773,12 +838,13 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 WHERE id_instituicao = @instituicao
     AND eh_central = 1
 ORDER BY id_local_estoque;
 
 -- 55. LocalEstoqueRepository.ListarPorEvento
+-- Lista os locais de estoque vinculados a um evento.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -790,11 +856,12 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 WHERE id_evento = @evento
 ORDER BY id_local_estoque;
 
 -- 56. LocalEstoqueRepository.ListarGeraisPorEvento
+-- Lista os estoques gerais de um evento.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -806,15 +873,16 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 WHERE id_evento = @evento
     AND eh_geral_evento = 1
 ORDER BY id_local_estoque;
 
 -- 57. LocalEstoqueRepository.BuscarPorId
+-- Busca um local de estoque pelo seu identificador.
 SET @id = (
     SELECT MIN(id_local_estoque)
-    FROM localestoque);
+    FROM vw_localestoque);
 
 SELECT id_local_estoque,
     id_instituicao,
@@ -823,11 +891,12 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 WHERE id_local_estoque = @id;
 
 -- 06 — Entradas de mercadorias
 -- 58. EntradaItemRepository.ListarPorEntrada
+-- Lista os produtos, as quantidades e os custos unitários de uma entrada de mercadorias.
 SET @id = (
     SELECT MIN(id_entrada)
     FROM entradamercadoria);
@@ -842,9 +911,12 @@ WHERE id_entrada = @id
 ORDER BY id_entrada_item;
 
 -- 59. EntradaMercadoriaRepository.ListarPorLocalDestino
+-- Lista as entradas de mercadorias destinadas a um local específico de estoque.
 SET @id = (
-    SELECT MIN(id_entrada)
-    FROM entradamercadoria);
+    SELECT id_local_destino
+    FROM entradamercadoria
+    ORDER BY id_entrada
+    LIMIT 1);
 
 SELECT id_entrada,
     id_fornecedor,
@@ -864,6 +936,7 @@ WHERE id_local_destino = @id
 ORDER BY data_hora DESC, id_entrada DESC;
 
 -- 60. EntradaMercadoriaRepository.BuscarPorId
+-- Busca os dados de uma entrada de mercadorias pelo seu identificador.
 SET @id = (
     SELECT MIN(id_entrada)
     FROM entradamercadoria);
@@ -886,6 +959,7 @@ WHERE id_entrada = @id;
 
 -- 07 — Solicitações e atendimento
 -- 61. SolicitacaoEstoqueCentralRepository.ListarPendentes
+-- Lista as solicitações ao estoque central na situação selecionada, inicialmente pendente.
 SET @situacao = 'pendente';
 
 SELECT id_solicitacao_estoque_central,
@@ -901,11 +975,12 @@ SELECT id_solicitacao_estoque_central,
     decidida_em,
     justificativa_rejeicao,
     versao
-FROM solicitacaoestoquecentral
+FROM vw_solicitacaoestoquecentral
 WHERE situacao = @situacao
 ORDER BY data_hora, id_solicitacao_estoque_central;
 
 -- 62. SolicitacaoEstoqueCentralRepository.ListarAprovadasSemAtendimento
+-- Lista as solicitações na situação selecionada, inicialmente aprovada, que ainda não geraram transferência.
 SET @situacao = 'aprovada';
 
 SELECT id_solicitacao_estoque_central,
@@ -921,7 +996,7 @@ SELECT id_solicitacao_estoque_central,
     decidida_em,
     justificativa_rejeicao,
     versao
-FROM solicitacaoestoquecentral s
+FROM vw_solicitacaoestoquecentral s
 WHERE s.situacao = @situacao
     AND NOT EXISTS (
     SELECT 1
@@ -930,6 +1005,7 @@ WHERE s.situacao = @situacao
 ORDER BY s.data_hora, s.id_solicitacao_estoque_central;
 
 -- 63. SolicitacaoEstoqueCentralRepository.ListarPorSolicitante
+-- Lista as solicitações ao estoque central feitas por um usuário.
 SET @usuario = (
     SELECT id_usuario
     FROM usuario
@@ -948,14 +1024,15 @@ SELECT id_solicitacao_estoque_central,
     decidida_em,
     justificativa_rejeicao,
     versao
-FROM solicitacaoestoquecentral
+FROM vw_solicitacaoestoquecentral
 WHERE id_usuario_solicitante = @usuario
 ORDER BY data_hora DESC, id_solicitacao_estoque_central DESC;
 
 -- 64. SolicitacaoEstoqueCentralRepository.BuscarPorId
+-- Busca uma solicitação ao estoque central pelo seu identificador.
 SET @id = (
     SELECT MIN(id_solicitacao_estoque_central)
-    FROM solicitacaoestoquecentral);
+    FROM vw_solicitacaoestoquecentral);
 
 SELECT id_solicitacao_estoque_central,
     tipo,
@@ -970,13 +1047,14 @@ SELECT id_solicitacao_estoque_central,
     decidida_em,
     justificativa_rejeicao,
     versao
-FROM solicitacaoestoquecentral
+FROM vw_solicitacaoestoquecentral
 WHERE id_solicitacao_estoque_central = @id;
 
 -- 65. SolicitacaoEstoqueCentralRepository.ListarItens
+-- Lista os produtos e as quantidades de uma solicitação ao estoque central.
 SET @id = (
     SELECT MIN(id_solicitacao_estoque_central)
-    FROM solicitacaoestoquecentral);
+    FROM vw_solicitacaoestoquecentral);
 
 SELECT id_solicitacao_estoque_central_item,
     id_solicitacao_estoque_central,
@@ -987,15 +1065,17 @@ WHERE id_solicitacao_estoque_central = @id
 ORDER BY id_produto;
 
 -- 66. SolicitacaoEstoqueCentralRepository.BuscarIdTransferenciaAtendimento
+-- Consulta a transferência que realizou o atendimento de uma solicitação ao estoque central.
 SET @id = (
     SELECT MIN(id_solicitacao_estoque_central)
-    FROM solicitacaoestoquecentral);
+    FROM vw_solicitacaoestoquecentral);
 
 SELECT id_transferencia
 FROM transferenciaestoque
 WHERE id_solicitacao_estoque_central = @id;
 
 -- 67. SolicitacaoItemRepository.ListarPorSolicitacao
+-- Lista os produtos e as quantidades de uma solicitação de reposição.
 SET @id = (
     SELECT MIN(id_solicitacao)
     FROM solicitacao);
@@ -1009,6 +1089,7 @@ WHERE id_solicitacao = @id
 ORDER BY id_solicitacao_item;
 
 -- 68. SolicitacaoRepository.ListarPorEscala
+-- Lista as solicitações de reposição vinculadas a uma escala de trabalho.
 SET @id = (
     SELECT MIN(id_escala)
     FROM escala);
@@ -1030,6 +1111,7 @@ WHERE id_escala = @id
 ORDER BY data_hora DESC, id_solicitacao DESC;
 
 -- 69. SolicitacaoRepository.ListarPorSolicitante
+-- Lista as solicitações de reposição feitas por um usuário.
 SET @usuario = (
     SELECT id_usuario
     FROM usuario
@@ -1052,6 +1134,7 @@ WHERE id_usuario_solicitante = @usuario
 ORDER BY data_hora DESC, id_solicitacao DESC;
 
 -- 70. SolicitacaoRepository.ListarPorEvento
+-- Lista as solicitações de reposição cujas equipes e setores pertencem ao evento selecionado.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -1078,6 +1161,7 @@ WHERE ee.id_evento = @evento
 ORDER BY so.data_hora DESC, so.id_solicitacao DESC;
 
 -- 71. SolicitacaoRepository.BuscarPorId
+-- Busca uma solicitação de reposição pelo seu identificador.
 SET @id = (
     SELECT MIN(id_solicitacao)
     FROM solicitacao);
@@ -1098,6 +1182,7 @@ FROM solicitacao
 WHERE id_solicitacao = @id;
 
 -- 72. SolicitacaoRepository.ListarPendentesPorEvento
+-- Lista as solicitações de reposição do evento na situação selecionada, inicialmente pendente.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -1128,6 +1213,7 @@ ORDER BY so.data_hora, so.id_solicitacao;
 
 -- 08 — Movimentações, correções e auditoria
 -- 73. ConsultaOperacionalRepository.Movimentacoes
+-- Reúne entradas, transferências, vendas e perdas do período, respeitando as permissões do usuário.
 SET @fim = DATE_ADD(CURDATE(), INTERVAL 2 DAY);
 
 SET @inicio = DATE_SUB(CURDATE(), INTERVAL 31 DAY);
@@ -1166,7 +1252,7 @@ FROM(
     FROM entradamercadoria en
     JOIN entradaitem i ON i.id_entrada = en.id_entrada
     JOIN produto p ON p.id_produto = i.id_produto
-    JOIN localestoque l ON l.id_local_estoque = en.id_local_destino
+    JOIN vw_localestoque l ON l.id_local_estoque = en.id_local_destino
     JOIN usuario u ON u.id_usuario = en.id_usuario_responsavel
     WHERE @perfil = 'Administrador'
     UNION ALL
@@ -1185,8 +1271,8 @@ FROM(
     FROM transferenciaestoque tr
     JOIN transferenciaitem i ON i.id_transferencia = tr.id_transferencia
     JOIN produto p ON p.id_produto = i.id_produto
-    JOIN localestoque o ON o.id_local_estoque = tr.id_local_origem
-    JOIN localestoque d ON d.id_local_estoque = tr.id_local_destino
+    JOIN vw_localestoque o ON o.id_local_estoque = tr.id_local_origem
+    JOIN vw_localestoque d ON d.id_local_estoque = tr.id_local_destino
     JOIN usuario u ON u.id_usuario = tr.id_usuario_responsavel
     WHERE @perfil <> 'Membro'
     UNION ALL
@@ -1234,6 +1320,7 @@ WHERE m.data_hora >= @inicio
 ORDER BY m.data_hora DESC;
 
 -- 74. ConsultaOperacionalRepository.ItensParaCorrecao
+-- Lista os produtos, as quantidades e os preços de uma venda ou perda para correção.
 SET @evento = (
     SELECT MIN(id_registro)
     FROM registro);
@@ -1250,6 +1337,7 @@ WHERE ri.id_registro = @evento
 ORDER BY ri.id_registro_item;
 
 -- 75. ConsultaOperacionalRepository.ItensParaCorrecao
+-- Lista os produtos, as quantidades e os custos de uma entrada de mercadorias para correção.
 SET @evento = (
     SELECT MIN(id_entrada)
     FROM entradamercadoria);
@@ -1265,6 +1353,7 @@ WHERE ei.id_entrada = @evento
 ORDER BY ei.id_entrada_item;
 
 -- 76. ConsultaOperacionalRepository.ItensParaCorrecao
+-- Lista os produtos e as quantidades de uma transferência para correção.
 SET @evento = (
     SELECT MIN(id_transferencia)
     FROM transferenciaestoque);
@@ -1280,11 +1369,13 @@ WHERE ti.id_transferencia = @evento
 ORDER BY ti.id_transferencia_item;
 
 -- 77. ConsultaOperacionalRepository.HistoricoDaOperacao
+-- Lista as correções de uma operação com responsável, justificativa e versões anterior e nova; sem correções, não retorna registros.
 SET @evento = (
-    SELECT MIN(id_solicitacao_estoque_central)
-    FROM solicitacaoestoquecentral);
+    SELECT MIN(id_registro)
+    FROM registro);
 
-SET @perfil = 'solicitacaoestoquecentral';
+SET @perfil = 'registro';
+
 
 SELECT h.data_hora,
     u.login AS responsavel,
@@ -1298,9 +1389,12 @@ WHERE h.entidade = @perfil
 ORDER BY h.id_historico DESC;
 
 -- 78. TransferenciaEstoqueRepository.ListarPorLocalOrigem
+-- Lista as transferências que saíram de um local de estoque específico.
 SET @id = (
-    SELECT MIN(id_transferencia)
-    FROM transferenciaestoque);
+    SELECT id_local_origem
+    FROM transferenciaestoque
+    ORDER BY id_transferencia
+    LIMIT 1);
 
 SELECT id_transferencia,
     id_local_origem,
@@ -1320,6 +1414,7 @@ WHERE id_local_origem = @id
 ORDER BY data_hora DESC, id_transferencia DESC;
 
 -- 79. TransferenciaEstoqueRepository.BuscarPorId
+-- Busca os dados de uma transferência de estoque pelo seu identificador.
 SET @id = (
     SELECT MIN(id_transferencia)
     FROM transferenciaestoque);
@@ -1341,6 +1436,7 @@ FROM transferenciaestoque
 WHERE id_transferencia = @id;
 
 -- 80. TransferenciaItemRepository.ListarPorTransferencia
+-- Lista os produtos e as quantidades movimentadas em uma transferência.
 SET @id = (
     SELECT MIN(id_transferencia)
     FROM transferenciaestoque);
@@ -1355,6 +1451,7 @@ ORDER BY id_transferencia_item;
 
 -- 09 — Vendas e perdas
 -- 81. ConsultaOperacionalRepository.ProdutosDaEscala
+-- Lista os produtos ativos e os preços de venda configurados no setor de uma escala.
 SET @evento = (
     SELECT MIN(id_escala)
     FROM escala);
@@ -1371,6 +1468,7 @@ WHERE e.id_escala = @evento
 ORDER BY p.nome;
 
 -- 82. ConsultaOperacionalRepository.Registros
+-- Lista as vendas e perdas do evento no período, com produtos e valores, respeitando as permissões do usuário.
 SET @evento = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -1429,6 +1527,7 @@ WHERE eq.id_evento = ev.id_evento
 ORDER BY r.data_hora DESC, r.id_registro DESC;
 
 -- 83. RegistroItemRepository.ListarPorRegistro
+-- Lista os itens de uma venda ou perda, com quantidades e preços praticados.
 SET @id = (
     SELECT MIN(id_registro)
     FROM registro);
@@ -1443,6 +1542,7 @@ WHERE id_registro = @id
 ORDER BY id_registro_item;
 
 -- 84. RegistroRepository.ListarPorEscala
+-- Lista as vendas e perdas registradas em uma escala de trabalho.
 SET @id = (
     SELECT MIN(id_escala)
     FROM escala);
@@ -1464,6 +1564,7 @@ WHERE id_escala = @id
 ORDER BY data_hora DESC, id_registro DESC;
 
 -- 85. RegistroRepository.BuscarPorId
+-- Busca os dados de uma venda ou perda pelo seu identificador.
 SET @id = (
     SELECT MIN(id_registro)
     FROM registro);
@@ -1485,6 +1586,7 @@ WHERE id_registro = @id;
 
 -- 10 — Despesas e conferência financeira
 -- 86. ApuracaoRepository.VendasPorJornada
+-- Lista os itens vendidos em uma jornada, com responsável, pagamento e valor total de cada item.
 SET @jornada = (
     SELECT MIN(id_jornada)
     FROM jornadasetor);
@@ -1511,6 +1613,7 @@ WHERE j.id_jornada = @jornada
 ORDER BY r.data_hora, r.id_registro;
 
 -- 87. ApuracaoRepository.ResumoPorJornada
+-- Soma as vendas da jornada por forma de pagamento e conta os itens sem preço informado.
 SET @jornada = (
     SELECT MIN(id_jornada)
     FROM jornadasetor);
@@ -1526,6 +1629,7 @@ WHERE e.id_jornada = @jornada
 GROUP BY r.forma_pagamento;
 
 -- 88. ApuracaoRepository.ListarPorJornada
+-- Lista as conferências financeiras de uma jornada, com o total informado e os valores por pagamento.
 SET @id = (
     SELECT MIN(id_jornada)
     FROM jornadasetor);
@@ -1539,14 +1643,15 @@ SELECT id_apuracao,
     valor_dinheiro,
     valor_pix,
     valor_cartao
-FROM apuracao
+FROM vw_apuracao
 WHERE id_jornada = @id
 ORDER BY id_apuracao;
 
 -- 89. ApuracaoRepository.BuscarPorId
+-- Busca uma conferência financeira pelo seu identificador.
 SET @id = (
     SELECT MIN(id_apuracao)
-    FROM apuracao);
+    FROM vw_apuracao);
 
 SELECT id_apuracao,
     id_jornada,
@@ -1557,10 +1662,11 @@ SELECT id_apuracao,
     valor_dinheiro,
     valor_pix,
     valor_cartao
-FROM apuracao
+FROM vw_apuracao
 WHERE id_apuracao = @id;
 
 -- 90. DespesaRepository.ListarPorEvento
+-- Lista as despesas de um evento, da mais recente para a mais antiga.
 SET @id = (
     SELECT MIN(id_evento)
     FROM evento);
@@ -1577,6 +1683,7 @@ WHERE id_evento = @id
 ORDER BY `data` DESC, id_despesa DESC;
 
 -- 91. DespesaRepository.BuscarPorId
+-- Busca os dados de uma despesa pelo seu identificador.
 SET @id = (
     SELECT MIN(id_despesa)
     FROM despesa);
@@ -1593,6 +1700,7 @@ WHERE id_despesa = @id;
 
 -- 11 — Relatórios
 -- 92. ConsultaOperacionalRepository.Relatorio
+-- Apresenta os eventos que coincidem com o período consultado, respeitando as permissões do usuário.
 SET @fim = DATE_ADD(CURDATE(), INTERVAL 2 DAY);
 
 SET @inicio = DATE_SUB(CURDATE(), INTERVAL 31 DAY);
@@ -1620,6 +1728,7 @@ WHERE (@perfil = 'Administrador'
 ORDER BY ev.data_inicio, ev.nome;
 
 -- 93. ConsultaOperacionalRepository.Relatorio
+-- Apresenta as reposições solicitadas no período, com produtos e decisões, respeitando as permissões do usuário.
 SET @fim = DATE_ADD(CURDATE(), INTERVAL 2 DAY);
 
 SET @inicio = DATE_SUB(CURDATE(), INTERVAL 31 DAY);
@@ -1666,6 +1775,7 @@ WHERE eq.id_evento = ev.id_evento
 ORDER BY so.data_hora DESC;
 
 -- 94. ConsultaOperacionalRepository.Relatorio
+-- Apresenta as solicitações ao estoque central no período, com decisões e transferências, respeitando as permissões do usuário.
 SET @fim = DATE_ADD(CURDATE(), INTERVAL 2 DAY);
 
 SET @inicio = DATE_SUB(CURDATE(), INTERVAL 31 DAY);
@@ -1689,7 +1799,7 @@ SELECT so.id_solicitacao_estoque_central,
     so.decidida_em,
     so.justificativa_rejeicao,
     tr.id_transferencia
-FROM solicitacaoestoquecentral so
+FROM vw_solicitacaoestoquecentral so
 JOIN evento ev ON ev.id_evento = so.id_evento
 JOIN usuario u ON u.id_usuario = so.id_usuario_solicitante
 JOIN solicitacaoestoquecentralitem si ON si.id_solicitacao_estoque_central = so.id_solicitacao_estoque_central
@@ -1705,6 +1815,7 @@ WHERE (@perfil = 'Administrador'
 ORDER BY so.data_hora DESC;
 
 -- 95. ConsultaOperacionalRepository.Relatorio
+-- Apresenta as despesas do período com evento, fornecedor e responsável, respeitando as permissões do usuário.
 SET @fim = DATE_ADD(CURDATE(), INTERVAL 2 DAY);
 
 SET @inicio = DATE_SUB(CURDATE(), INTERVAL 31 DAY);
@@ -1735,6 +1846,7 @@ WHERE (@perfil = 'Administrador'
 ORDER BY de.data DESC;
 
 -- 96. ConsultaOperacionalRepository.Relatorio
+-- Compara cada conferência com as vendas atuais da jornada, por pagamento, sem calcular diferenças quando há dados de venda pendentes.
 SET @fim = DATE_ADD(CURDATE(), INTERVAL 2 DAY);
 
 SET @inicio = DATE_SUB(CURDATE(), INTERVAL 31 DAY);
@@ -1763,7 +1875,7 @@ SELECT a.id_apuracao,
     CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_dinheiro - COALESCE(v.dinheiro, 0) END AS diferenca_dinheiro_atual,
     CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_pix - COALESCE(v.pix, 0) END AS diferenca_pix_atual,
     CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_cartao - COALESCE(v.cartao, 0) END AS diferenca_cartao_atual
-FROM apuracao a
+FROM vw_apuracao a
 JOIN jornadasetor j ON j.id_jornada = a.id_jornada
 JOIN turno t ON t.id_turno = j.id_turno
 JOIN setor s ON s.id_setor = j.id_setor
@@ -1791,6 +1903,7 @@ WHERE (@perfil = 'Administrador'
 ORDER BY j.data DESC, a.data_hora DESC;
 
 -- 97. ConsultaOperacionalRepository.InstituicoesDoRelatorio
+-- Lista os nomes das instituições relacionadas aos eventos que o usuário pode consultar nos relatórios.
 SET @perfil = 'Administrador';
 
 SET @pessoa = (
@@ -1814,6 +1927,7 @@ WHERE @perfil = 'Administrador'
 ORDER BY i.nome;
 
 -- 98. ProdutoSetorRepository.ListarPorSetor
+-- Lista os produtos e os preços de venda configurados para um setor.
 SET @id = (
     SELECT MIN(id_setor)
     FROM estoquesetor);
@@ -1827,6 +1941,7 @@ WHERE id_setor = @id
 ORDER BY id_produto_setor;
 
 -- 99. ProdutoSetorRepository.BuscarPorId
+-- Busca a configuração de produto e preço de um setor pelo seu identificador.
 SET @id = (
     SELECT MIN(id_produto_setor)
     FROM produtosetor);

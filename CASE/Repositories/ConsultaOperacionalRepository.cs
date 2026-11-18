@@ -64,7 +64,7 @@ namespace CASE.Repositories
         {
             string sql = "SELECT l.id_local_estoque,l.nome AS local,p.id_produto,p.nome AS produto,p.unidade_medida," +
                 "es.quantidade_atual,es.quantidade_minima,es.quantidade_ideal " +
-                "FROM estoque es JOIN localestoque l ON l.id_local_estoque=es.id_local_estoque " +
+                "FROM estoque es JOIN vw_localestoque l ON l.id_local_estoque=es.id_local_estoque " +
                 "JOIN produto p ON p.id_produto=es.id_produto " +
                 "LEFT JOIN evento ev ON ev.id_evento=l.id_evento WHERE " +
                 "(@perfil='Administrador' OR (@perfil='Gerente' AND (ev.id_responsavel=@pessoa OR " +
@@ -89,14 +89,14 @@ namespace CASE.Repositories
                 "en.id_entrada AS id_operacao,'entradamercadoria' AS entidade " +
                 "FROM entradamercadoria en JOIN entradaitem i ON i.id_entrada=en.id_entrada " +
                 "JOIN produto p ON p.id_produto=i.id_produto " +
-                "JOIN localestoque l ON l.id_local_estoque=en.id_local_destino " +
+                "JOIN vw_localestoque l ON l.id_local_estoque=en.id_local_destino " +
                 "JOIN usuario u ON u.id_usuario=en.id_usuario_responsavel WHERE @perfil='Administrador' " +
                 "UNION ALL SELECT tr.data_hora,'transferencia',p.nome,i.quantidade,o.nome,d.nome,u.login," +
                 "COALESCE(o.id_evento,d.id_evento),o.id_local_estoque,d.id_local_estoque,tr.id_transferencia,'transferenciaestoque' FROM transferenciaestoque tr " +
                 "JOIN transferenciaitem i ON i.id_transferencia=tr.id_transferencia " +
                 "JOIN produto p ON p.id_produto=i.id_produto " +
-                "JOIN localestoque o ON o.id_local_estoque=tr.id_local_origem " +
-                "JOIN localestoque d ON d.id_local_estoque=tr.id_local_destino " +
+                "JOIN vw_localestoque o ON o.id_local_estoque=tr.id_local_origem " +
+                "JOIN vw_localestoque d ON d.id_local_estoque=tr.id_local_destino " +
                 "JOIN usuario u ON u.id_usuario=tr.id_usuario_responsavel " +
                 "WHERE @perfil<>'Membro' UNION ALL SELECT r.data_hora,r.tipo,p.nome,i.quantidade," +
                 "s.nome,'',u.login,ev.id_evento,es.id_local_estoque,0,r.id_registro,'registro' FROM registro r " +
@@ -185,7 +185,7 @@ namespace CASE.Repositories
                     sql = "SELECT so.id_solicitacao_estoque_central,so.tipo,so.data_hora,ev.nome AS evento," +
                         "u.login AS solicitante,so.situacao,p.nome AS produto,si.quantidade," +
                         "d.login AS decisor,so.decidida_em,so.justificativa_rejeicao,tr.id_transferencia " +
-                        "FROM solicitacaoestoquecentral so JOIN evento ev ON ev.id_evento=so.id_evento " +
+                        "FROM vw_solicitacaoestoquecentral so JOIN evento ev ON ev.id_evento=so.id_evento " +
                         "JOIN usuario u ON u.id_usuario=so.id_usuario_solicitante " +
                         "JOIN solicitacaoestoquecentralitem si ON si.id_solicitacao_estoque_central=so.id_solicitacao_estoque_central " +
                         "JOIN produto p ON p.id_produto=si.id_produto " +
@@ -213,7 +213,7 @@ namespace CASE.Repositories
                         "CASE WHEN COALESCE(v.pendentes,0)>0 THEN NULL ELSE a.valor_dinheiro-COALESCE(v.dinheiro,0) END AS diferenca_dinheiro_atual," +
                         "CASE WHEN COALESCE(v.pendentes,0)>0 THEN NULL ELSE a.valor_pix-COALESCE(v.pix,0) END AS diferenca_pix_atual," +
                         "CASE WHEN COALESCE(v.pendentes,0)>0 THEN NULL ELSE a.valor_cartao-COALESCE(v.cartao,0) END AS diferenca_cartao_atual " +
-                        "FROM apuracao a " +
+                        "FROM vw_apuracao a " +
                         "JOIN jornadasetor j ON j.id_jornada=a.id_jornada " +
                         "JOIN turno t ON t.id_turno=j.id_turno JOIN setor s ON s.id_setor=j.id_setor " +
                         "JOIN evento ev ON ev.id_evento=s.id_evento " +

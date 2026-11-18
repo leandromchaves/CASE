@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using CASE.Models;
 using CASE.Services;
 using MySql.Data.MySqlClient;
@@ -78,8 +78,8 @@ namespace CASE.Repositories
                         AcessoDados.Executar(
                             conexao,
                             transacao,
-                            "INSERT INTO localestoque (id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento) " +
-                            "VALUES (@instituicao,@evento,@nome,1,0,1)",
+                            "INSERT INTO localestoque (id_instituicao_central,id_evento,nome,ativo,eh_geral_evento) " +
+                            "VALUES (NULL,@evento,@nome,1,1)",
                             comando =>
                             {
                                 AcessoDados.AdicionarParametro(comando, "@instituicao", item.IdInstituicao);
@@ -164,7 +164,7 @@ namespace CASE.Repositories
                         {
                             using (var comando = new MySqlCommand(
                                 "SELECT COUNT(*) FROM estoque e " +
-                                "JOIN localestoque le ON le.id_local_estoque=e.id_local_estoque " +
+                                "JOIN vw_localestoque le ON le.id_local_estoque=e.id_local_estoque " +
                                 "WHERE le.id_evento=@evento AND e.quantidade_atual<>0",
                                 conexao,
                                 transacao))

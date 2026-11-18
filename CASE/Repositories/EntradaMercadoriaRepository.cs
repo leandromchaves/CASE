@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using CASE.Models;
 using MySql.Data.MySqlClient;
@@ -351,7 +351,7 @@ CriarSnapshot(conexao, transacao, atual.IdEntrada));
             int idLocal)
         {
             using (MySqlCommand comando = new MySqlCommand(
-                "SELECT le.id_local_estoque FROM localestoque le " +
+                "SELECT le.id_local_estoque FROM vw_localestoque le " +
                 "JOIN usuario u ON u.id_usuario=@usuario " +
                 "JOIN perfilsistema ps ON ps.id_perfil_sistema=u.id_perfil_sistema " +
                 "WHERE le.id_local_estoque=@local AND le.eh_central=1 " +

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Services;
@@ -53,7 +53,7 @@ namespace CASE.Repositories
 
                         using (MySqlCommand comando = new MySqlCommand(
                             "SELECT tipo,id_instituicao,id_evento,id_local_origem,id_local_destino," +
-                            "situacao,versao FROM solicitacaoestoquecentral " +
+                            "situacao,versao FROM vw_solicitacaoestoquecentral " +
                             "WHERE id_solicitacao_estoque_central=@id FOR UPDATE",
                             conexao,
                             transacao))
@@ -298,9 +298,9 @@ namespace CASE.Repositories
             string tipo)
         {
             using (MySqlCommand comando = new MySqlCommand(
-                "SELECT origem.id_local_estoque FROM localestoque origem " +
+                "SELECT origem.id_local_estoque FROM vw_localestoque origem " +
                 "JOIN evento ev ON ev.id_evento=@evento " +
-                "JOIN localestoque destino ON destino.id_local_estoque=@destino " +
+                "JOIN vw_localestoque destino ON destino.id_local_estoque=@destino " +
                 "WHERE origem.id_local_estoque=@origem " +
                 "AND origem.id_instituicao=@instituicao " +
                 "AND origem.ativo=1 AND destino.ativo=1 " +
@@ -608,7 +608,7 @@ namespace CASE.Repositories
                         }
                         using (var comando = new MySqlCommand(
                             "SELECT ev.id_evento,o.eh_central AS central_origem,d.eh_central AS central_destino " +
-                            "FROM localestoque o JOIN localestoque d ON d.id_local_estoque=@destino " +
+                            "FROM vw_localestoque o JOIN vw_localestoque d ON d.id_local_estoque=@destino " +
                             "JOIN evento ev ON ev.id_evento=COALESCE(o.id_evento,d.id_evento) " +
                             "AND ev.id_instituicao=o.id_instituicao " +
                             "WHERE o.id_local_estoque=@origem AND o.id_instituicao=d.id_instituicao " +
@@ -878,8 +878,8 @@ CriarSnapshot(conexao, transacao, atual.IdTransferencia));
                 "JOIN escala e ON e.id_escala=so.id_escala " +
                 "JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +
                 "JOIN estoquesetor es ON es.id_setor=j.id_setor " +
-                "JOIN localestoque destino ON destino.id_local_estoque=es.id_local_estoque " +
-                "JOIN localestoque origem ON origem.id_local_estoque=@origem " +
+                "JOIN vw_localestoque destino ON destino.id_local_estoque=es.id_local_estoque " +
+                "JOIN vw_localestoque origem ON origem.id_local_estoque=@origem " +
                 "WHERE so.id_solicitacao=@id FOR UPDATE",
                 conexao,
                 transacao))
@@ -905,8 +905,8 @@ CriarSnapshot(conexao, transacao, atual.IdTransferencia));
 
             using (MySqlCommand comando = new MySqlCommand(
                 "SELECT origem.id_local_estoque " +
-                "FROM localestoque origem " +
-                "JOIN localestoque destino ON destino.id_local_estoque=@destino " +
+                "FROM vw_localestoque origem " +
+                "JOIN vw_localestoque destino ON destino.id_local_estoque=@destino " +
                 "WHERE origem.id_local_estoque=@origem " +
                 "AND origem.eh_central=0 AND origem.eh_geral_evento=1 " +
                 "AND origem.id_evento=destino.id_evento " +
@@ -995,7 +995,7 @@ CriarSnapshot(conexao, transacao, atual.IdTransferencia));
             int idLocalEvento;
 
             using (MySqlCommand comando = new MySqlCommand(
-                "SELECT id_evento FROM localestoque " +
+                "SELECT id_evento FROM vw_localestoque " +
                 "WHERE id_local_estoque IN (@origem,@destino) AND eh_central=0 " +
                 "ORDER BY id_local_estoque LIMIT 1 FOR UPDATE",
                 conexao,
@@ -1056,8 +1056,8 @@ CriarSnapshot(conexao, transacao, atual.IdTransferencia));
             int idUsuario)
         {
             using (MySqlCommand comando = new MySqlCommand(
-                "SELECT ev.id_evento FROM localestoque origem " +
-                "JOIN localestoque destino " +
+                "SELECT ev.id_evento FROM vw_localestoque origem " +
+                "JOIN vw_localestoque destino " +
                 "ON destino.id_local_estoque=@destino " +
                 "JOIN evento ev ON ev.id_evento=origem.id_evento " +
                 "JOIN usuario u ON u.id_usuario=@usuario " +

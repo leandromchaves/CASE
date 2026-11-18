@@ -1,7 +1,9 @@
 -- Cadastros e movimentações da Associação Comunitária Esperança.
 -- Use um banco separado dos dados da organização.
 -- As senhas são armazenadas somente como hash.
-USE case_entrega_bd1;
+SET SESSION transaction_read_only = IF(COALESCE(@case_instalacao_bloqueada, 0)=1,
+    1, @@session.transaction_read_only);
+USE case_commercial;
 
 SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
@@ -394,51 +396,47 @@ SET @evento = (
     WHERE id_instituicao = @instituicao
         AND nome = 'Festa da Comunidade');
 
-INSERT INTO localestoque(id_instituicao,
+INSERT INTO localestoque(id_instituicao_central,
         nome,
         ativo,
-        eh_central,
         eh_geral_evento,
         id_evento)
 SELECT @instituicao,
     'Estoque central',
     1,
-    1,
     0,
     NULL
 WHERE NOT EXISTS (
     SELECT 1
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_instituicao = @instituicao
         AND eh_central = 1);
 
-INSERT INTO localestoque(id_instituicao,
+INSERT INTO localestoque(id_instituicao_central,
         nome,
         ativo,
-        eh_central,
         eh_geral_evento,
         id_evento)
-SELECT @instituicao,
+SELECT NULL,
     'Estoque geral',
     1,
-    0,
     1,
     @evento
 WHERE NOT EXISTS (
     SELECT 1
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND eh_geral_evento = 1);
 
 SET @central = (
     SELECT id_local_estoque
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_instituicao = @instituicao
         AND eh_central = 1);
 
 SET @geral = (
     SELECT id_local_estoque
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND eh_geral_evento = 1);
 
@@ -458,27 +456,25 @@ SET @setor_bebidas = (
     WHERE id_evento = @evento
         AND nome = 'Barraca de Bebidas');
 
-INSERT INTO localestoque(id_instituicao,
+INSERT INTO localestoque(id_instituicao_central,
         id_evento,
         nome,
         ativo,
-        eh_central,
         eh_geral_evento)
-SELECT @instituicao,
+SELECT NULL,
     @evento,
     CONCAT('Estoque — ', 'Barraca de Bebidas'),
     1,
-    0,
     0
 WHERE NOT EXISTS (
     SELECT 1
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND nome = CONCAT('Estoque — ', 'Barraca de Bebidas'));
 
 SET @local_bebidas = (
     SELECT id_local_estoque
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND nome = CONCAT('Estoque — ', 'Barraca de Bebidas'));
 
@@ -509,27 +505,25 @@ SET @setor_lanches = (
     WHERE id_evento = @evento
         AND nome = 'Barraca de Lanches');
 
-INSERT INTO localestoque(id_instituicao,
+INSERT INTO localestoque(id_instituicao_central,
         id_evento,
         nome,
         ativo,
-        eh_central,
         eh_geral_evento)
-SELECT @instituicao,
+SELECT NULL,
     @evento,
     CONCAT('Estoque — ', 'Barraca de Lanches'),
     1,
-    0,
     0
 WHERE NOT EXISTS (
     SELECT 1
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND nome = CONCAT('Estoque — ', 'Barraca de Lanches'));
 
 SET @local_lanches = (
     SELECT id_local_estoque
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND nome = CONCAT('Estoque — ', 'Barraca de Lanches'));
 
@@ -814,10 +808,7 @@ WHERE NOT EXISTS (
         AND id_produto = @salgado);
 
 -- Pedido aprovado às 08:45; atendimento integral às 09:00.
-INSERT INTO solicitacaoestoquecentral(tipo,
-        id_instituicao,
-        id_evento,
-        id_local_origem,
+INSERT INTO solicitacaoestoquecentral(id_local_origem,
         id_local_destino,
         id_usuario_solicitante,
         data_hora,
@@ -825,10 +816,7 @@ INSERT INTO solicitacaoestoquecentral(tipo,
         id_usuario_decisor,
         decidida_em,
         versao)
-SELECT 'liberacao',
-    @instituicao,
-    @evento,
-    @central,
+SELECT @central,
     @geral,
     @gerente,
     TIMESTAMP(@data_evento, '08:30:00'),
@@ -838,14 +826,14 @@ SELECT 'liberacao',
     3
 WHERE NOT EXISTS (
     SELECT 1
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND tipo = 'liberacao'
         AND data_hora = TIMESTAMP(@data_evento, '08:30:00'));
 
 SET @pedido = (
     SELECT id_solicitacao_estoque_central
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '08:30:00'));
 
@@ -1240,10 +1228,7 @@ WHERE NOT EXISTS (
     WHERE id_solicitacao = @reposicao);
 
 -- Uma aprovação aguarda entrega; o pedido posterior ainda aguarda análise.
-INSERT INTO solicitacaoestoquecentral(tipo,
-        id_instituicao,
-        id_evento,
-        id_local_origem,
+INSERT INTO solicitacaoestoquecentral(id_local_origem,
         id_local_destino,
         id_usuario_solicitante,
         data_hora,
@@ -1251,10 +1236,7 @@ INSERT INTO solicitacaoestoquecentral(tipo,
         id_usuario_decisor,
         decidida_em,
         versao)
-SELECT 'liberacao',
-    @instituicao,
-    @evento,
-    @central,
+SELECT @central,
     @geral,
     @gerente,
     TIMESTAMP(@data_evento, '11:30:00'),
@@ -1264,13 +1246,13 @@ SELECT 'liberacao',
     2
 WHERE NOT EXISTS (
     SELECT 1
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '11:30:00'));
 
 SET @pedido_aprovado = (
     SELECT id_solicitacao_estoque_central
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '11:30:00'));
 
@@ -1286,31 +1268,25 @@ WHERE NOT EXISTS (
     WHERE id_solicitacao_estoque_central = @pedido_aprovado
         AND id_produto = @agua);
 
-INSERT INTO solicitacaoestoquecentral(tipo,
-        id_instituicao,
-        id_evento,
-        id_local_origem,
+INSERT INTO solicitacaoestoquecentral(id_local_origem,
         id_local_destino,
         id_usuario_solicitante,
         data_hora,
         situacao)
-SELECT 'liberacao',
-    @instituicao,
-    @evento,
-    @central,
+SELECT @central,
     @geral,
     @gerente,
     TIMESTAMP(@data_evento, '12:00:00'),
     'pendente'
 WHERE NOT EXISTS (
     SELECT 1
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '12:00:00'));
 
 SET @pedido_pendente = (
     SELECT id_solicitacao_estoque_central
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '12:00:00'));
 
@@ -1346,7 +1322,6 @@ WHERE NOT EXISTS (
         AND `data` = @data_evento);
 
 INSERT INTO apuracao(id_jornada,
-        valor_informado,
         data_hora,
         id_usuario_responsavel,
         observacao,
@@ -1354,7 +1329,6 @@ INSERT INTO apuracao(id_jornada,
         valor_pix,
         valor_cartao)
 SELECT @jornada_bebidas,
-    29.00,
     TIMESTAMP(@data_evento, '12:30:00'),
     @gerente,
     'Conferência das vendas do turno da manhã.',
@@ -1363,7 +1337,7 @@ SELECT @jornada_bebidas,
     5.00
 WHERE NOT EXISTS (
     SELECT 1
-    FROM apuracao
+    FROM vw_apuracao
     WHERE id_jornada = @jornada_bebidas);
 
 -- Aprovação e atendimento preservam etapas e horários distintos.
@@ -1466,7 +1440,7 @@ FROM(
     FROM registroitem ri
     JOIN produtosetor ps ON ps.id_produto_setor = ri.id_produto_setor
     JOIN estoquesetor es ON es.id_setor = ps.id_setor) movimentos
-JOIN localestoque l ON l.id_local_estoque = movimentos.local_id
+JOIN vw_localestoque l ON l.id_local_estoque = movimentos.local_id
 WHERE l.id_instituicao = @instituicao
     AND NOT EXISTS (
     SELECT 1

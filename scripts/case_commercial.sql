@@ -1,9 +1,15 @@
 -- Estrutura do banco de dados do CASE.
 -- Cria um banco novo, sem apagar um banco existente.
-CREATE DATABASE case_entrega_bd1 CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-USE case_entrega_bd1;
+-- Se o banco já existir, pare no erro de criação. A sessão fica somente leitura se o cliente continuar após o erro.
+USE information_schema;
+SET SESSION transaction_read_only = 0;
+CREATE DATABASE case_commercial CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+GET DIAGNOSTICS @case_erros_criacao = NUMBER;
+SET @case_instalacao_bloqueada = (@case_erros_criacao <> 0);
+SET SESSION transaction_read_only = @case_instalacao_bloqueada;
+USE case_commercial;
 SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci;
--- Tabelas, chaves, índices e restrições do banco original.
+-- Tabelas, chaves, índices e restrições do CASE.
 SET FOREIGN_KEY_CHECKS=0;
 CREATE TABLE `analiseusuario` (
   `id_analise` int NOT NULL AUTO_INCREMENT,
@@ -21,7 +27,6 @@ CREATE TABLE `analiseusuario` (
 CREATE TABLE `apuracao` (
   `id_apuracao` int NOT NULL AUTO_INCREMENT,
   `id_jornada` int NOT NULL,
-  `valor_informado` decimal(10,2) NOT NULL,
   `data_hora` datetime NOT NULL,
   `id_usuario_responsavel` int NOT NULL,
   `observacao` text,
@@ -229,24 +234,19 @@ CREATE TABLE `jornadasetor` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CREATE TABLE `localestoque` (
   `id_local_estoque` int NOT NULL AUTO_INCREMENT,
-  `id_instituicao` int NOT NULL,
+  `id_instituicao_central` int DEFAULT NULL,
+  `id_evento` int DEFAULT NULL,
   `nome` varchar(100) NOT NULL,
   `ativo` tinyint(1) NOT NULL,
-  `eh_central` tinyint(1) NOT NULL,
   `eh_geral_evento` tinyint(1) NOT NULL DEFAULT '0',
-  `id_evento` int DEFAULT NULL,
-  `id_central_unico` tinyint GENERATED ALWAYS AS ((case when (`eh_central` = 1) then 1 else NULL end)) STORED,
-  `id_estoque_geral_unico` tinyint GENERATED ALWAYS AS ((case when (`eh_geral_evento` = 1) then 1 else NULL end)) STORED,
   PRIMARY KEY (`id_local_estoque`),
-  UNIQUE KEY `uq_localestoque_id_instituicao` (`id_local_estoque`,`id_instituicao`),
-  UNIQUE KEY `uq_localestoque_central` (`id_instituicao`,`id_central_unico`),
+  UNIQUE KEY `uq_localestoque_central` (`id_instituicao_central`),
   UNIQUE KEY `uq_localestoque_evento` (`id_local_estoque`,`id_evento`),
-  UNIQUE KEY `uq_localestoque_nome_evento` (`id_instituicao`,`id_evento`,`nome`),
-  UNIQUE KEY `uq_localestoque_geral_evento` (`id_evento`,`id_estoque_geral_unico`),
-  KEY `ix_localestoque_evento_instituicao` (`id_evento`,`id_instituicao`),
-  CONSTRAINT `fk_localestoque_evento_instituicao` FOREIGN KEY (`id_evento`, `id_instituicao`) REFERENCES `evento` (`id_evento`, `id_instituicao`),
-  CONSTRAINT `localestoque_ibfk_1` FOREIGN KEY (`id_instituicao`) REFERENCES `instituicao` (`id_instituicao`),
-  CONSTRAINT `chk_localestoque_classificacao` CHECK ((((`eh_central` = 1) and (`eh_geral_evento` = 0) and (`id_evento` is null)) or ((`eh_central` = 0) and (`id_evento` is not null) and (`eh_geral_evento` in (0,1)))))
+  UNIQUE KEY `uq_localestoque_nome_evento` (`id_evento`,`nome`),
+  UNIQUE KEY `uq_localestoque_geral_evento` (`id_evento`,(CASE WHEN eh_geral_evento=1 THEN 1 ELSE NULL END)),
+  CONSTRAINT `fk_localestoque_evento` FOREIGN KEY (`id_evento`) REFERENCES `evento` (`id_evento`),
+  CONSTRAINT `fk_localestoque_central` FOREIGN KEY (`id_instituicao_central`) REFERENCES `instituicao` (`id_instituicao`),
+  CONSTRAINT `chk_localestoque_proprietario` CHECK (((id_instituicao_central IS NOT NULL AND id_evento IS NULL AND eh_geral_evento=0) OR (id_instituicao_central IS NULL AND id_evento IS NOT NULL AND eh_geral_evento IN (0,1))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CREATE TABLE `perfil` (
   `id_perfil` int NOT NULL AUTO_INCREMENT,
@@ -371,9 +371,6 @@ CREATE TABLE `solicitacao` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CREATE TABLE `solicitacaoestoquecentral` (
   `id_solicitacao_estoque_central` int NOT NULL AUTO_INCREMENT,
-  `tipo` varchar(20) NOT NULL,
-  `id_instituicao` int NOT NULL,
-  `id_evento` int NOT NULL,
   `id_local_origem` int NOT NULL,
   `id_local_destino` int NOT NULL,
   `id_usuario_solicitante` int NOT NULL,
@@ -387,19 +384,14 @@ CREATE TABLE `solicitacaoestoquecentral` (
   KEY `ix_solicitacao_central_pendencia` (`situacao`,`data_hora`),
   KEY `ix_solicitacao_central_solicitante` (`id_usuario_solicitante`,`data_hora`),
   KEY `ix_solicitacao_central_decisor` (`id_usuario_decisor`),
-  KEY `fk_solicitacao_central_evento_instituicao` (`id_evento`,`id_instituicao`),
-  KEY `fk_solicitacao_central_origem_instituicao` (`id_local_origem`,`id_instituicao`),
-  KEY `fk_solicitacao_central_destino_instituicao` (`id_local_destino`,`id_instituicao`),
   CONSTRAINT `fk_solicitacao_central_decisor` FOREIGN KEY (`id_usuario_decisor`) REFERENCES `usuario` (`id_usuario`),
-  CONSTRAINT `fk_solicitacao_central_destino_instituicao` FOREIGN KEY (`id_local_destino`, `id_instituicao`) REFERENCES `localestoque` (`id_local_estoque`, `id_instituicao`),
-  CONSTRAINT `fk_solicitacao_central_evento_instituicao` FOREIGN KEY (`id_evento`, `id_instituicao`) REFERENCES `evento` (`id_evento`, `id_instituicao`),
-  CONSTRAINT `fk_solicitacao_central_origem_instituicao` FOREIGN KEY (`id_local_origem`, `id_instituicao`) REFERENCES `localestoque` (`id_local_estoque`, `id_instituicao`),
   CONSTRAINT `fk_solicitacao_central_solicitante` FOREIGN KEY (`id_usuario_solicitante`) REFERENCES `usuario` (`id_usuario`),
   CONSTRAINT `chk_solicitacao_central_decisao` CHECK ((((`situacao` = _utf8mb4'pendente') and (`id_usuario_decisor` is null) and (`decidida_em` is null)) or ((`situacao` in (_utf8mb4'aprovada',_utf8mb4'rejeitada',_utf8mb4'atendida')) and (`id_usuario_decisor` is not null) and (`decidida_em` is not null)))),
   CONSTRAINT `chk_solicitacao_central_justificativa` CHECK ((((`situacao` = _utf8mb4'rejeitada') and (`justificativa_rejeicao` is not null) and (char_length(trim(`justificativa_rejeicao`)) > 0)) or ((`situacao` <> _utf8mb4'rejeitada') and (`justificativa_rejeicao` is null)))),
+  CONSTRAINT `fk_solicitacao_central_origem` FOREIGN KEY (`id_local_origem`) REFERENCES `localestoque` (`id_local_estoque`),
+  CONSTRAINT `fk_solicitacao_central_destino` FOREIGN KEY (`id_local_destino`) REFERENCES `localestoque` (`id_local_estoque`),
   CONSTRAINT `chk_solicitacao_central_locais` CHECK ((`id_local_origem` <> `id_local_destino`)),
-  CONSTRAINT `chk_solicitacao_central_situacao` CHECK ((`situacao` in (_utf8mb4'pendente',_utf8mb4'aprovada',_utf8mb4'rejeitada',_utf8mb4'atendida'))),
-  CONSTRAINT `chk_solicitacao_central_tipo` CHECK ((`tipo` in (_utf8mb4'liberacao',_utf8mb4'devolucao')))
+  CONSTRAINT `chk_solicitacao_central_situacao` CHECK ((`situacao` in (_utf8mb4'pendente',_utf8mb4'aprovada',_utf8mb4'rejeitada',_utf8mb4'atendida')))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 CREATE TABLE `solicitacaoestoquecentralitem` (
   `id_solicitacao_estoque_central_item` int NOT NULL AUTO_INCREMENT,
@@ -498,10 +490,97 @@ CREATE TABLE `usuario` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 SET FOREIGN_KEY_CHECKS=1;
 
+-- Totais antigos sem discriminação por modalidade são preservados separadamente.
+CREATE TABLE apuracaototallegado (
+  id_apuracao int NOT NULL,
+  valor_informado decimal(10,2) NOT NULL,
+  PRIMARY KEY (id_apuracao),
+  CONSTRAINT fk_apuracao_total_legado FOREIGN KEY (id_apuracao) REFERENCES apuracao(id_apuracao)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- As views recompõem os dados de leitura sem armazenar as redundâncias.
+CREATE VIEW vw_localestoque AS
+SELECT l.id_local_estoque,COALESCE(l.id_instituicao_central,e.id_instituicao) AS id_instituicao,
+       l.id_evento,l.nome,l.ativo,(l.id_instituicao_central IS NOT NULL) AS eh_central,l.eh_geral_evento
+FROM localestoque l LEFT JOIN evento e ON e.id_evento=l.id_evento;
+
+CREATE VIEW vw_solicitacaoestoquecentral AS
+SELECT s.id_solicitacao_estoque_central,
+       CASE WHEN o.eh_central=1 THEN 'liberacao' ELSE 'devolucao' END AS tipo,
+       o.id_instituicao,COALESCE(o.id_evento,d.id_evento) AS id_evento,
+       s.id_local_origem,s.id_local_destino,s.id_usuario_solicitante,s.data_hora,
+       s.situacao,s.id_usuario_decisor,s.decidida_em,s.justificativa_rejeicao,s.versao
+FROM solicitacaoestoquecentral s
+JOIN vw_localestoque o ON o.id_local_estoque=s.id_local_origem
+JOIN vw_localestoque d ON d.id_local_estoque=s.id_local_destino;
+
+CREATE VIEW vw_apuracao AS
+SELECT a.id_apuracao,a.id_jornada,
+       COALESCE(h.valor_informado,a.valor_dinheiro+a.valor_pix+a.valor_cartao) AS valor_informado,
+       a.data_hora,a.id_usuario_responsavel,a.observacao,a.valor_dinheiro,a.valor_pix,a.valor_cartao
+FROM apuracao a LEFT JOIN apuracaototallegado h ON h.id_apuracao=a.id_apuracao;
+
+DELIMITER $$
+CREATE PROCEDURE validar_rota_central(IN origem int, IN destino int)
+BEGIN
+  DECLARE instituicao_origem int;
+  DECLARE instituicao_destino int;
+  DECLARE central_origem tinyint;
+  DECLARE central_destino tinyint;
+  DECLARE geral_origem tinyint;
+  DECLARE geral_destino tinyint;
+  SELECT id_instituicao,eh_central,eh_geral_evento
+    INTO instituicao_origem,central_origem,geral_origem
+    FROM vw_localestoque WHERE id_local_estoque=origem;
+  SELECT id_instituicao,eh_central,eh_geral_evento
+    INTO instituicao_destino,central_destino,geral_destino
+    FROM vw_localestoque WHERE id_local_estoque=destino;
+  IF instituicao_origem IS NULL OR instituicao_destino IS NULL
+     OR instituicao_origem<>instituicao_destino
+     OR NOT ((central_origem=1 AND geral_destino=1) OR (geral_origem=1 AND central_destino=1)) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Origem e destino incompatíveis com a solicitação central.';
+  END IF;
+END$$
+CREATE TRIGGER solicitacao_central_rota_insert BEFORE INSERT ON solicitacaoestoquecentral FOR EACH ROW
+BEGIN
+  CALL validar_rota_central(NEW.id_local_origem,NEW.id_local_destino);
+END$$
+CREATE TRIGGER solicitacao_central_rota_update BEFORE UPDATE ON solicitacaoestoquecentral FOR EACH ROW
+BEGIN
+  IF NEW.id_local_origem<>OLD.id_local_origem OR NEW.id_local_destino<>OLD.id_local_destino THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Os locais de uma solicitação existente não podem ser substituídos.';
+  END IF;
+  CALL validar_rota_central(NEW.id_local_origem,NEW.id_local_destino);
+END$$
+CREATE TRIGGER local_preservar_rota BEFORE UPDATE ON localestoque FOR EACH ROW
+BEGIN
+  IF (NOT (NEW.id_instituicao_central <=> OLD.id_instituicao_central)
+      OR NOT (NEW.id_evento <=> OLD.id_evento) OR NEW.eh_geral_evento<>OLD.eh_geral_evento) THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='O proprietário e a classificação do local são permanentes.';
+  END IF;
+END$$
+CREATE TRIGGER evento_preservar_instituicao BEFORE UPDATE ON evento FOR EACH ROW
+BEGIN
+  IF NEW.id_instituicao<>OLD.id_instituicao THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='A instituição do evento é permanente.';
+  END IF;
+END$$
+CREATE TRIGGER apuracao_validar_modalidades BEFORE INSERT ON apuracao FOR EACH ROW
+BEGIN
+  IF NEW.valor_dinheiro IS NULL OR NEW.valor_pix IS NULL OR NEW.valor_cartao IS NULL
+     OR NEW.valor_dinheiro<0 OR NEW.valor_pix<0 OR NEW.valor_cartao<0
+     OR NEW.valor_dinheiro+NEW.valor_pix+NEW.valor_cartao>99999999.99 THEN
+    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT='Novas conferências exigem valores válidos nas três modalidades.';
+  END IF;
+END$$
+DELIMITER ;
+
 -- Cadastros e movimentações da Associação Comunitária Esperança.
 -- Use um banco separado dos dados da organização.
 -- As senhas são armazenadas somente como hash.
-USE case_entrega_bd1;
+SET SESSION transaction_read_only = IF(COALESCE(@case_instalacao_bloqueada, 0)=1,
+    1, @@session.transaction_read_only);
+USE case_commercial;
 
 SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
@@ -894,51 +973,47 @@ SET @evento = (
     WHERE id_instituicao = @instituicao
         AND nome = 'Festa da Comunidade');
 
-INSERT INTO localestoque(id_instituicao,
+INSERT INTO localestoque(id_instituicao_central,
         nome,
         ativo,
-        eh_central,
         eh_geral_evento,
         id_evento)
 SELECT @instituicao,
     'Estoque central',
     1,
-    1,
     0,
     NULL
 WHERE NOT EXISTS (
     SELECT 1
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_instituicao = @instituicao
         AND eh_central = 1);
 
-INSERT INTO localestoque(id_instituicao,
+INSERT INTO localestoque(id_instituicao_central,
         nome,
         ativo,
-        eh_central,
         eh_geral_evento,
         id_evento)
-SELECT @instituicao,
+SELECT NULL,
     'Estoque geral',
     1,
-    0,
     1,
     @evento
 WHERE NOT EXISTS (
     SELECT 1
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND eh_geral_evento = 1);
 
 SET @central = (
     SELECT id_local_estoque
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_instituicao = @instituicao
         AND eh_central = 1);
 
 SET @geral = (
     SELECT id_local_estoque
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND eh_geral_evento = 1);
 
@@ -958,27 +1033,25 @@ SET @setor_bebidas = (
     WHERE id_evento = @evento
         AND nome = 'Barraca de Bebidas');
 
-INSERT INTO localestoque(id_instituicao,
+INSERT INTO localestoque(id_instituicao_central,
         id_evento,
         nome,
         ativo,
-        eh_central,
         eh_geral_evento)
-SELECT @instituicao,
+SELECT NULL,
     @evento,
     CONCAT('Estoque — ', 'Barraca de Bebidas'),
     1,
-    0,
     0
 WHERE NOT EXISTS (
     SELECT 1
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND nome = CONCAT('Estoque — ', 'Barraca de Bebidas'));
 
 SET @local_bebidas = (
     SELECT id_local_estoque
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND nome = CONCAT('Estoque — ', 'Barraca de Bebidas'));
 
@@ -1009,27 +1082,25 @@ SET @setor_lanches = (
     WHERE id_evento = @evento
         AND nome = 'Barraca de Lanches');
 
-INSERT INTO localestoque(id_instituicao,
+INSERT INTO localestoque(id_instituicao_central,
         id_evento,
         nome,
         ativo,
-        eh_central,
         eh_geral_evento)
-SELECT @instituicao,
+SELECT NULL,
     @evento,
     CONCAT('Estoque — ', 'Barraca de Lanches'),
     1,
-    0,
     0
 WHERE NOT EXISTS (
     SELECT 1
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND nome = CONCAT('Estoque — ', 'Barraca de Lanches'));
 
 SET @local_lanches = (
     SELECT id_local_estoque
-    FROM localestoque
+    FROM vw_localestoque
     WHERE id_evento = @evento
         AND nome = CONCAT('Estoque — ', 'Barraca de Lanches'));
 
@@ -1314,10 +1385,7 @@ WHERE NOT EXISTS (
         AND id_produto = @salgado);
 
 -- Pedido aprovado às 08:45; atendimento integral às 09:00.
-INSERT INTO solicitacaoestoquecentral(tipo,
-        id_instituicao,
-        id_evento,
-        id_local_origem,
+INSERT INTO solicitacaoestoquecentral(id_local_origem,
         id_local_destino,
         id_usuario_solicitante,
         data_hora,
@@ -1325,10 +1393,7 @@ INSERT INTO solicitacaoestoquecentral(tipo,
         id_usuario_decisor,
         decidida_em,
         versao)
-SELECT 'liberacao',
-    @instituicao,
-    @evento,
-    @central,
+SELECT @central,
     @geral,
     @gerente,
     TIMESTAMP(@data_evento, '08:30:00'),
@@ -1338,14 +1403,14 @@ SELECT 'liberacao',
     3
 WHERE NOT EXISTS (
     SELECT 1
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND tipo = 'liberacao'
         AND data_hora = TIMESTAMP(@data_evento, '08:30:00'));
 
 SET @pedido = (
     SELECT id_solicitacao_estoque_central
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '08:30:00'));
 
@@ -1740,10 +1805,7 @@ WHERE NOT EXISTS (
     WHERE id_solicitacao = @reposicao);
 
 -- Uma aprovação aguarda entrega; o pedido posterior ainda aguarda análise.
-INSERT INTO solicitacaoestoquecentral(tipo,
-        id_instituicao,
-        id_evento,
-        id_local_origem,
+INSERT INTO solicitacaoestoquecentral(id_local_origem,
         id_local_destino,
         id_usuario_solicitante,
         data_hora,
@@ -1751,10 +1813,7 @@ INSERT INTO solicitacaoestoquecentral(tipo,
         id_usuario_decisor,
         decidida_em,
         versao)
-SELECT 'liberacao',
-    @instituicao,
-    @evento,
-    @central,
+SELECT @central,
     @geral,
     @gerente,
     TIMESTAMP(@data_evento, '11:30:00'),
@@ -1764,13 +1823,13 @@ SELECT 'liberacao',
     2
 WHERE NOT EXISTS (
     SELECT 1
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '11:30:00'));
 
 SET @pedido_aprovado = (
     SELECT id_solicitacao_estoque_central
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '11:30:00'));
 
@@ -1786,31 +1845,25 @@ WHERE NOT EXISTS (
     WHERE id_solicitacao_estoque_central = @pedido_aprovado
         AND id_produto = @agua);
 
-INSERT INTO solicitacaoestoquecentral(tipo,
-        id_instituicao,
-        id_evento,
-        id_local_origem,
+INSERT INTO solicitacaoestoquecentral(id_local_origem,
         id_local_destino,
         id_usuario_solicitante,
         data_hora,
         situacao)
-SELECT 'liberacao',
-    @instituicao,
-    @evento,
-    @central,
+SELECT @central,
     @geral,
     @gerente,
     TIMESTAMP(@data_evento, '12:00:00'),
     'pendente'
 WHERE NOT EXISTS (
     SELECT 1
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '12:00:00'));
 
 SET @pedido_pendente = (
     SELECT id_solicitacao_estoque_central
-    FROM solicitacaoestoquecentral
+    FROM vw_solicitacaoestoquecentral
     WHERE id_evento = @evento
         AND data_hora = TIMESTAMP(@data_evento, '12:00:00'));
 
@@ -1846,7 +1899,6 @@ WHERE NOT EXISTS (
         AND `data` = @data_evento);
 
 INSERT INTO apuracao(id_jornada,
-        valor_informado,
         data_hora,
         id_usuario_responsavel,
         observacao,
@@ -1854,7 +1906,6 @@ INSERT INTO apuracao(id_jornada,
         valor_pix,
         valor_cartao)
 SELECT @jornada_bebidas,
-    29.00,
     TIMESTAMP(@data_evento, '12:30:00'),
     @gerente,
     'Conferência das vendas do turno da manhã.',
@@ -1863,7 +1914,7 @@ SELECT @jornada_bebidas,
     5.00
 WHERE NOT EXISTS (
     SELECT 1
-    FROM apuracao
+    FROM vw_apuracao
     WHERE id_jornada = @jornada_bebidas);
 
 -- Aprovação e atendimento preservam etapas e horários distintos.
@@ -1966,7 +2017,7 @@ FROM(
     FROM registroitem ri
     JOIN produtosetor ps ON ps.id_produto_setor = ri.id_produto_setor
     JOIN estoquesetor es ON es.id_setor = ps.id_setor) movimentos
-JOIN localestoque l ON l.id_local_estoque = movimentos.local_id
+JOIN vw_localestoque l ON l.id_local_estoque = movimentos.local_id
 WHERE l.id_instituicao = @instituicao
     AND NOT EXISTS (
     SELECT 1
@@ -1980,7 +2031,9 @@ COMMIT;
 -- Consultas das telas do CASE.
 -- As variáveis abaixo representam os filtros usados nas telas.
 -- Senhas e imagens não são exibidas nas consultas.
-USE case_entrega_bd1;
+SET SESSION transaction_read_only = IF(COALESCE(@case_instalacao_bloqueada, 0)=1,
+    1, @@session.transaction_read_only);
+USE case_commercial;
 
 SET NAMES utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 
@@ -2577,15 +2630,24 @@ FROM jornadasetor
 WHERE id_jornada = @id;
 
 -- 44. JornadaSetorRepository.BuscarPorSetorDataTurno
-SET @data = CURDATE();
+SET @jornada = (
+    SELECT MIN(id_jornada)
+    FROM jornadasetor);
 
 SET @setor = (
-    SELECT MIN(id_setor)
-    FROM setor);
+    SELECT id_setor
+    FROM jornadasetor
+    WHERE id_jornada = @jornada);
+
+SET @data = (
+    SELECT `data`
+    FROM jornadasetor
+    WHERE id_jornada = @jornada);
 
 SET @turno = (
-    SELECT MIN(id_turno)
-    FROM turno);
+    SELECT id_turno
+    FROM jornadasetor
+    WHERE id_jornada = @jornada);
 
 SELECT id_jornada,
     id_setor,
@@ -2637,7 +2699,7 @@ SELECT l.id_local_estoque,
     es.quantidade_minima,
     es.quantidade_ideal
 FROM estoque es
-JOIN localestoque l ON l.id_local_estoque = es.id_local_estoque
+JOIN vw_localestoque l ON l.id_local_estoque = es.id_local_estoque
 JOIN produto p ON p.id_produto = es.id_produto
 LEFT JOIN evento ev ON ev.id_evento = l.id_evento
 WHERE (@perfil = 'Administrador'
@@ -2666,7 +2728,7 @@ ORDER BY l.nome, p.nome;
 -- 48. EstoqueRepository.ListarPorLocal
 SET @id = (
     SELECT MIN(id_local_estoque)
-    FROM localestoque);
+    FROM vw_localestoque);
 
 SELECT id_estoque,
     id_local_estoque,
@@ -2695,7 +2757,7 @@ WHERE id_estoque = @id;
 -- 50. EstoqueRepository.BuscarPorLocalEProduto
 SET @local = (
     SELECT MIN(id_local_estoque)
-    FROM localestoque);
+    FROM vw_localestoque);
 
 SET @produto = (
     SELECT MIN(id_produto)
@@ -2737,7 +2799,7 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 ORDER BY id_local_estoque;
 
 -- 54. LocalEstoqueRepository.ListarCentrais
@@ -2752,7 +2814,7 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 WHERE id_instituicao = @instituicao
     AND eh_central = 1
 ORDER BY id_local_estoque;
@@ -2769,7 +2831,7 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 WHERE id_evento = @evento
 ORDER BY id_local_estoque;
 
@@ -2785,7 +2847,7 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 WHERE id_evento = @evento
     AND eh_geral_evento = 1
 ORDER BY id_local_estoque;
@@ -2793,7 +2855,7 @@ ORDER BY id_local_estoque;
 -- 57. LocalEstoqueRepository.BuscarPorId
 SET @id = (
     SELECT MIN(id_local_estoque)
-    FROM localestoque);
+    FROM vw_localestoque);
 
 SELECT id_local_estoque,
     id_instituicao,
@@ -2802,7 +2864,7 @@ SELECT id_local_estoque,
     ativo,
     eh_central,
     eh_geral_evento
-FROM localestoque
+FROM vw_localestoque
 WHERE id_local_estoque = @id;
 
 -- 06 — Entradas de mercadorias
@@ -2822,8 +2884,10 @@ ORDER BY id_entrada_item;
 
 -- 59. EntradaMercadoriaRepository.ListarPorLocalDestino
 SET @id = (
-    SELECT MIN(id_entrada)
-    FROM entradamercadoria);
+    SELECT id_local_destino
+    FROM entradamercadoria
+    ORDER BY id_entrada
+    LIMIT 1);
 
 SELECT id_entrada,
     id_fornecedor,
@@ -2880,7 +2944,7 @@ SELECT id_solicitacao_estoque_central,
     decidida_em,
     justificativa_rejeicao,
     versao
-FROM solicitacaoestoquecentral
+FROM vw_solicitacaoestoquecentral
 WHERE situacao = @situacao
 ORDER BY data_hora, id_solicitacao_estoque_central;
 
@@ -2900,7 +2964,7 @@ SELECT id_solicitacao_estoque_central,
     decidida_em,
     justificativa_rejeicao,
     versao
-FROM solicitacaoestoquecentral s
+FROM vw_solicitacaoestoquecentral s
 WHERE s.situacao = @situacao
     AND NOT EXISTS (
     SELECT 1
@@ -2927,14 +2991,14 @@ SELECT id_solicitacao_estoque_central,
     decidida_em,
     justificativa_rejeicao,
     versao
-FROM solicitacaoestoquecentral
+FROM vw_solicitacaoestoquecentral
 WHERE id_usuario_solicitante = @usuario
 ORDER BY data_hora DESC, id_solicitacao_estoque_central DESC;
 
 -- 64. SolicitacaoEstoqueCentralRepository.BuscarPorId
 SET @id = (
     SELECT MIN(id_solicitacao_estoque_central)
-    FROM solicitacaoestoquecentral);
+    FROM vw_solicitacaoestoquecentral);
 
 SELECT id_solicitacao_estoque_central,
     tipo,
@@ -2949,13 +3013,13 @@ SELECT id_solicitacao_estoque_central,
     decidida_em,
     justificativa_rejeicao,
     versao
-FROM solicitacaoestoquecentral
+FROM vw_solicitacaoestoquecentral
 WHERE id_solicitacao_estoque_central = @id;
 
 -- 65. SolicitacaoEstoqueCentralRepository.ListarItens
 SET @id = (
     SELECT MIN(id_solicitacao_estoque_central)
-    FROM solicitacaoestoquecentral);
+    FROM vw_solicitacaoestoquecentral);
 
 SELECT id_solicitacao_estoque_central_item,
     id_solicitacao_estoque_central,
@@ -2968,7 +3032,7 @@ ORDER BY id_produto;
 -- 66. SolicitacaoEstoqueCentralRepository.BuscarIdTransferenciaAtendimento
 SET @id = (
     SELECT MIN(id_solicitacao_estoque_central)
-    FROM solicitacaoestoquecentral);
+    FROM vw_solicitacaoestoquecentral);
 
 SELECT id_transferencia
 FROM transferenciaestoque
@@ -3145,7 +3209,7 @@ FROM(
     FROM entradamercadoria en
     JOIN entradaitem i ON i.id_entrada = en.id_entrada
     JOIN produto p ON p.id_produto = i.id_produto
-    JOIN localestoque l ON l.id_local_estoque = en.id_local_destino
+    JOIN vw_localestoque l ON l.id_local_estoque = en.id_local_destino
     JOIN usuario u ON u.id_usuario = en.id_usuario_responsavel
     WHERE @perfil = 'Administrador'
     UNION ALL
@@ -3164,8 +3228,8 @@ FROM(
     FROM transferenciaestoque tr
     JOIN transferenciaitem i ON i.id_transferencia = tr.id_transferencia
     JOIN produto p ON p.id_produto = i.id_produto
-    JOIN localestoque o ON o.id_local_estoque = tr.id_local_origem
-    JOIN localestoque d ON d.id_local_estoque = tr.id_local_destino
+    JOIN vw_localestoque o ON o.id_local_estoque = tr.id_local_origem
+    JOIN vw_localestoque d ON d.id_local_estoque = tr.id_local_destino
     JOIN usuario u ON u.id_usuario = tr.id_usuario_responsavel
     WHERE @perfil <> 'Membro'
     UNION ALL
@@ -3260,10 +3324,12 @@ ORDER BY ti.id_transferencia_item;
 
 -- 77. ConsultaOperacionalRepository.HistoricoDaOperacao
 SET @evento = (
-    SELECT MIN(id_solicitacao_estoque_central)
-    FROM solicitacaoestoquecentral);
+    SELECT MIN(id_registro)
+    FROM registro);
 
-SET @perfil = 'solicitacaoestoquecentral';
+SET @perfil = 'registro';
+
+-- Sem correções nessa operação, o histórico fica vazio.
 
 SELECT h.data_hora,
     u.login AS responsavel,
@@ -3278,8 +3344,10 @@ ORDER BY h.id_historico DESC;
 
 -- 78. TransferenciaEstoqueRepository.ListarPorLocalOrigem
 SET @id = (
-    SELECT MIN(id_transferencia)
-    FROM transferenciaestoque);
+    SELECT id_local_origem
+    FROM transferenciaestoque
+    ORDER BY id_transferencia
+    LIMIT 1);
 
 SELECT id_transferencia,
     id_local_origem,
@@ -3518,14 +3586,14 @@ SELECT id_apuracao,
     valor_dinheiro,
     valor_pix,
     valor_cartao
-FROM apuracao
+FROM vw_apuracao
 WHERE id_jornada = @id
 ORDER BY id_apuracao;
 
 -- 89. ApuracaoRepository.BuscarPorId
 SET @id = (
     SELECT MIN(id_apuracao)
-    FROM apuracao);
+    FROM vw_apuracao);
 
 SELECT id_apuracao,
     id_jornada,
@@ -3536,7 +3604,7 @@ SELECT id_apuracao,
     valor_dinheiro,
     valor_pix,
     valor_cartao
-FROM apuracao
+FROM vw_apuracao
 WHERE id_apuracao = @id;
 
 -- 90. DespesaRepository.ListarPorEvento
@@ -3668,7 +3736,7 @@ SELECT so.id_solicitacao_estoque_central,
     so.decidida_em,
     so.justificativa_rejeicao,
     tr.id_transferencia
-FROM solicitacaoestoquecentral so
+FROM vw_solicitacaoestoquecentral so
 JOIN evento ev ON ev.id_evento = so.id_evento
 JOIN usuario u ON u.id_usuario = so.id_usuario_solicitante
 JOIN solicitacaoestoquecentralitem si ON si.id_solicitacao_estoque_central = so.id_solicitacao_estoque_central
@@ -3742,7 +3810,7 @@ SELECT a.id_apuracao,
     CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_dinheiro - COALESCE(v.dinheiro, 0) END AS diferenca_dinheiro_atual,
     CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_pix - COALESCE(v.pix, 0) END AS diferenca_pix_atual,
     CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_cartao - COALESCE(v.cartao, 0) END AS diferenca_cartao_atual
-FROM apuracao a
+FROM vw_apuracao a
 JOIN jornadasetor j ON j.id_jornada = a.id_jornada
 JOIN turno t ON t.id_turno = j.id_turno
 JOIN setor s ON s.id_setor = j.id_setor

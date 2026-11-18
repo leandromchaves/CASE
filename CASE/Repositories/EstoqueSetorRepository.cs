@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using CASE.Models;
 using MySql.Data.MySqlClient;
@@ -103,7 +103,7 @@ namespace CASE.Repositories
             using (MySqlCommand comando = new MySqlCommand(
                 "SELECT s.id_setor FROM setor s " +
                 "JOIN evento ev ON ev.id_evento=s.id_evento " +
-                "JOIN localestoque le ON le.id_local_estoque=@local " +
+                "JOIN vw_localestoque le ON le.id_local_estoque=@local " +
                 "WHERE s.id_setor=@setor AND s.id_evento=@evento " +
                 "AND ev.id_evento=@evento AND ev.id_instituicao=le.id_instituicao " +
                 "AND le.id_evento=@evento AND le.eh_central=0 " +

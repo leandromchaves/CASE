@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using System;
 using CASE.Models;
 using MySql.Data.MySqlClient;
@@ -66,8 +66,8 @@ namespace CASE.Repositories
                             conexao,
                             transacao,
                             "INSERT INTO localestoque " +
-                            "(id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento) " +
-                            "VALUES (@instituicao,@evento,@nome,1,0,0)",
+                            "(id_instituicao_central,id_evento,nome,ativo,eh_geral_evento) " +
+                            "VALUES (NULL,@evento,@nome,1,0)",
                             comando =>
                             {
                                 AcessoDados.AdicionarParametro(comando, "@instituicao", idInstituicao);
