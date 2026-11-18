@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -90,8 +90,7 @@ namespace CASE.Services
 
         public bool AtualizarMeusDados(
             Usuario usuario,
-            string nome,
-            string email)
+            string nome)
         {
             string nomePerfil;
             Usuario usuarioAtual = autorizacaoService.ValidarUsuarioEObterPerfil(
@@ -107,7 +106,6 @@ namespace CASE.Services
             }
 
             pessoa.Nome = nome;
-            pessoa.Email = email;
             ValidarPessoa(pessoa);
             pessoa.Nome = pessoa.Nome.Trim();
 

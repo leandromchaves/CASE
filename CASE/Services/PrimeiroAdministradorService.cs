@@ -26,6 +26,7 @@ namespace CASE.Services
             string loginNormalizado = login.Trim();
             string hashSenha = senhaService.GerarHash(senha);
             pessoa.Nome = pessoa.Nome.Trim();
+            pessoa.Email = null;
 
             return usuarioRepository.CriarPrimeiroAdministrador(
                 pessoa,

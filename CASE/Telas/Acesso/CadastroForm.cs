@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -55,7 +55,7 @@ namespace CASE
             panelDireito.Visible = false;
             Controls.Add(panelCadastro);
             panelCadastro.Visible = true;
-            panelCadastro.Size = new Size(520, 730);
+            panelCadastro.Size = new Size(520, 655);
             panelCadastro.BackColor = Color.White;
             VisualUtils.Arredondar(panelCadastro, 16);
 
@@ -69,7 +69,9 @@ namespace CASE
 
             lblNomeCompleto.Text = "Nome completo *";
             lblUsuario.Text = "Nome de usuário *";
-            lblEmail.Text = "E-mail (opcional)";
+            lblEmail.Visible = false;
+            panelEmail.Visible = false;
+            txtEmail.TabStop = false;
             lblSenha.Text = "Senha *";
             lblConfirmarSenha.Text = "Confirmar senha *";
 
@@ -77,7 +79,6 @@ namespace CASE
             {
                 lblNomeCompleto,
                 lblUsuario,
-                lblEmail,
                 lblSenha,
                 lblConfirmarSenha
             };
@@ -112,16 +113,14 @@ namespace CASE
         {
             PrepararCampo(txtNomeCompleto, panelNomeCompleto, "Ex.: Maria da Silva", 0);
             PrepararCampo(txtUsuario, panelUsuarioCadastro, "Escolha um nome de usuário", 1);
-            PrepararCampo(txtEmail, panelEmail, "Ex.: maria@exemplo.com", 2);
-            PrepararCampo(txtSenha, panelSenhaCadastro, "Digite sua senha", 3);
-            PrepararCampo(txtConfirmarSenha, panelConfirmarSenha, "Digite a senha novamente", 4);
+            PrepararCampo(txtSenha, panelSenhaCadastro, "Digite sua senha", 2);
+            PrepararCampo(txtConfirmarSenha, panelConfirmarSenha, "Digite a senha novamente", 3);
 
             txtSenha.UseSystemPasswordChar = true;
             txtConfirmarSenha.UseSystemPasswordChar = true;
 
             txtNomeCompleto.TextChanged += CampoCadastro_TextChanged;
             txtUsuario.TextChanged += CampoCadastro_TextChanged;
-            txtEmail.TextChanged += CampoCadastro_TextChanged;
             txtSenha.TextChanged += CampoCadastro_TextChanged;
             txtConfirmarSenha.TextChanged += CampoCadastro_TextChanged;
         }
@@ -205,9 +204,9 @@ namespace CASE
             }
 
             int larguraCartao = Math.Min(520, ClientSize.Width - 48);
-            int alturaCartao = Math.Min(730, ClientSize.Height - 40);
+            int alturaCartao = Math.Min(655, ClientSize.Height - 40);
 
-            if (larguraCartao < 440 || alturaCartao < 680)
+            if (larguraCartao < 440 || alturaCartao < 605)
             {
                 return;
             }
@@ -234,8 +233,6 @@ namespace CASE
             PosicionarCampo(lblNomeCompleto, panelNomeCompleto, inicioX, y, larguraConteudo, alturaRotulo, alturaCampo);
             y += distanciaEntreCampos;
             PosicionarCampo(lblUsuario, panelUsuarioCadastro, inicioX, y, larguraConteudo, alturaRotulo, alturaCampo);
-            y += distanciaEntreCampos;
-            PosicionarCampo(lblEmail, panelEmail, inicioX, y, larguraConteudo, alturaRotulo, alturaCampo);
             y += distanciaEntreCampos;
             PosicionarCampo(lblSenha, panelSenhaCadastro, inicioX, y, larguraConteudo, alturaRotulo, alturaCampo);
             lblSenha.Width = larguraConteudo - 100;
@@ -398,7 +395,6 @@ namespace CASE
 
             Pessoa pessoa = new Pessoa();
             pessoa.Nome = txtNomeCompleto.Text.Trim();
-            pessoa.Email = txtEmail.Text.Trim();
             pessoa.FotoPerfil = fotoSelecionada;
 
             try

@@ -658,7 +658,7 @@ INSERT INTO usuario(id_pessoa,
 SELECT p.id_pessoa,
     ps.id_perfil_sistema,
     'rafael.cayres',
-    'argon2id$v=19$m=65536,t=3,p=1$qpxjGypOeRLQsHhNpSAlvA==$92SpwZ8cUg8ojiYU7FUEE0K1MCx5P8I9ZlI0552Mw+A=',
+    'argon2id$v=19$m=65536,t=3,p=1$+8STx0M1p7GYRnCqMVo0qA==$QSHUPHIrHJaMlkqbqcAi0zM/QLVuW8kxE43Ise7oxUU=',
     'aprovado',
     TIMESTAMP(@data_evento, '07:00:00')
 FROM pessoa p
@@ -695,7 +695,7 @@ INSERT INTO usuario(id_pessoa,
 SELECT p.id_pessoa,
     ps.id_perfil_sistema,
     'leandro',
-    'argon2id$v=19$m=65536,t=3,p=1$8fJux0WDSNXT5PGEH2oeZg==$usTiV3RbIaA9ZchaeVKGH4QxaTVSxjILYUvUVhAIyIg=',
+    'argon2id$v=19$m=65536,t=3,p=1$MdDok30AQI94mdZ8nItaOw==$BAVUkgOce+RNKzK9HKwg1fwJBex+0GUzm+iK/m1UZAU=',
     'aprovado',
     TIMESTAMP(@data_evento, '07:00:00')
 FROM pessoa p
@@ -732,7 +732,7 @@ INSERT INTO usuario(id_pessoa,
 SELECT p.id_pessoa,
     ps.id_perfil_sistema,
     'pedro.almeida',
-    'argon2id$v=19$m=65536,t=3,p=1$yb9JWgpxX0CziWfzzVKLzA==$qvSyAlQXxurF3MjY0pl2eXxfGy8Wf92+TCjnI8vqRJI=',
+    'argon2id$v=19$m=65536,t=3,p=1$ADb5MZ1v7qIExw4ujpUJLQ==$EehnWvYwOiWJj88zkSzLmBhQ2mLwyV1Zj2Eegok6rYE=',
     'aprovado',
     TIMESTAMP(@data_evento, '07:00:00')
 FROM pessoa p

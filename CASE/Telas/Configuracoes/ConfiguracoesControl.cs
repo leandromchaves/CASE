@@ -9,6 +9,7 @@ namespace CASE
     public partial class ConfiguracoesControl : UserControl
     {
         public event EventHandler GerenciarAcessosSolicitado;
+        public event EventHandler SenhaAlterada;
         private readonly Usuario usuarioAutenticado;
         private readonly PessoaService pessoaService = new PessoaService();
         private readonly Label lblMensagemPerfil = new Label();
@@ -57,7 +58,11 @@ namespace CASE
             lblSubtituloConfiguracoes.Text = "Gerencie suas informações e preferências";
             txtPerfilNome.Clear();
             txtPerfilUsuario.Clear();
-            txtPerfilEmail.Clear();
+            lblPerfilEmail.Visible = false;
+            txtPerfilEmail.Visible = false;
+            txtPerfilEmail.TabStop = false;
+            chkAlertasEmail.Visible = false;
+            chkAlertasEmail.Enabled = false;
             var menu = new FlowLayoutPanel
             {
                 Name = "panelMenuConfiguracoes",
@@ -72,8 +77,8 @@ namespace CASE
             dgvSolicitacoes.Width = 670;
             btnAprovarSolicitacao.Left = 460;
             btnRejeitarSolicitacao.Left = 575;
-            Label[] titulos = { lblPerfilNome, lblPerfilUsuario, lblPerfilEmail };
-            TextBox[] campos = { txtPerfilNome, txtPerfilUsuario, txtPerfilEmail };
+            Label[] titulos = { lblPerfilNome, lblPerfilUsuario };
+            TextBox[] campos = { txtPerfilNome, txtPerfilUsuario };
             for (int i = 0; i < campos.Length; i++)
             {
                 titulos[i].SetBounds(24, 52 + i * 75, 620, 23);
@@ -190,6 +195,90 @@ panelPreferencias };
                 };
             }
             botoes[0].PerformClick();
+            PrepararAlteracaoSenha();
+        }
+
+        private void PrepararAlteracaoSenha()
+        {
+            AutoScroll = true;
+            panelPerfilUsuario.Height = 730;
+            btnSalvarPerfil.SetBounds(514, 220, 170, 36);
+            lblMensagemPerfil.SetBounds(24, 264, 660, 38);
+            lblMensagemPerfil.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            Label tituloSenha = FrontendTheme.Legenda(
+                "Alterar senha", new System.Drawing.Rectangle(24, 310, 620, 30));
+            tituloSenha.Font = new System.Drawing.Font("Segoe UI", 14, System.Drawing.FontStyle.Bold);
+            panelPerfilUsuario.Controls.Add(tituloSenha);
+
+            string[] nomes = { "Senha atual", "Nova senha", "Confirmar nova senha" };
+            string[] identificadores = { "txtSenhaAtual", "txtNovaSenha", "txtConfirmarNovaSenha" };
+            TextBox[] senhas = new TextBox[3];
+            for (int i = 0; i < senhas.Length; i++)
+            {
+                panelPerfilUsuario.Controls.Add(FrontendTheme.Legenda(nomes[i],
+                    new System.Drawing.Rectangle(24, 350 + i * 76, 620, 23)));
+                senhas[i] = new TextBox
+                {
+                    Name = identificadores[i],
+                    UseSystemPasswordChar = true,
+                    TabIndex = 3 + i,
+                    AccessibleName = nomes[i],
+                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
+                };
+                senhas[i].SetBounds(24, 377 + i * 76, 660, 28);
+                panelPerfilUsuario.Controls.Add(senhas[i]);
+                VisualUtils.EstilizarCampo(senhas[i]);
+            }
+
+            Button alterar = new Button
+            {
+                Name = "btnAlterarSenha", Text = "Alterar senha", TabIndex = 6,
+                BackColor = VisualUtils.Azul, ForeColor = System.Drawing.Color.White,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Enabled = usuarioAutenticado != null
+            };
+            alterar.SetBounds(514, 610, 170, 40);
+            VisualUtils.EstilizarBotao(alterar);
+            panelPerfilUsuario.Controls.Add(alterar);
+            Label mensagem = new Label
+            {
+                Name = "lblMensagemSenha", AutoSize = false,
+                ForeColor = VisualUtils.TextoSuave,
+                Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                Text = "Após alterar a senha, entre novamente no CASE."
+            };
+            mensagem.SetBounds(24, 663, 660, 48);
+            panelPerfilUsuario.Controls.Add(mensagem);
+            bool alterando = false;
+            alterar.Click += (s, e) =>
+            {
+                if (alterando) return;
+                alterando = true;
+                alterar.Enabled = false;
+                bool sucesso = false;
+                try
+                {
+                    new UsuarioService().AlterarMinhaSenha(senhas[0].Text, senhas[1].Text, senhas[2].Text);
+                    sucesso = true;
+                }
+                catch (ArgumentException erro) { mensagem.Text = erro.Message; }
+                catch (UnauthorizedAccessException) { mensagem.Text = "Sua sessão não permite alterar a senha. Entre novamente."; }
+                catch (InvalidOperationException erro) { mensagem.Text = erro.Message; }
+                catch (Exception) { mensagem.Text = "Não foi possível alterar a senha. Tente novamente."; }
+                finally
+                {
+                    foreach (TextBox campo in senhas) campo.Clear();
+                    alterando = false;
+                    alterar.Enabled = !sucesso && usuarioAutenticado != null;
+                }
+                if (sucesso)
+                {
+                    MessageBox.Show(this, "Senha alterada. Entre novamente com sua nova senha.",
+                        "Alterar senha", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    SenhaAlterada?.Invoke(this, EventArgs.Empty);
+                    FindForm()?.Close();
+                }
+            };
         }
 
         private void CarregarMeusDados()
@@ -198,7 +287,6 @@ panelPreferencias };
             {
                 txtPerfilNome.Enabled = false;
                 txtPerfilUsuario.Enabled = false;
-                txtPerfilEmail.Enabled = false;
                 btnSalvarPerfil.Enabled = false;
                 ExibirMensagemPerfil(
                     "Entre no sistema para consultar e alterar seus dados pessoais.",
@@ -211,7 +299,6 @@ panelPreferencias };
                 Pessoa pessoa = pessoaService.BuscarMeusDados(usuarioAutenticado);
                 txtPerfilNome.Text = pessoa.Nome;
                 txtPerfilUsuario.Text = usuarioAutenticado.Login;
-                txtPerfilEmail.Text = pessoa.Email;
                 ExibirMensagemPerfil(string.Empty, false);
             }
             catch (UnauthorizedAccessException)
@@ -232,8 +319,7 @@ panelPreferencias };
             {
                 pessoaService.AtualizarMeusDados(
                     usuarioAutenticado,
-                    txtPerfilNome.Text,
-                    txtPerfilEmail.Text);
+                    txtPerfilNome.Text);
 
                 ExibirMensagemPerfil("Seus dados foram atualizados.", false);
                 MessageBox.Show(

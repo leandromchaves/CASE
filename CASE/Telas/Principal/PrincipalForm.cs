@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 
 using System.Drawing;
 using System.IO;
@@ -789,6 +789,7 @@ namespace CASE
         {
             var controle = new ConfiguracoesControl(usuarioAutenticado);
             controle.GerenciarAcessosSolicitado += (s, e) => AbrirTela(buttonAcessos, CriarGestaoAcessos);
+            controle.SenhaAlterada += (s, e) => Close();
             return controle;
         }
 

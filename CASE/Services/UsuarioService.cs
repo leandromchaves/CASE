@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using CASE.Models;
 using CASE.Repositories;
 
@@ -8,6 +8,37 @@ namespace CASE.Services
     {
         private readonly UsuarioRepository usuarioRepository = new UsuarioRepository();
         private readonly SenhaService senhaService = new SenhaService();
+
+        public void AlterarMinhaSenha(string senhaAtual, string novaSenha, string confirmacao)
+        {
+            Usuario sessao = SessaoUsuario.ObterUsuarioAtual();
+            string perfil;
+            Usuario conta = new AutorizacaoService().ValidarUsuarioEObterPerfil(sessao, out perfil);
+
+            if (string.IsNullOrEmpty(senhaAtual))
+                throw new ArgumentException("Informe a senha atual.");
+            if (string.IsNullOrWhiteSpace(novaSenha))
+                throw new ArgumentException("Informe a nova senha.");
+            if (!string.Equals(novaSenha, confirmacao, StringComparison.Ordinal))
+                throw new ArgumentException("A confirmação da nova senha não confere.");
+
+            Usuario credencial = usuarioRepository.BuscarPorLogin(conta.Login);
+            if (credencial == null || credencial.IdUsuario != sessao.IdUsuario ||
+                credencial.IdPessoa != sessao.IdPessoa || credencial.IdPerfilSistema != sessao.IdPerfilSistema)
+                throw new UnauthorizedAccessException("A conta não corresponde à sessão atual.");
+            if (!senhaService.VerificarSenha(senhaAtual, credencial.SenhaHash))
+                throw new ArgumentException("A senha atual está incorreta.");
+            if (senhaService.VerificarSenha(novaSenha, credencial.SenhaHash))
+                throw new ArgumentException("A nova senha deve ser diferente da senha atual.");
+
+            string novoHash = senhaService.GerarHash(novaSenha);
+            SessaoUsuario.ExigirUsuario(sessao);
+            if (!usuarioRepository.AlterarSenhaDaSessao(credencial.SenhaHash, novoHash))
+                throw new InvalidOperationException(
+                    "A conta foi alterada durante a operação. Entre novamente e tente outra vez.");
+
+            SessaoUsuario.Encerrar();
+        }
 
         public System.Collections.Generic.List<Usuario> ListarCadastrosPendentes(Usuario administrador)
         {
@@ -176,6 +207,7 @@ namespace CASE.Services
             }
 
             pessoa.Nome = pessoa.Nome.Trim();
+            pessoa.Email = null;
 
             if (pessoa.FotoPerfil != null)
             {

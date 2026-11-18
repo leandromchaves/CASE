@@ -364,7 +364,10 @@ FodyWeavers.xsd
 # Arquivos locais de apoio
 *.md
 *.MD
+!/README.md
+/documentacao/
 /scripts/*
+!/scripts/BootstrapPrimeiroAdministrador_CASE.cs
 !/scripts/case_ddl.sql
 !/scripts/case_dml.sql
 !/scripts/case_dql.sql

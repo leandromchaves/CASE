@@ -11,6 +11,25 @@ namespace CASE.Repositories
         private const string Colunas = "id_usuario, id_pessoa, id_perfil_sistema, login, senha_hash, situacao_conta, solicitado_em";
         private const string ColunasSemHash = "id_usuario, id_pessoa, id_perfil_sistema, login, situacao_conta, solicitado_em";
 
+        internal bool AlterarSenhaDaSessao(string hashAtual, string novoHash)
+        {
+            var sessao = CASE.Services.SessaoUsuario.ObterUsuarioAtual();
+            // A condição no hash impede sobrescrever outra troca de senha concorrente.
+            const string sql = "UPDATE usuario SET senha_hash=@novoHash " +
+                "WHERE id_usuario=@usuario AND id_pessoa=@pessoa AND id_perfil_sistema=@perfil " +
+                "AND LOWER(situacao_conta)='aprovado' AND BINARY senha_hash=BINARY @hashAtual " +
+                "AND EXISTS (SELECT 1 FROM perfilsistema p WHERE p.id_perfil_sistema=@perfil " +
+                "AND LOWER(p.nome) IN ('administrador','gerente','membro'))";
+            return AcessoDados.Executar(sql, comando =>
+            {
+                AcessoDados.AdicionarParametro(comando, "@usuario", sessao.IdUsuario);
+                AcessoDados.AdicionarParametro(comando, "@pessoa", sessao.IdPessoa);
+                AcessoDados.AdicionarParametro(comando, "@perfil", sessao.IdPerfilSistema);
+                AcessoDados.AdicionarTextoObrigatorio(comando, "@hashAtual", hashAtual);
+                AcessoDados.AdicionarTextoObrigatorio(comando, "@novoHash", novoHash);
+            }) == 1;
+        }
+
         public List<Usuario> Listar()
         {
             string sql = "SELECT " + ColunasSemHash + " FROM usuario ORDER BY id_usuario";
