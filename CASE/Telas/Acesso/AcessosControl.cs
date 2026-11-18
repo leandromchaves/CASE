@@ -53,6 +53,7 @@ namespace CASE
             cmbPerfil.DisplayMember = "Nome";
             cmbSituacao.SelectedIndexChanged += cmbSituacao_SelectedIndexChanged;
             txtBusca.TextChanged += txtBusca_TextChanged;
+            VisualUtils.EstilizarPesquisa(txtBusca, "Pesquisar por nome ou login");
             dgvContas.SelectionChanged += dgvContas_SelectionChanged;
             btnAprovar.Click += btnAprovar_Click;
             btnRejeitar.Click += btnRejeitar_Click;

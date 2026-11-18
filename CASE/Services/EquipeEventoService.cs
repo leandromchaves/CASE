@@ -15,7 +15,14 @@ namespace CASE.Services
 
         public List<Perfil> ListarPerfis(Usuario usuario, int idEvento)
         {
-            ValidarGerenteDoEvento(usuario, idEvento);
+            string nomePerfil;
+            Usuario usuarioAtual = autorizacaoService.ValidarUsuarioEObterPerfil(usuario, out nomePerfil);
+            Evento evento = eventoRepository.BuscarPorId(idEvento);
+            if ((nomePerfil != "Administrador" && nomePerfil != "Gerente") ||
+                !autorizacaoService.PodeAcessarEvento(usuarioAtual, nomePerfil, evento))
+            {
+                throw new UnauthorizedAccessException("Você não pode consultar as funções da equipe deste evento.");
+            }
             return perfilRepository.Listar();
         }
 
@@ -47,8 +54,7 @@ namespace CASE.Services
             int idEvento,
             int idEquipe)
         {
-            ValidarGerenteDoEvento(usuario, idEvento);
-            EquipeEvento vinculo = equipeEventoRepository.BuscarPorId(idEquipe);
+            EquipeEvento vinculo = BuscarPorId(usuario, idEquipe);
 
             if (vinculo == null || vinculo.IdEvento != idEvento)
             {

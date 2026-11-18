@@ -19,6 +19,7 @@ namespace CASE.Quermesse
         private readonly TurnoRepository turnoRepository = new TurnoRepository();
         private bool podeAdministrarEscalas;
         private bool usuarioEhMembro;
+        private TextBox pesquisa;
 
         public EscalaControl() : this(null, null)
         {
@@ -28,6 +29,8 @@ namespace CASE.Quermesse
         {
             InitializeComponent();
             FrontendTheme.Aplicar(this);
+            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarEscala", "Pesquisar escala ou funcionário",
+                texto => AplicarFiltros());
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
             cmbFiltroEscala.Items.Clear();
@@ -164,6 +167,10 @@ namespace CASE.Quermesse
                 PreencherFiltros();
                 AplicarFiltros();
                 labelAviso.Text = escalas.Count + " escala(s) carregada(s).";
+                if (!podeAdministrarEscalas)
+                {
+                    labelAviso.Text += " A alocação é feita pelo gerente responsável pelo evento.";
+                }
             }
             catch (UnauthorizedAccessException)
             {
@@ -317,7 +324,8 @@ namespace CASE.Quermesse
                     Convert.ToString(linha.Cells[1].Value) == cmbFiltroEscala.Text;
                 bool turnoCorresponde = cmbFiltroTurnoEscala.SelectedIndex == 0 ||
                     Convert.ToString(linha.Cells[3].Value) == cmbFiltroTurnoEscala.Text;
-                linha.Visible = setorCorresponde && turnoCorresponde;
+                linha.Visible = setorCorresponde && turnoCorresponde &&
+                    VisualUtils.LinhaCorrespondePesquisa(linha, pesquisa.Text.Trim());
             }
 
             dgvEscala.ClearSelection();

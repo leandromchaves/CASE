@@ -19,6 +19,7 @@ namespace CASE.Quermesse
         private readonly TurnoRepository turnoRepository = new TurnoRepository();
         private bool podeAdministrarEvento;
         private Setor setorEmEdicao;
+        private TextBox pesquisa;
 
         public EquipeSetoresControl() : this(null, null)
         {
@@ -28,6 +29,8 @@ namespace CASE.Quermesse
         {
             InitializeComponent();
             FrontendTheme.Aplicar(this);
+            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarEquipe", "Pesquisar equipe ou setor",
+                texto => VisualUtils.FiltrarGrades(panelCorpo, texto));
             // O painel superior não pode crescer sobre a seção de setores ao redimensionar.
             panelEquipe.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panelSetores.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -120,7 +123,7 @@ namespace CASE.Quermesse
 
             if (!podeAdministrarEvento)
             {
-                labelAviso.Text = "Equipe em modo de consulta para este perfil.";
+                labelAviso.Text = "Consulta administrativa. Equipes, setores e preços são gerenciados pelo gerente responsável pelo evento.";
             }
         }
 
@@ -279,6 +282,7 @@ namespace CASE.Quermesse
                 }
 
                 dgvSetores.ClearSelection();
+                VisualUtils.FiltrarGrades(panelCorpo, pesquisa.Text.Trim());
             }
             catch (UnauthorizedAccessException)
             {
@@ -466,6 +470,7 @@ namespace CASE.Quermesse
                 }
 
                 dgvEquipe.ClearSelection();
+                VisualUtils.FiltrarGrades(panelCorpo, pesquisa.Text.Trim());
             }
             catch (UnauthorizedAccessException)
             {

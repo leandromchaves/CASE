@@ -35,6 +35,10 @@ namespace CASE.Quermesse
                     string perfil;
                     new AutorizacaoService().ValidarUsuarioEObterPerfil(usuario, out perfil);
                     btnNovaQuermesse.Enabled = perfil == "Gerente";
+                    if (perfil == "Administrador")
+                    {
+                        lblSubtitulo.Text = "Consulta administrativa: os eventos são criados e gerenciados pelo gerente responsável.";
+                    }
                 }
                 catch (Exception)
                 {
@@ -44,6 +48,8 @@ namespace CASE.Quermesse
             dgvQuermesses.CellDoubleClick += dgvQuermesses_CellDoubleClick;
             dgvQuermesses.SelectionChanged += dgvQuermesses_SelectionChanged;
             ConfigurarTransicoesEvento();
+
+            VisualUtils.AdicionarPesquisa(this, "txtPesquisarEvento", "Pesquisar nome, local ou situação", Pesquisar);
 
             if (System.ComponentModel.LicenseManager.UsageMode !=
                 System.ComponentModel.LicenseUsageMode.Designtime &&

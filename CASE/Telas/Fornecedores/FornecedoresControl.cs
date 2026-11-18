@@ -56,6 +56,8 @@ namespace CASE
             lblBusca.Text = "Buscar por nome, documento, e-mail ou telefone";
 
             txtBusca.TextChanged += TxtBusca_TextChanged;
+            VisualUtils.EstilizarPesquisa(txtBusca, "Pesquisar nome, documento, e-mail ou telefone").Top = 28;
+            lblBusca.Visible = false;
             btnNovo.Click += BtnNovo_Click;
             dgvFornecedores.SelectionChanged += DgvFornecedores_SelectionChanged;
             dgvFornecedores.CellDoubleClick += (s, e) =>
@@ -126,8 +128,11 @@ namespace CASE
         {
             btnNovo.SetBounds(Math.Max(24, panelBusca.ClientSize.Width - 208), 28, 184, 40);
             btnEditarFornecedor.SetBounds(btnNovo.Left - 182, 28, 170, 40);
-            txtBusca.Width = Math.Max(120, btnEditarFornecedor.Left - txtBusca.Left - 20);
-            lblBusca.Width = txtBusca.Width;
+            Control areaBusca = txtBusca.Parent.Name == "panelPesquisa_" + txtBusca.Name
+                ? txtBusca.Parent
+                : txtBusca;
+            areaBusca.Width = Math.Max(120, btnEditarFornecedor.Left - areaBusca.Left - 20);
+            lblBusca.Width = areaBusca.Width;
             panelLista.Height = Math.Max(150, ClientSize.Height - panelLista.Top - 72);
         }
 

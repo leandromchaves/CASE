@@ -14,6 +14,7 @@ namespace CASE.Quermesse
         private readonly Usuario usuarioAutenticado;
         private readonly Evento eventoSelecionado;
         private readonly ConsultaOperacionalService consultas = new ConsultaOperacionalService();
+        private TextBox pesquisa;
         private readonly NumericUpDown precoPraticado = new NumericUpDown();
         private readonly ComboBox formaPagamento = new ComboBox();
         private Label legendaPreco;
@@ -84,7 +85,9 @@ namespace CASE.Quermesse
             panelNovoRegistro.Height = 215;
             panelListaRegistros.Top = 335;
             panelListaRegistros.Height = 260;
-            panelListaRegistros.Padding = new Padding(12);
+            panelListaRegistros.Padding = new Padding(12, 70, 12, 12);
+            pesquisa = VisualUtils.AdicionarPesquisa(panelListaRegistros, "txtPesquisarRegistro", "Pesquisar nos registros",
+                texto => VisualUtils.FiltrarGrades(panelListaRegistros, texto));
             dgvRegistrosEquipe.Dock = DockStyle.Fill;
             panelCorpo.Height = panelListaRegistros.Bottom;
             labelAviso.Top = panelCorpo.Bottom + 12;
@@ -193,7 +196,9 @@ namespace CASE.Quermesse
                 panelNovoRegistro.Visible = perfil == "Membro";
                 btnRegistrar.Enabled = perfil == "Membro" && produtos.Rows.Count > 0;
                 lblContextoRegistro.Text = Convert.ToString(escala["descricao"]);
-                labelAviso.Text = "Vendas e perdas são permitidas durante eventos em andamento.";
+                labelAviso.Text = perfil == "Membro"
+                    ? "Vendas e perdas são permitidas durante eventos em andamento."
+                    : "Vendas e perdas são lançadas pelo membro escalado. Para revisar um lançamento, use Corrigir / histórico.";
             }
             catch (Exception erro)
             {
@@ -233,6 +238,7 @@ namespace CASE.Quermesse
                 dgvRegistrosEquipe.Rows[indice].Tag = Convert.ToInt32(linha["id_registro"]);
             }
             VisualUtils.ExibirEstadoVazio(dgvRegistrosEquipe, "Nenhum registro autorizado encontrado.");
+            VisualUtils.FiltrarGrades(panelListaRegistros, pesquisa.Text.Trim());
         }
 
         private void CorrigirRegistro(object sender, EventArgs e)

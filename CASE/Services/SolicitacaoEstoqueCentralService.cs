@@ -176,6 +176,12 @@ namespace CASE.Services
             return false;
         }
 
+        public List<SolicitacaoEstoqueCentral> ListarParaAdministrador(Usuario usuario)
+        {
+            autorizacaoService.ExigirAdministrador(usuario);
+            return solicitacaoRepository.ListarTodos();
+        }
+
         public List<SolicitacaoEstoqueCentral> ListarPendentesParaAdministrador(
             Usuario usuario)
         {

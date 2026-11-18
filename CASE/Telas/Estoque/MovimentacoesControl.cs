@@ -77,6 +77,7 @@ namespace CASE
                 dgvMovimentacoes.ClearSelection();
             };
             txtProdutoMovimentacao.TextChanged += (s, e) => FiltrarProduto();
+            VisualUtils.EstilizarPesquisa(txtProdutoMovimentacao, "Pesquisar produto");
             cmbTipoMovimentacao.SelectedIndexChanged += (s, e) => FiltrarProduto();
             dgvMovimentacoes.Columns[0].MinimumWidth = 145;
             dgvMovimentacoes.Columns[0].HeaderText = "Data / hora";

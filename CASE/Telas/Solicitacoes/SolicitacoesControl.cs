@@ -14,7 +14,12 @@ namespace CASE.Quermesse
         private readonly Evento eventoSelecionado;
         private readonly SolicitacaoService solicitacaoService = new SolicitacaoService();
         private bool gerenteAutorizado;
+        private bool administrador;
         private bool exibindoPedidosCentrais;
+        private bool mostrandoReposicoesAdministrativas;
+        private TextBox pesquisa;
+
+        public event Action<int> AnalisarPedidoCentral;
 
         public SolicitacoesControl() : this(null, null)
         {
@@ -24,6 +29,8 @@ namespace CASE.Quermesse
         {
             InitializeComponent();
             FrontendTheme.Aplicar(this);
+            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarSolicitacao", "Pesquisar pedido ou produto",
+                texto => AplicarFiltros());
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
             cmbFiltroSolicitacoes.Items.Clear();
@@ -49,10 +56,42 @@ namespace CASE.Quermesse
                     nomePerfil,
                     "Gerente",
                     StringComparison.OrdinalIgnoreCase);
+                administrador = string.Equals(
+                    nomePerfil,
+                    "Administrador",
+                    StringComparison.OrdinalIgnoreCase);
             }
             catch (Exception)
             {
                 gerenteAutorizado = false;
+            }
+
+            if (administrador || gerenteAutorizado)
+            {
+                Button alternar = new Button
+                {
+                    Name = administrador ? "btnAlternarSolicitacoesAdmin" : "btnAlternarSolicitacoesGerente",
+                    Text = administrador ? "Reposições dos setores" : "Pedidos ao central",
+                    Bounds = new Rectangle(btnNovaSolicitacao.Left - 175, btnNovaSolicitacao.Top, 160, 40),
+                    BackColor = Color.White,
+                    ForeColor = VisualUtils.Texto
+                };
+                btnNovaSolicitacao.Parent.Controls.Add(alternar);
+                VisualUtils.EstilizarBotao(alternar);
+                alternar.Click += (s, e) =>
+                {
+                    if (administrador)
+                    {
+                        mostrandoReposicoesAdministrativas = !mostrandoReposicoesAdministrativas;
+                        alternar.Text = mostrandoReposicoesAdministrativas ? "Pedidos ao central" : "Reposições dos setores";
+                    }
+                    else
+                    {
+                        exibindoPedidosCentrais = !exibindoPedidosCentrais;
+                        alternar.Text = exibindoPedidosCentrais ? "Reposições dos setores" : "Pedidos ao central";
+                    }
+                    CarregarSolicitacoes();
+                };
             }
 
             CarregarSolicitacoes();
@@ -60,6 +99,11 @@ namespace CASE.Quermesse
 
         private void btnNovaSolicitacao_Click(object sender, EventArgs e)
         {
+            if (administrador)
+            {
+                CarregarSolicitacoes();
+                return;
+            }
 
             if (gerenteAutorizado)
             {
@@ -93,13 +137,6 @@ namespace CASE.Quermesse
 
         private void btnDetalhesSolicitacao_Click(object sender, EventArgs e)
         {
-            if (gerenteAutorizado)
-            {
-                exibindoPedidosCentrais = !exibindoPedidosCentrais;
-                CarregarSolicitacoes();
-                return;
-            }
-
             AbrirSolicitacaoSelecionada();
         }
 
@@ -129,7 +166,26 @@ namespace CASE.Quermesse
 
                 if (pedidoCentral != null)
                 {
-                    MostrarDetalhesCentral(pedidoCentral.IdSolicitacaoEstoqueCentral);
+                    if (administrador && AnalisarPedidoCentral != null)
+                    {
+                        SolicitacaoEstoqueCentralService service = new SolicitacaoEstoqueCentralService();
+                        if (pedidoCentral.Situacao == SituacoesSolicitacao.Pendente ||
+                            (pedidoCentral.Situacao == SituacoesSolicitacao.Aprovada &&
+                            !service.BuscarIdTransferenciaAtendimento(usuarioAutenticado,
+                                pedidoCentral.IdSolicitacaoEstoqueCentral).HasValue))
+                        {
+                            AnalisarPedidoCentral(pedidoCentral.IdSolicitacaoEstoqueCentral);
+                        }
+                        else
+                        {
+                            MostrarDetalhesCentral(pedidoCentral.IdSolicitacaoEstoqueCentral);
+                        }
+                        CarregarSolicitacoes();
+                    }
+                    else
+                    {
+                        MostrarDetalhesCentral(pedidoCentral.IdSolicitacaoEstoqueCentral);
+                    }
                 }
 
                 return;
@@ -355,9 +411,27 @@ namespace CASE.Quermesse
             dgvSolicitacoesQuermesse.Rows.Clear();
             btnNovaSolicitacao.Enabled = false;
 
+            if (administrador && !mostrandoReposicoesAdministrativas)
+            {
+                CarregarPedidosParaAdministrador();
+                return;
+            }
+
+            if (administrador)
+            {
+                exibindoPedidosCentrais = false;
+                btnNovaSolicitacao.Text = "Atualizar reposições";
+                btnDetalhesSolicitacao.Text = "Consultar detalhes";
+                btnDetalhesSolicitacao.Enabled = true;
+                lblSubtitulo.Text = "Consulta administrativa às reposições solicitadas nos setores de todos os eventos";
+                lblSetor.Text = "Setor";
+                colSolicitacoesQuermesseSetor.HeaderText = "Setor";
+                colSolicitacoesQuermesseQtd.Visible = false;
+            }
+
             if (gerenteAutorizado && eventoSelecionado == null && !exibindoPedidosCentrais)
             {
-                btnDetalhesSolicitacao.Text = "Ver meus pedidos ao central";
+                btnDetalhesSolicitacao.Text = "Detalhes / analisar";
                 labelAviso.Text = "Selecione um evento na tela Eventos para consultar reposições ou solicitar produtos ao central.";
                 return;
             }
@@ -370,6 +444,9 @@ namespace CASE.Quermesse
 
             try
             {
+                lblSetor.Text = "Setor";
+                colSolicitacoesQuermesseSetor.HeaderText = "Setor";
+                colSolicitacoesQuermesseQtd.Visible = false;
                 List<Solicitacao> solicitacoes = ObterSolicitacoesPermitidas();
 
                 foreach (Solicitacao solicitacao in solicitacoes)
@@ -389,16 +466,17 @@ namespace CASE.Quermesse
                 }
 
                 bool membroComEscala = PodeSolicitarComoMembro();
-                btnNovaSolicitacao.Enabled = gerenteAutorizado || membroComEscala;
+                btnNovaSolicitacao.Enabled = administrador || gerenteAutorizado || membroComEscala;
 
                 if (gerenteAutorizado)
                 {
                     btnNovaSolicitacao.Text = "+ Solicitar ao estoque central";
-                    btnDetalhesSolicitacao.Text = "Ver meus pedidos ao central";
+                    btnDetalhesSolicitacao.Text = "Detalhes / analisar";
                 }
-                else
+                else if (!administrador)
                 {
                     btnNovaSolicitacao.Text = "+ Nova solicitação";
+                    btnDetalhesSolicitacao.Text = "Consultar detalhes";
                 }
                 ConfigurarFiltros();
                 AplicarFiltros();
@@ -411,6 +489,73 @@ namespace CASE.Quermesse
             catch (Exception)
             {
                 labelAviso.Text = "Não foi possível carregar as solicitações.";
+            }
+        }
+
+        private void CarregarPedidosParaAdministrador()
+        {
+            exibindoPedidosCentrais = true;
+            btnNovaSolicitacao.Text = "Atualizar pedidos";
+            btnNovaSolicitacao.Enabled = true;
+            btnDetalhesSolicitacao.Text = "Detalhes / analisar / atender";
+            btnDetalhesSolicitacao.Enabled = false;
+            lblSubtitulo.Text = "Liberações e devoluções do estoque central: aprovação, rejeição e atendimento integral";
+            lblSetor.Text = "Evento";
+            colSolicitacoesQuermesseSetor.HeaderText = "Evento";
+            colSolicitacoesQuermesseQtd.Visible = true;
+            colSolicitacoesQuermesseQtd.HeaderText = "Atendimento";
+
+            try
+            {
+                SolicitacaoEstoqueCentralService service = new SolicitacaoEstoqueCentralService();
+                List<SolicitacaoEstoqueCentral> pedidos = service.ListarParaAdministrador(usuarioAutenticado);
+
+                Dictionary<int, string> solicitantes = new Dictionary<int, string>();
+                foreach (Usuario usuario in new UsuarioService().ListarUsuariosAdministrativos(usuarioAutenticado))
+                {
+                    solicitantes[usuario.IdUsuario] = usuario.Login;
+                }
+                Dictionary<int, string> eventos = new Dictionary<int, string>();
+                foreach (Evento evento in new EventoService().Listar(usuarioAutenticado))
+                {
+                    eventos[evento.IdEvento] = evento.Nome;
+                }
+
+                foreach (SolicitacaoEstoqueCentral pedido in pedidos)
+                {
+                    string solicitante;
+                    string evento;
+                    solicitantes.TryGetValue(pedido.IdUsuarioSolicitante, out solicitante);
+                    eventos.TryGetValue(pedido.IdEvento, out evento);
+                    int indice = dgvSolicitacoesQuermesse.Rows.Add(
+                        pedido.DataHora.ToString("dd/MM/yyyy HH:mm"),
+                        solicitante ?? "Usuário " + pedido.IdUsuarioSolicitante,
+                        evento ?? "Evento " + pedido.IdEvento,
+                        pedido.Tipo,
+                        MontarResumoItensCentrais(pedido),
+                        service.BuscarIdTransferenciaAtendimento(usuarioAutenticado,
+                            pedido.IdSolicitacaoEstoqueCentral).HasValue ? "Concluído" : "—",
+                        pedido.Situacao);
+                    dgvSolicitacoesQuermesse.Rows[indice].Tag = pedido;
+                }
+
+                ConfigurarFiltros();
+                cmbFiltroSolicitacoes.Items[0] = "Todos os eventos";
+                AplicarFiltros();
+                btnDetalhesSolicitacao.Enabled = pedidos.Count > 0;
+                labelAviso.Text = pedidos.Count == 0
+                    ? "Nenhum pedido ao estoque central. Use Atualizar pedidos para consultar novamente."
+                    : "Todos os pedidos autorizados, incluindo o histórico. Selecione uma linha para consultar, analisar ou atender.";
+            }
+            catch (UnauthorizedAccessException)
+            {
+                btnNovaSolicitacao.Enabled = false;
+                labelAviso.Text = "Somente o administrador pode analisar os pedidos ao estoque central.";
+            }
+            catch (Exception)
+            {
+                dgvSolicitacoesQuermesse.Rows.Clear();
+                labelAviso.Text = "Não foi possível carregar os pedidos ao estoque central. Tente atualizar novamente.";
             }
         }
 
@@ -437,9 +582,12 @@ namespace CASE.Quermesse
                 }
 
                 exibindoPedidosCentrais = true;
-                btnNovaSolicitacao.Enabled = true;
+                btnNovaSolicitacao.Enabled = eventoSelecionado != null;
                 btnNovaSolicitacao.Text = "+ Novo pedido ao central";
-                btnDetalhesSolicitacao.Text = "Voltar às reposições";
+                btnDetalhesSolicitacao.Text = "Consultar detalhes";
+                lblSetor.Text = "Evento";
+                colSolicitacoesQuermesseSetor.HeaderText = "Evento";
+                colSolicitacoesQuermesseQtd.Visible = false;
                 ConfigurarFiltros();
                 AplicarFiltros();
                 labelAviso.Text = pedidos.Count + " pedido(s) ao estoque central.";
@@ -523,6 +671,16 @@ namespace CASE.Quermesse
 
         private List<Solicitacao> ObterSolicitacoesPermitidas()
         {
+            if (administrador)
+            {
+                List<Solicitacao> solicitacoes = new List<Solicitacao>();
+                foreach (Evento evento in new EventoService().Listar(usuarioAutenticado))
+                {
+                    solicitacoes.AddRange(solicitacaoService.ListarDoEvento(usuarioAutenticado, evento.IdEvento));
+                }
+                return solicitacoes;
+            }
+
             if (eventoSelecionado != null)
             {
                 try
@@ -605,7 +763,8 @@ namespace CASE.Quermesse
                         Convert.ToString(linha.Cells[6].Value),
                         cmbStatusListaSolicitacoes.Text,
                         StringComparison.OrdinalIgnoreCase);
-                linha.Visible = setorCorresponde && statusCorresponde;
+                linha.Visible = setorCorresponde && statusCorresponde &&
+                    VisualUtils.LinhaCorrespondePesquisa(linha, pesquisa.Text.Trim());
             }
 
             dgvSolicitacoesQuermesse.ClearSelection();

@@ -79,12 +79,11 @@ namespace CASE
             VisualUtils.Arredondar(buttonConfiguracoes, 8);
             VisualUtils.Arredondar(buttonSair, 8);
 
-            VisualUtils.Arredondar(panelPesquisa, 12);
+            panelPesquisa.Visible = false;
+            textPesquisa.TabStop = false;
             Rectangle areaDisponivel = Screen.FromControl(this).WorkingArea;
             MinimumSize = new Size(Math.Min(1100, areaDisponivel.Width), Math.Min(680, areaDisponivel.Height));
             Size = new Size(Math.Min(1320, areaDisponivel.Width), Math.Min(850, areaDisponivel.Height));
-            textPesquisa_Leave(this, EventArgs.Empty);
-            textPesquisa.TextChanged += textPesquisa_TextChanged;
             buttonDashboard.Click += (s, e) => AbrirTela(buttonDashboard, () => new DashboardControl(usuarioAutenticado));
             buttonProdutos.Click += (s, e) => AbrirTela(buttonProdutos, () => new ProdutosControl(usuarioAutenticado));
             buttonEstoque.Click += (s, e) => AbrirTela(buttonEstoque, CriarOperacoesEstoque);
@@ -110,7 +109,7 @@ namespace CASE
                 () => new EscalaControl(usuarioAutenticado, eventoSelecionado));
             buttonSolicitacoes.Click += (s, e) => AbrirTela(
                 buttonSolicitacoes,
-                () => new SolicitacoesControl(usuarioAutenticado, eventoSelecionado));
+                CriarSolicitacoes);
             foreach (var botao in new[] { buttonEquipeSetores, buttonFinanceiro, buttonQuermesses, buttonEscala, buttonSolicitacoes })
             {
                 VisualUtils.Arredondar(botao, 8);
@@ -127,6 +126,13 @@ namespace CASE
             QuermessesControl tela = new QuermessesControl(usuarioAutenticado);
             tela.EventoSelecionado += AtualizarEventoSelecionado;
             AtualizarEventoSelecionado(tela.ObterEventoSelecionado());
+            return tela;
+        }
+
+        private UserControl CriarSolicitacoes()
+        {
+            SolicitacoesControl tela = new SolicitacoesControl(usuarioAutenticado, eventoSelecionado);
+            tela.AnalisarPedidoCentral += DecidirSolicitacaoCentral;
             return tela;
         }
 
@@ -897,15 +903,8 @@ namespace CASE
                     panelConteudo.Controls[0].Dispose();
                 }
                 panelConteudo.Controls.Add(tela);
-                if (menuAtual != menu)
-                {
-                    // A busca de um módulo não deve esconder registros de outro módulo.
-                    textPesquisa.Text = "Pesquisar...";
-                    textPesquisa.ForeColor = Color.FromArgb(148, 163, 184);
-                }
                 menuAtual = menu;
                 SelecionarMenu(menu);
-                AplicarPesquisaAtual(tela);
             }
             catch (Exception erro)
             {
@@ -950,43 +949,6 @@ namespace CASE
             {
                 ajustandoMenu = false;
             }
-        }
-
-        private void AplicarPesquisaAtual(UserControl tela)
-        {
-            if (tela == null || textPesquisa.Text == "Pesquisar...")
-            {
-                return;
-            }
-
-            string texto = textPesquisa.Text.Trim();
-
-            if (tela is ProdutosControl)
-            {
-                ((ProdutosControl)tela).Pesquisar(texto);
-            }
-            else if (tela is FornecedoresControl)
-            {
-                ((FornecedoresControl)tela).Pesquisar(texto);
-            }
-            else if (tela is CASE.Quermesse.QuermessesControl)
-            {
-                ((CASE.Quermesse.QuermessesControl)tela).Pesquisar(texto);
-            }
-            else
-            {
-                VisualUtils.FiltrarGrades(tela, texto);
-            }
-        }
-
-        private void textPesquisa_TextChanged(object sender, EventArgs e)
-        {
-            if (textPesquisa.Text == "Pesquisar..." || panelConteudo.Controls.Count == 0)
-            {
-                return;
-            }
-
-            AplicarPesquisaAtual(panelConteudo.Controls[0] as UserControl);
         }
 
         private void textPesquisa_Leave(object sender, EventArgs e)

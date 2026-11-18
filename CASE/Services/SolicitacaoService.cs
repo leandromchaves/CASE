@@ -122,11 +122,13 @@ namespace CASE.Services
                 out nomePerfil);
             Evento evento = eventoRepository.BuscarPorId(idEvento);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
-                evento == null || evento.IdResponsavel != usuarioAtual.IdPessoa)
+            if (evento == null ||
+                (!string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase) &&
+                (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
+                evento.IdResponsavel != usuarioAtual.IdPessoa)))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente o gerente responsável pode consultar solicitações do evento.");
+                    "Somente o administrador ou o gerente responsável pode consultar solicitações do evento.");
             }
 
             return solicitacaoRepository.ListarPorEvento(idEvento);

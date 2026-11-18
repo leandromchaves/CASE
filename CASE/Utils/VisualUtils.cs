@@ -29,6 +29,7 @@ namespace CASE.Utils
         {
             public bool TemErro { get; set; }
             public bool EstiloAplicado { get; set; }
+            public bool PesquisaAplicada { get; set; }
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
@@ -219,6 +220,102 @@ namespace CASE.Utils
             }
         }
 
+        public static TextBox AdicionarPesquisa(Control tela, string nome, string placeholder,
+            Action<string> pesquisar, int margemDireita = 30)
+        {
+            TextBox campo = new TextBox
+            {
+                Name = nome,
+                Bounds = new Rectangle(tela.Width - margemDireita - 300, 20, 300, 40),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Font = new Font("Segoe UI", 10F),
+                TabIndex = 0
+            };
+            tela.Controls.Add(campo);
+            Panel painel = EstilizarPesquisa(campo, placeholder);
+            painel.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            Action posicionar = () => painel.Left = Math.Max(30,
+                tela.ClientSize.Width - margemDireita - painel.Width);
+            tela.ClientSizeChanged += (s, e) => posicionar();
+            posicionar();
+            campo.TextChanged += (s, e) => pesquisar(campo.Text.Trim());
+            return campo;
+        }
+
+        public static Panel EstilizarPesquisa(TextBox campo, string placeholder)
+        {
+            if (campo == null || campo.Parent == null)
+            {
+                throw new ArgumentException("O campo de pesquisa precisa pertencer a uma tela.", nameof(campo));
+            }
+
+            EstadoVisualCampo estado = EstadosCampos.GetOrCreateValue(campo);
+            if (estado.PesquisaAplicada)
+            {
+                return (Panel)campo.Parent;
+            }
+
+            Control origem = campo.Parent;
+            int indice = origem.Controls.GetChildIndex(campo);
+            Panel painel = new Panel
+            {
+                Name = "panelPesquisa_" + campo.Name,
+                Bounds = new Rectangle(campo.Left, campo.Top, campo.Width, Math.Max(40, campo.Height)),
+                Anchor = campo.Anchor,
+                Dock = campo.Dock,
+                Margin = campo.Margin,
+                TabIndex = campo.TabIndex,
+                BackColor = Color.FromArgb(247, 249, 252),
+                Cursor = Cursors.IBeam
+            };
+            PictureBox icone = new PictureBox
+            {
+                Name = "iconePesquisa_" + campo.Name,
+                Image = Properties.Resources.LucidePesquisa,
+                Size = new Size(20, 20),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                TabStop = false,
+                Cursor = Cursors.IBeam
+            };
+
+            origem.SuspendLayout();
+            origem.Controls.Add(painel);
+            painel.Controls.Add(campo);
+            painel.Controls.Add(icone);
+            origem.Controls.SetChildIndex(painel, indice);
+            estado.PesquisaAplicada = true;
+            estado.EstiloAplicado = true;
+            campo.Dock = DockStyle.None;
+            campo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            campo.AutoSize = true;
+            campo.TabIndex = 0;
+            campo.BorderStyle = BorderStyle.None;
+            campo.BackColor = painel.BackColor;
+            campo.ForeColor = Texto;
+            campo.AccessibleName = placeholder;
+
+            Action ajustar = () =>
+            {
+                icone.Location = new Point(12, Math.Max(0, (painel.ClientSize.Height - icone.Height) / 2));
+                campo.SetBounds(40, Math.Max(0, (painel.ClientSize.Height - campo.PreferredHeight) / 2),
+                    Math.Max(1, painel.ClientSize.Width - 52), campo.PreferredHeight);
+                Arredondar(painel, 12);
+            };
+            painel.Layout += (s, e) => ajustar();
+            campo.FontChanged += (s, e) => ajustar();
+            campo.DpiChangedAfterParent += (s, e) => ajustar();
+            painel.MouseDown += (s, e) => campo.Focus();
+            icone.Click += (s, e) => campo.Focus();
+            campo.Enter += (s, e) => painel.Invalidate();
+            campo.Leave += (s, e) => painel.Invalidate();
+            AplicarBorda(painel);
+            DefinirPlaceholder(campo, placeholder);
+            ajustar();
+            origem.ResumeLayout(true);
+            return painel;
+        }
+
         private static void CentralizarLinhaNoPainel(TextBox campo, Panel painel)
         {
             int altura = campo.PreferredHeight;
@@ -339,6 +436,23 @@ namespace CASE.Utils
             {
                 campo.Bounds = area;
             }
+        }
+
+        public static bool LinhaCorrespondePesquisa(DataGridViewRow linha, string texto)
+        {
+            if (string.IsNullOrWhiteSpace(texto))
+            {
+                return true;
+            }
+            foreach (DataGridViewCell celula in linha.Cells)
+            {
+                if (Convert.ToString(celula.FormattedValue).IndexOf(texto,
+                    StringComparison.CurrentCultureIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         public static void FiltrarGrades(Control raiz, string texto)

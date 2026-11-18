@@ -96,6 +96,7 @@ namespace CASE
             txtPesquisarEstoque.SetBounds(635, 22, 220, txtPesquisarEstoque.PreferredHeight);
             VisualUtils.DefinirPlaceholder(txtPesquisarEstoque, "Produto ou local");
             txtPesquisarEstoque.TextChanged += (s, e) => AplicarFiltros();
+            VisualUtils.EstilizarPesquisa(txtPesquisarEstoque, "Pesquisar produto ou local").Top = 18;
             btnAtualizarEstoque.Visible = true;
             btnAtualizarEstoque.SetBounds(870, 18, 100, 36);
             btnAtualizarEstoque.Click += AtualizarSaldos;

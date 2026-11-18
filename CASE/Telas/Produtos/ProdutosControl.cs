@@ -68,6 +68,7 @@ namespace CASE
             dgvProdutos.Columns.Add(colunaExcluir);
 
             btnNovoProduto.Click += BtnNovoProduto_Click;
+            VisualUtils.EstilizarPesquisa(txtPesquisarProduto, "Pesquisar produtos");
             dgvProdutos.CellContentClick += DgvProdutos_CellContentClick;
             txtPesquisarProduto.TextChanged += Filtros_Changed;
             cmbFiltroCategoria.SelectedIndexChanged += Filtros_Changed;

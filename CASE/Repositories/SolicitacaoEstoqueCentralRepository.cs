@@ -134,6 +134,14 @@ namespace CASE.Repositories
             }
         }
 
+        public List<SolicitacaoEstoqueCentral> ListarTodos()
+        {
+            return AcessoDados.ConsultarLista(
+                "SELECT " + Colunas + " FROM vw_solicitacaoestoquecentral " +
+                "ORDER BY data_hora,id_solicitacao_estoque_central",
+                ConverterLinha);
+        }
+
         public List<SolicitacaoEstoqueCentral> ListarPendentes()
         {
             return AcessoDados.ConsultarLista(

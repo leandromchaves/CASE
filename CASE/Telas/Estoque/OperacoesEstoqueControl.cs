@@ -15,6 +15,7 @@ namespace CASE
         private readonly EstoqueService estoqueService = new EstoqueService();
         private readonly ProdutoService produtoService = new ProdutoService();
         private readonly Dictionary<int, Produto> produtosPorId = new Dictionary<int, Produto>();
+        private TextBox pesquisa;
 
         public event EventHandler FornecedoresSolicitados;
 
@@ -58,6 +59,8 @@ namespace CASE
             Disposed += (s, e) => menuSaldos.Dispose();
             btnFornecedores.Click += (s, e) => FornecedoresSolicitados?.Invoke(this, EventArgs.Empty);
             FrontendTheme.Aplicar(this);
+            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarLocalEstoque", "Pesquisar neste estoque",
+                texto => VisualUtils.FiltrarGrades(this, texto));
             AutoScrollMinSize = new System.Drawing.Size(760, 740);
             panelAcoes.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             panelSaldos.Anchor = AnchorStyles.Top | AnchorStyles.Left;
@@ -385,6 +388,7 @@ namespace CASE
                 }
                 VisualUtils.ExibirEstadoVazio(dgvHistorico, "Nenhuma movimentação neste local nos últimos 30 dias.");
                 lblResumo.Text = produtosComSaldo + " produto(s) com saldo neste local";
+                VisualUtils.FiltrarGrades(this, pesquisa.Text.Trim());
             }
             catch (UnauthorizedAccessException)
             {
