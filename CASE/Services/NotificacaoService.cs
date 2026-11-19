@@ -34,6 +34,7 @@ namespace CASE.Services
             {
                 AdicionarCadastrosPendentes(usuarioAtual, notificacoes);
                 AdicionarSolicitacoesCentraisPendentes(usuarioAtual, notificacoes);
+                AdicionarSolicitacoesDosEventos(usuarioAtual, notificacoes);
             }
             else if (string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
             {

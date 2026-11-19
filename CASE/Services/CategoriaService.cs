@@ -94,6 +94,14 @@ namespace CASE.Services
             return categoriaRepository.Atualizar(categoria);
         }
 
+        public bool Excluir(Usuario usuario, int idCategoria)
+        {
+            autorizacaoService.ExigirAdministrador(usuario);
+            if (idCategoria <= 0)
+                throw new ArgumentException("Selecione uma categoria para excluir.");
+            return categoriaRepository.Excluir(idCategoria);
+        }
+
         private static void ValidarCategoria(Categoria categoria)
         {
             if (categoria == null)

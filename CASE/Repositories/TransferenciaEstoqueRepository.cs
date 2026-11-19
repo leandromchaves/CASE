@@ -995,13 +995,11 @@ CriarSnapshot(conexao, transacao, atual.IdTransferencia));
             int idLocalEvento;
 
             using (MySqlCommand comando = new MySqlCommand(
-                "SELECT id_evento FROM vw_localestoque " +
-                "WHERE id_local_estoque IN (@origem,@destino) AND eh_central=0 " +
-                "ORDER BY id_local_estoque LIMIT 1 FOR UPDATE",
+                "SELECT id_evento FROM localestoque " +
+                "WHERE id_local_estoque=@destino AND id_instituicao_central IS NULL FOR UPDATE",
                 conexao,
                 transacao))
             {
-                comando.Parameters.AddWithValue("@origem", transferencia.IdLocalOrigem);
                 comando.Parameters.AddWithValue("@destino", transferencia.IdLocalDestino);
                 object resultado = comando.ExecuteScalar();
 
@@ -1055,28 +1053,36 @@ CriarSnapshot(conexao, transacao, atual.IdTransferencia));
             TransferenciaEstoque transferencia,
             int idUsuario)
         {
+            Usuario sessao = SessaoUsuario.ObterUsuarioAtual();
+            if (sessao.IdUsuario != idUsuario)
+                throw new UnauthorizedAccessException("O responsável deve corresponder à sessão autenticada.");
             using (MySqlCommand comando = new MySqlCommand(
-                "SELECT ev.id_evento FROM vw_localestoque origem " +
-                "JOIN vw_localestoque destino " +
-                "ON destino.id_local_estoque=@destino " +
-                "JOIN evento ev ON ev.id_evento=origem.id_evento " +
+                "SELECT ev.id_evento FROM localestoque origem " +
+                "JOIN localestoque destino ON destino.id_local_estoque=@destino " +
+                "JOIN evento ev ON ev.id_evento=destino.id_evento " +
                 "JOIN usuario u ON u.id_usuario=@usuario " +
                 "JOIN pessoa p ON p.id_pessoa=u.id_pessoa " +
                 "JOIN perfilsistema ps ON ps.id_perfil_sistema=u.id_perfil_sistema " +
                 "WHERE origem.id_local_estoque=@origem " +
-                "AND origem.eh_central=0 AND destino.eh_central=0 " +
-                "AND origem.id_evento IS NOT NULL " +
-                "AND origem.id_evento=destino.id_evento " +
-                "AND origem.id_instituicao=destino.id_instituicao " +
+                "AND ((origem.id_instituicao_central IS NULL " +
+                "AND destino.id_instituicao_central IS NULL " +
+                "AND origem.id_evento IS NOT NULL AND origem.id_evento=destino.id_evento) " +
+                "OR (ps.nome='Administrador' AND origem.id_instituicao_central IS NOT NULL " +
+                "AND origem.id_evento IS NULL " +
+                "AND destino.id_instituicao_central IS NULL " +
+                "AND destino.eh_geral_evento=1 AND destino.id_evento IS NOT NULL " +
+                "AND origem.id_instituicao_central=ev.id_instituicao)) " +
                 "AND origem.ativo=1 AND destino.ativo=1 " +
-                "AND (origem.eh_geral_evento=1 OR EXISTS (" +
+                "AND ((origem.id_instituicao_central IS NOT NULL AND ps.nome='Administrador') OR " +
+                "origem.eh_geral_evento=1 OR EXISTS (" +
                 "SELECT 1 FROM estoquesetor es " +
-                "WHERE es.id_local_estoque=origem.id_local_estoque)) " +
+                "WHERE es.id_local_estoque=origem.id_local_estoque))) " +
                 "AND (destino.eh_geral_evento=1 OR EXISTS (" +
                 "SELECT 1 FROM estoquesetor es " +
                 "WHERE es.id_local_estoque=destino.id_local_estoque)) " +
-                "AND ev.id_responsavel=p.id_pessoa " +
-                "AND u.situacao_conta='aprovado' AND ps.nome='Gerente' " +
+                "AND (ps.nome='Administrador' OR (ps.nome='Gerente' AND ev.id_responsavel=p.id_pessoa)) " +
+                "AND u.situacao_conta='aprovado' AND u.id_perfil_sistema=@perfilSessao " +
+                "AND u.id_pessoa=@pessoaSessao " +
                 "AND ev.situacao IN ('planejado','em_andamento') FOR UPDATE",
                 conexao,
                 transacao))
@@ -1084,6 +1090,8 @@ CriarSnapshot(conexao, transacao, atual.IdTransferencia));
                 comando.Parameters.AddWithValue("@origem", transferencia.IdLocalOrigem);
                 comando.Parameters.AddWithValue("@destino", transferencia.IdLocalDestino);
                 comando.Parameters.AddWithValue("@usuario", idUsuario);
+                comando.Parameters.AddWithValue("@perfilSessao", sessao.IdPerfilSistema);
+                comando.Parameters.AddWithValue("@pessoaSessao", sessao.IdPessoa);
 
                 if (comando.ExecuteScalar() == null)
                 {

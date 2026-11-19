@@ -214,11 +214,11 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                lblAviso.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", lblAviso);
             }
             catch (InvalidOperationException ex)
             {
-                lblAviso.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", lblAviso);
             }
             catch (UnauthorizedAccessException)
             {

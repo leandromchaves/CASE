@@ -10,10 +10,14 @@ namespace CASE
     {
         public event EventHandler GerenciarAcessosSolicitado;
         public event EventHandler SenhaAlterada;
+        public event EventHandler PerfilAtualizado;
         private readonly Usuario usuarioAutenticado;
         private readonly PessoaService pessoaService = new PessoaService();
         private readonly Label lblMensagemPerfil = new Label();
         private bool administrador;
+        private FlowLayoutPanel menuConfiguracoes;
+        private Panel[] paginasConfiguracao;
+        private Button[] botoesConfiguracao;
 
         public ConfiguracoesControl() : this(null)
         {
@@ -42,11 +46,7 @@ namespace CASE
             VisualUtils.AplicarBorda(panelPerfilUsuario);
             VisualUtils.Arredondar(btnSalvarPerfil, 8);
             btnSalvarPerfil.SizeChanged += AjustarArredondamento;
-            VisualUtils.Arredondar(panelPreferencias, 12);
-            panelPreferencias.SizeChanged += AjustarArredondamento;
-            VisualUtils.AplicarBorda(panelPreferencias);
-            VisualUtils.Arredondar(btnSalvarPreferencias, 8);
-            btnSalvarPreferencias.SizeChanged += AjustarArredondamento;
+            panelPreferencias.Visible = false;
             VisualUtils.Arredondar(panelSolicitacoesPendentes, 12);
             panelSolicitacoesPendentes.SizeChanged += AjustarArredondamento;
             VisualUtils.AplicarBorda(panelSolicitacoesPendentes);
@@ -55,7 +55,7 @@ namespace CASE
             VisualUtils.Arredondar(btnRejeitarSolicitacao, 8);
             btnRejeitarSolicitacao.SizeChanged += AjustarArredondamento;
             dgvSolicitacoes.ClearSelection();
-            lblSubtituloConfiguracoes.Text = "Gerencie suas informações e preferências";
+            lblSubtituloConfiguracoes.Text = "Gerencie sua conta e os cadastros da instituição";
             txtPerfilNome.Clear();
             txtPerfilUsuario.Clear();
             lblPerfilEmail.Visible = false;
@@ -63,17 +63,21 @@ namespace CASE
             txtPerfilEmail.TabStop = false;
             chkAlertasEmail.Visible = false;
             chkAlertasEmail.Enabled = false;
-            var menu = new FlowLayoutPanel
+            menuConfiguracoes = new FlowLayoutPanel
             {
                 Name = "panelMenuConfiguracoes",
                 Bounds = new System.Drawing.Rectangle(30, 115, 180, 320),
-                FlowDirection = FlowDirection.TopDown
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                Padding = new Padding(0, 4, 0, 4),
+                BackColor = BackColor,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left
             };
-            Controls.Add(menu);
-            panelPerfilUsuario.SetBounds(230, 115, 710, 360);
-            panelPreferencias.SetBounds(230, 115, 710, 360);
+            Controls.Add(menuConfiguracoes);
+            panelPerfilUsuario.SetBounds(210, 115, 710, 360);
             panelSolicitacoesPendentes.MinimumSize = System.Drawing.Size.Empty;
-            panelSolicitacoesPendentes.SetBounds(230, 115, 710, 360);
+            panelSolicitacoesPendentes.SetBounds(210, 115, 710, 500);
             dgvSolicitacoes.Width = 670;
             btnAprovarSolicitacao.Left = 460;
             btnRejeitarSolicitacao.Left = 575;
@@ -96,9 +100,6 @@ namespace CASE
             panelPerfilUsuario.Controls.Add(lblMensagemPerfil);
 
             btnSalvarPerfil.Click += BtnSalvarPerfil_Click;
-            btnSalvarPreferencias.Enabled = false;
-            btnSalvarPreferencias.AccessibleDescription =
-                "O banco atual não possui armazenamento para estas preferências.";
 
             CarregarMeusDados();
             var categorias = new Panel
@@ -113,9 +114,12 @@ namespace CASE
             {
                 Name = "listCategorias",
                 BorderStyle = BorderStyle.None,
+                BackColor = System.Drawing.Color.FromArgb(248, 250, 253),
+                ForeColor = VisualUtils.Texto,
                 Bounds = new System.Drawing.Rectangle(24, 66, 650, 220),
                 Font = new System.Drawing.Font("Segoe UI", 11),
-                ItemHeight = 40
+                ItemHeight = 40,
+                IntegralHeight = false
             };
             if (administrador)
             {
@@ -132,45 +136,46 @@ namespace CASE
             Controls.Add(instituicao);
             Controls.Add(turnos);
             Controls.Add(funcoes);
-            menu.Height = 440;
-            Panel[] paginas = { panelPerfilUsuario,
+            paginasConfiguracao = new Panel[] { panelPerfilUsuario,
 instituicao,
 categorias,
 tipos,
 turnos,
 funcoes,
-panelSolicitacoesPendentes,
-panelPreferencias };
+panelSolicitacoesPendentes };
             string[] nomes = { "Perfil",
 "Instituição",
 "Categorias",
 "Tipos de evento",
 "Turnos",
 "Funções na equipe",
-"Usuários",
-"Preferências" };
+"Usuários" };
             var botoes = new System.Collections.Generic.List<Button>();
             for (int i = 0; i < nomes.Length; i++)
             {
-                Panel pagina = paginas[i];
+                Panel pagina = paginasConfiguracao[i];
                 var botao = new Button
                 {
                     Name = "btnConfig" + i,
                     Text = nomes[i],
-                    Width = 170,
-                    Height = 40,
+                    Width = 174,
+                    Height = 42,
                     FlatStyle = FlatStyle.Flat,
                     ForeColor = FrontendTheme.Texto,
-                    BackColor = BackColor,
+                    BackColor = System.Drawing.Color.Transparent,
                     TextAlign = System.Drawing.ContentAlignment.MiddleLeft,
-                    Cursor = Cursors.Hand
+                    Cursor = Cursors.Hand,
+                    Padding = new Padding(10, 0, 0, 0),
+                    UseVisualStyleBackColor = false
                 };
                 botao.FlatAppearance.BorderSize = 0;
-                if (!administrador && pagina != panelPerfilUsuario && pagina != panelPreferencias)
+                botao.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(232, 241, 253);
+                botao.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(215, 233, 255);
+                if (!administrador && pagina != panelPerfilUsuario)
                 {
                     botao.Visible = false;
                 }
-                menu.Controls.Add(botao);
+                menuConfiguracoes.Controls.Add(botao);
                 botoes.Add(botao);
                 botao.Click += (s, e) =>
                 {
@@ -179,44 +184,189 @@ panelPreferencias };
                         GerenciarAcessosSolicitado?.Invoke(this, EventArgs.Empty);
                         return;
                     }
-                    foreach (Panel item in paginas)
+                    foreach (Panel item in paginasConfiguracao)
                         item.Visible = item == pagina;
                     foreach (Button item in botoes)
                     {
                         if (item == botao)
                         {
                             item.BackColor = System.Drawing.Color.FromArgb(215, 233, 255);
+                            item.ForeColor = VisualUtils.Azul;
+                            item.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
                         }
                         else
                         {
-                            item.BackColor = BackColor;
+                            item.BackColor = System.Drawing.Color.Transparent;
+                            item.ForeColor = FrontendTheme.Texto;
+                            item.Font = new System.Drawing.Font("Segoe UI", 9.5F);
                         }
                     }
                 };
             }
+            botoesConfiguracao = botoes.ToArray();
             botoes[0].PerformClick();
+            SizeChanged += (s, e) => OrganizarConfiguracoes();
+            OrganizarConfiguracoes();
             PrepararAlteracaoSenha();
+            EnvolverCampoArredondado(panelPerfilUsuario, txtPerfilNome, "panelCampoPerfilNome");
+            EnvolverCampoArredondado(panelPerfilUsuario, txtPerfilUsuario, "panelCampoPerfilUsuario");
+            OrganizarCamposPerfil();
+        }
+
+        private void OrganizarConfiguracoes()
+        {
+            if (menuConfiguracoes == null || paginasConfiguracao == null)
+            {
+                return;
+            }
+
+            int largura = Math.Max(640, ClientSize.Width - 236);
+            int alturaVisivel = Math.Max(420, ClientSize.Height - 132);
+            menuConfiguracoes.SetBounds(14, 115, 180, alturaVisivel);
+
+            foreach (Panel pagina in paginasConfiguracao)
+            {
+                int altura = pagina == panelPerfilUsuario ? 700 :
+                    pagina == panelSolicitacoesPendentes ? 500 : 420;
+                pagina.SetBounds(210, 115, largura, altura);
+                pagina.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            }
+
+            OrganizarCamposPerfil();
+
+            dgvSolicitacoes.Width = largura - 40;
+            btnRejeitarSolicitacao.Left = largura - 135;
+            btnAprovarSolicitacao.Left = largura - 250;
+            AutoScrollMinSize = new System.Drawing.Size(920, Math.Max(680, 115 + 700 + 24));
+        }
+
+        private void OrganizarCamposPerfil()
+        {
+            if (panelPerfilUsuario == null || txtPerfilNome == null ||
+                txtPerfilUsuario == null || btnSalvarPerfil == null)
+            {
+                return;
+            }
+
+            int larguraInterna = Math.Max(300, panelPerfilUsuario.ClientSize.Width - 48);
+            lblTituloPerfilUsuario.SetBounds(24, 18, larguraInterna, 32);
+            lblPerfilNome.SetBounds(24, 62, larguraInterna, 22);
+            DefinirLimitesCampoPerfil(txtPerfilNome, new System.Drawing.Rectangle(24, 88, larguraInterna, 38));
+            lblPerfilUsuario.SetBounds(24, 132, larguraInterna, 22);
+            DefinirLimitesCampoPerfil(txtPerfilUsuario, new System.Drawing.Rectangle(24, 158, larguraInterna, 38));
+            btnSalvarPerfil.SetBounds(larguraInterna - 170 + 24, 205, 170, 40);
+            lblMensagemPerfil.SetBounds(24, 250, larguraInterna, 30);
+
+            foreach (Control controle in panelPerfilUsuario.Controls)
+            {
+                if (controle.Name == "lblOrientacaoAlteracaoSenha" ||
+                    controle.Name == "lblTituloAlteracaoSenha" ||
+                    controle.Name == "lblMensagemSenha")
+                {
+                    controle.Width = larguraInterna;
+                }
+                else if (controle.Name.StartsWith("paneltxtSenha", StringComparison.Ordinal))
+                {
+                    controle.Width = larguraInterna;
+                }
+                else if (controle.Name == "btnAlterarSenha")
+                {
+                    controle.Left = larguraInterna - controle.Width + 24;
+                }
+                else if (controle.Name.StartsWith("lbltxtSenha", StringComparison.Ordinal))
+                {
+                    controle.Width = larguraInterna;
+                }
+            }
+        }
+
+        private void DefinirLimitesCampoPerfil(TextBox campo, System.Drawing.Rectangle limites)
+        {
+            string nomePainel = campo == txtPerfilNome ? "panelCampoPerfilNome" : "panelCampoPerfilUsuario";
+            Control destino = panelPerfilUsuario.Controls[nomePainel];
+            if (destino == null)
+            {
+                campo.SetBounds(limites.X, limites.Y, limites.Width, 34);
+                return;
+            }
+
+            destino.SetBounds(limites.X, limites.Y, limites.Width, limites.Height);
+        }
+
+        private Panel EnvolverCampoArredondado(Panel contenedor, TextBox campo, string nomePainel)
+        {
+            if (contenedor == null || campo == null)
+                return null;
+
+            Panel existente = contenedor.Controls[nomePainel] as Panel;
+            if (existente != null)
+                return existente;
+
+            System.Drawing.Rectangle limites = campo.Bounds;
+            AnchorStyles ancora = campo.Anchor;
+            int indice = contenedor.Controls.GetChildIndex(campo);
+            contenedor.Controls.Remove(campo);
+            Panel painelCampo = new Panel
+            {
+                Name = nomePainel,
+                Bounds = limites,
+                Anchor = ancora,
+                BackColor = System.Drawing.Color.White,
+                Padding = new Padding(10, 2, 10, 2)
+            };
+            campo.Dock = DockStyle.Fill;
+            painelCampo.Controls.Add(campo);
+            contenedor.Controls.Add(painelCampo);
+            contenedor.Controls.SetChildIndex(painelCampo, Math.Min(indice, contenedor.Controls.Count - 1));
+            VisualUtils.EstilizarCampo(campo);
+            // Alguns campos do Designer já receberam o estilo padrão antes de serem
+            // envolvidos. Reaplica aqui o estilo interno do campo arredondado.
+            campo.BorderStyle = BorderStyle.None;
+            campo.BackColor = System.Drawing.Color.White;
+            campo.AutoSize = false;
+            campo.Dock = DockStyle.Fill;
+            campo.Margin = Padding.Empty;
+            painelCampo.MouseDown += (s, e) => campo.Focus();
+            VisualUtils.Arredondar(painelCampo, 7);
+            VisualUtils.AplicarBorda(painelCampo);
+            painelCampo.SizeChanged += AjustarArredondamento;
+            return painelCampo;
         }
 
         private void PrepararAlteracaoSenha()
         {
             AutoScroll = true;
-            panelPerfilUsuario.Height = 730;
-            btnSalvarPerfil.SetBounds(514, 220, 170, 36);
-            lblMensagemPerfil.SetBounds(24, 264, 660, 38);
+            panelPerfilUsuario.Height = 700;
+            int larguraCampo = panelPerfilUsuario.Width - 48;
+            lblTituloPerfilUsuario.SetBounds(24, 18, larguraCampo, 32);
+            lblPerfilNome.SetBounds(24, 62, larguraCampo, 22);
+            txtPerfilNome.SetBounds(24, 88, larguraCampo, 34);
+            lblPerfilUsuario.SetBounds(24, 132, larguraCampo, 22);
+            txtPerfilUsuario.SetBounds(24, 158, larguraCampo, 34);
+            btnSalvarPerfil.SetBounds(larguraCampo - 170 + 24, 205, 170, 40);
+            lblMensagemPerfil.SetBounds(24, 250, larguraCampo, 30);
             lblMensagemPerfil.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             Label tituloSenha = FrontendTheme.Legenda(
-                "Alterar senha", new System.Drawing.Rectangle(24, 310, 620, 30));
+                "Alterar senha", new System.Drawing.Rectangle(24, 296, larguraCampo, 30));
+            tituloSenha.Name = "lblTituloAlteracaoSenha";
             tituloSenha.Font = new System.Drawing.Font("Segoe UI", 14, System.Drawing.FontStyle.Bold);
             panelPerfilUsuario.Controls.Add(tituloSenha);
+            Label orientacaoSenha = FrontendTheme.Legenda(
+                "Confirme sua senha atual para cadastrar uma nova.",
+                new System.Drawing.Rectangle(24, 330, larguraCampo, 24));
+            orientacaoSenha.Name = "lblOrientacaoAlteracaoSenha";
+            panelPerfilUsuario.Controls.Add(orientacaoSenha);
 
             string[] nomes = { "Senha atual", "Nova senha", "Confirmar nova senha" };
             string[] identificadores = { "txtSenhaAtual", "txtNovaSenha", "txtConfirmarNovaSenha" };
             TextBox[] senhas = new TextBox[3];
             for (int i = 0; i < senhas.Length; i++)
             {
-                panelPerfilUsuario.Controls.Add(FrontendTheme.Legenda(nomes[i],
-                    new System.Drawing.Rectangle(24, 350 + i * 76, 620, 23)));
+                int topo = 362 + i * 70;
+                Label legendaSenha = FrontendTheme.Legenda(nomes[i],
+                    new System.Drawing.Rectangle(24, topo, larguraCampo, 22));
+                legendaSenha.Name = "lbl" + identificadores[i];
+                panelPerfilUsuario.Controls.Add(legendaSenha);
                 senhas[i] = new TextBox
                 {
                     Name = identificadores[i],
@@ -225,9 +375,21 @@ panelPreferencias };
                     AccessibleName = nomes[i],
                     Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
                 };
-                senhas[i].SetBounds(24, 377 + i * 76, 660, 28);
-                panelPerfilUsuario.Controls.Add(senhas[i]);
+                Panel campoArredondado = new Panel
+                {
+                    Name = "panel" + identificadores[i],
+                    BackColor = System.Drawing.Color.White,
+                    Bounds = new System.Drawing.Rectangle(24, topo + 26, larguraCampo, 38),
+                    Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
+                    Padding = new Padding(10, 2, 10, 2)
+                };
+                senhas[i].Dock = DockStyle.Fill;
+                campoArredondado.Controls.Add(senhas[i]);
+                panelPerfilUsuario.Controls.Add(campoArredondado);
                 VisualUtils.EstilizarCampo(senhas[i]);
+                VisualUtils.Arredondar(campoArredondado, 7);
+                VisualUtils.AplicarBorda(campoArredondado);
+                campoArredondado.SizeChanged += AjustarArredondamento;
             }
 
             Button alterar = new Button
@@ -237,7 +399,7 @@ panelPreferencias };
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Enabled = usuarioAutenticado != null
             };
-            alterar.SetBounds(514, 610, 170, 40);
+            alterar.SetBounds(larguraCampo - 170 + 24, 600, 170, 40);
             VisualUtils.EstilizarBotao(alterar);
             panelPerfilUsuario.Controls.Add(alterar);
             Label mensagem = new Label
@@ -247,7 +409,7 @@ panelPreferencias };
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
                 Text = "Após alterar a senha, entre novamente no CASE."
             };
-            mensagem.SetBounds(24, 663, 660, 48);
+            mensagem.SetBounds(24, 650, larguraCampo, 28);
             panelPerfilUsuario.Controls.Add(mensagem);
             bool alterando = false;
             alterar.Click += (s, e) =>
@@ -261,9 +423,9 @@ panelPreferencias };
                     new UsuarioService().AlterarMinhaSenha(senhas[0].Text, senhas[1].Text, senhas[2].Text);
                     sucesso = true;
                 }
-                catch (ArgumentException erro) { mensagem.Text = erro.Message; }
+                catch (ArgumentException erro) { mensagem.Text = CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Confira os dados da senha e tente novamente."); }
                 catch (UnauthorizedAccessException) { mensagem.Text = "Sua sessão não permite alterar a senha. Entre novamente."; }
-                catch (InvalidOperationException erro) { mensagem.Text = erro.Message; }
+                catch (InvalidOperationException erro) { mensagem.Text = CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Não foi possível alterar a senha. Confira os dados e tente novamente."); }
                 catch (Exception) { mensagem.Text = "Não foi possível alterar a senha. Tente novamente."; }
                 finally
                 {
@@ -271,6 +433,8 @@ panelPreferencias };
                     alterando = false;
                     alterar.Enabled = !sucesso && usuarioAutenticado != null;
                 }
+                if (!sucesso && !string.IsNullOrWhiteSpace(mensagem.Text))
+                    CASE.Utils.FeedbackUsuario.Exibir(this, mensagem.Text, CASE.Utils.TipoFeedback.Erro);
                 if (sucesso)
                 {
                     MessageBox.Show(this, "Senha alterada. Entre novamente com sua nova senha.",
@@ -322,6 +486,7 @@ panelPreferencias };
                     txtPerfilNome.Text);
 
                 ExibirMensagemPerfil("Seus dados foram atualizados.", false);
+                PerfilAtualizado?.Invoke(this, EventArgs.Empty);
                 MessageBox.Show(
                     this,
                     "Seus dados pessoais foram atualizados.",
@@ -331,7 +496,7 @@ panelPreferencias };
             }
             catch (ArgumentException erro)
             {
-                ExibirMensagemPerfil(erro.Message, true);
+                ExibirMensagemPerfil(CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Confira os dados do perfil e tente novamente."), true);
             }
             catch (UnauthorizedAccessException)
             {
@@ -350,6 +515,9 @@ panelPreferencias };
                 ? System.Drawing.Color.FromArgb(190, 55, 65)
                 : System.Drawing.Color.FromArgb(43, 133, 104);
             lblMensagemPerfil.Visible = !string.IsNullOrWhiteSpace(mensagem);
+            if (!string.IsNullOrWhiteSpace(mensagem))
+                CASE.Utils.FeedbackUsuario.Exibir(this, mensagem,
+                    erro ? CASE.Utils.TipoFeedback.Erro : CASE.Utils.TipoFeedback.Sucesso);
         }
 
         private void AjustarArredondamento(object sender, EventArgs e)
@@ -403,6 +571,7 @@ panelPreferencias };
 
         private void ConfigurarCadastroCategorias(Panel painel, ListBox lista)
         {
+            Label mensagem = new Label();
             TextBox nome = new TextBox();
             nome.Name = "txtNomeCategoria";
             nome.MaxLength = 100;
@@ -431,44 +600,55 @@ panelPreferencias };
             {
                 try
                 {
-                    Categoria categoria = lista.SelectedItem as Categoria;
-                    bool existente = categoria != null;
-                    if (categoria == null)
-                    {
-                        categoria = new Categoria();
-                    }
-                    categoria.Nome = nome.Text.Trim();
+                    Categoria anterior = lista.SelectedItem as Categoria;
+                    bool existente = anterior != null;
+                    Categoria categoria = new Categoria { Nome = nome.Text.Trim() };
+                    if (existente)
+                        categoria.IdCategoria = anterior.IdCategoria;
                     CategoriaService service = new CategoriaService();
                     if (existente)
                     {
-                        service.Atualizar(usuarioAutenticado, categoria);
+                        if (!service.Atualizar(usuarioAutenticado, categoria))
+                            throw new InvalidOperationException("A categoria não foi encontrada. Atualize a lista.");
                     }
                     else
                     {
                         service.Cadastrar(usuarioAutenticado, categoria);
                     }
                     CarregarCategorias(lista);
-                    nome.Clear();
+                    SelecionarCadastroPorNome(lista, categoria.Nome);
+                    ExibirResultadoCadastro(mensagem, existente ? "Alterações salvas com sucesso." : "Categoria adicionada com sucesso.");
                 }
                 catch (Exception erro)
                 {
-                    MostrarErroCadastro(erro);
+                    MostrarErroCadastro(erro, mensagem);
                 }
             };
             painel.Controls.Add(nome);
             painel.Controls.Add(novo);
             painel.Controls.Add(salvar);
             FrontendTheme.Aplicar(painel);
+            PrepararEditorCadastro(painel, lista, nome, novo, salvar, mensagem, () =>
+            {
+                Categoria categoria = (Categoria)lista.SelectedItem;
+                if (!new CategoriaService().Excluir(usuarioAutenticado, categoria.IdCategoria))
+                    throw new InvalidOperationException("A categoria não foi encontrada. Atualize a lista.");
+                CarregarCategorias(lista);
+            });
         }
 
         private Panel CriarCadastroTiposEvento(System.Drawing.Rectangle area)
         {
+            Label mensagem = new Label();
             Panel painel = new Panel();
             painel.Name = "panelTiposEvento";
             painel.Bounds = area;
             painel.BackColor = System.Drawing.Color.White;
             ListBox lista = new ListBox();
             lista.DisplayMember = "Nome";
+            lista.BackColor = System.Drawing.Color.FromArgb(248, 250, 253);
+            lista.ForeColor = VisualUtils.Texto;
+            lista.IntegralHeight = false;
             lista.SetBounds(24, 56, 650, 220);
             TextBox nome = new TextBox();
             nome.MaxLength = 100;
@@ -506,27 +686,27 @@ panelPreferencias };
             {
                 try
                 {
-                    TipoEvento tipo = lista.SelectedItem as TipoEvento;
-                    bool existente = tipo != null;
-                    if (tipo == null)
-                    {
-                        tipo = new TipoEvento();
-                    }
-                    tipo.Nome = nome.Text.Trim();
+                    TipoEvento anterior = lista.SelectedItem as TipoEvento;
+                    bool existente = anterior != null;
+                    TipoEvento tipo = new TipoEvento { Nome = nome.Text.Trim() };
+                    if (existente)
+                        tipo.IdTipoEvento = anterior.IdTipoEvento;
                     if (existente)
                     {
-                        service.Atualizar(usuarioAutenticado, tipo);
+                        if (!service.Atualizar(usuarioAutenticado, tipo))
+                            throw new InvalidOperationException("O tipo de evento não foi encontrado. Atualize a lista.");
                     }
                     else
                     {
                         service.Cadastrar(usuarioAutenticado, tipo);
                     }
                     carregar(this, EventArgs.Empty);
-                    nome.Clear();
+                    SelecionarCadastroPorNome(lista, tipo.Nome);
+                    ExibirResultadoCadastro(mensagem, existente ? "Alterações salvas com sucesso." : "Tipo de evento adicionado com sucesso.");
                 }
                 catch (Exception erro)
                 {
-                    MostrarErroCadastro(erro);
+                    MostrarErroCadastro(erro, mensagem);
                 }
             };
             painel.Controls.Add(FrontendTheme.Legenda("Tipos de evento", new System.Drawing.Rectangle(24, 20, 500, 30)));
@@ -535,6 +715,13 @@ panelPreferencias };
             painel.Controls.Add(novo);
             painel.Controls.Add(salvar);
             FrontendTheme.Aplicar(painel);
+            PrepararEditorCadastro(painel, lista, nome, novo, salvar, mensagem, () =>
+            {
+                TipoEvento tipo = (TipoEvento)lista.SelectedItem;
+                if (!service.Excluir(usuarioAutenticado, tipo.IdTipoEvento))
+                    throw new InvalidOperationException("O tipo de evento não foi encontrado. Atualize a lista.");
+                carregar(this, EventArgs.Empty);
+            });
             if (administrador)
             {
                 try
@@ -565,7 +752,9 @@ panelPreferencias };
                 campos[i] = new TextBox();
                 campos[i].MaxLength = limites[i];
                 campos[i].SetBounds(24, 71 + i * 56, 650, 25);
+                campos[i].Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
                 painel.Controls.Add(campos[i]);
+                EnvolverCampoArredondado(painel, campos[i], "panelCampoInstituicao" + i);
             }
             Button salvar = new Button();
             salvar.Text = "Salvar instituição";
@@ -634,13 +823,26 @@ panelPreferencias };
             painel.Controls.Add(salvar);
             painel.Controls.Add(central);
             painel.Controls.Add(mensagem);
+            painel.SizeChanged += (s, e) =>
+            {
+                int largura = painel.ClientSize.Width - 48;
+                foreach (TextBox campo in campos)
+                    campo.Width = largura;
+                salvar.Top = central.Top = 292;
+                mensagem.Top = 334;
+                salvar.Left = 24;
+                central.Left = 240;
+                mensagem.Width = largura;
+            };
             FrontendTheme.Aplicar(painel);
             return painel;
         }
 
         private Panel CriarCadastroApoio(System.Drawing.Rectangle area, bool ehTurno)
         {
+            Label mensagem = new Label();
             Panel painel = new Panel();
+            painel.Name = ehTurno ? "panelTurnos" : "panelFuncoesEquipe";
             painel.Bounds = area;
             painel.BackColor = System.Drawing.Color.White;
             string titulo = "Funções de participação na equipe (não são perfis de acesso)";
@@ -651,6 +853,9 @@ panelPreferencias };
             painel.Controls.Add(FrontendTheme.Legenda(titulo, new System.Drawing.Rectangle(24, 16, 650, 30)));
             ListBox lista = new ListBox();
             lista.DisplayMember = "Nome";
+            lista.BackColor = System.Drawing.Color.FromArgb(248, 250, 253);
+            lista.ForeColor = VisualUtils.Texto;
+            lista.IntegralHeight = false;
             lista.SetBounds(24, 56, 650, 220);
             TextBox nome = new TextBox();
             nome.MaxLength = 100;
@@ -696,6 +901,8 @@ panelPreferencias };
             {
                 try
                 {
+                    bool existente = lista.SelectedItem != null;
+                    string nomeSalvo = nome.Text.Trim();
                     if (ehTurno)
                     {
                         Turno anterior = lista.SelectedItem as Turno;
@@ -719,11 +926,12 @@ panelPreferencias };
                         service.SalvarFuncaoEquipe(usuarioAutenticado, item);
                     }
                     carregar(this, EventArgs.Empty);
-                    nome.Clear();
+                    SelecionarCadastroPorNome(lista, nomeSalvo);
+                    ExibirResultadoCadastro(mensagem, existente ? "Alterações salvas com sucesso." : "Cadastro adicionado com sucesso.");
                 }
                 catch (Exception erro)
                 {
-                    MostrarErroCadastro(erro);
+                    MostrarErroCadastro(erro, mensagem);
                 }
             };
             painel.Controls.Add(lista);
@@ -731,6 +939,15 @@ panelPreferencias };
             painel.Controls.Add(novo);
             painel.Controls.Add(salvar);
             FrontendTheme.Aplicar(painel);
+            PrepararEditorCadastro(painel, lista, nome, novo, salvar, mensagem, () =>
+            {
+                bool excluiu = ehTurno
+                    ? service.ExcluirTurno(usuarioAutenticado, ((Turno)lista.SelectedItem).IdTurno)
+                    : service.ExcluirFuncaoEquipe(usuarioAutenticado, ((Perfil)lista.SelectedItem).IdPerfil);
+                if (!excluiu)
+                    throw new InvalidOperationException("O cadastro não foi encontrado. Atualize a lista.");
+                carregar(this, EventArgs.Empty);
+            });
             if (administrador)
             {
                 try
@@ -745,14 +962,142 @@ panelPreferencias };
             return painel;
         }
 
-        private void MostrarErroCadastro(Exception erro)
+        private void MostrarErroCadastro(Exception erro, Label resultado = null)
         {
             string mensagem = "Não foi possível salvar ou consultar este cadastro.";
             if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
             {
-                mensagem = erro.Message;
+                mensagem = CASE.Utils.FeedbackUsuario.MensagemErro(erro, mensagem);
+            }
+            var erroBanco = erro as MySql.Data.MySqlClient.MySqlException;
+            if (erroBanco != null && erroBanco.Number == 1062)
+                mensagem = "Já existe um cadastro com esse nome. Escolha outro nome.";
+            else if (erroBanco != null && erroBanco.Number == 1451)
+                mensagem = "Este cadastro está em uso e não pode ser excluído. Os dados existentes foram preservados.";
+            if (resultado != null)
+            {
+                resultado.ForeColor = System.Drawing.Color.Firebrick;
+                resultado.Text = mensagem;
+                CASE.Utils.FeedbackUsuario.Exibir(this, mensagem, CASE.Utils.TipoFeedback.Erro);
+                return;
             }
             MessageBox.Show(this, mensagem, "Configurações", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        private static void SelecionarCadastroPorNome(ListBox lista, string nome)
+        {
+            foreach (object item in lista.Items)
+                if (string.Equals(lista.GetItemText(item), nome, StringComparison.Ordinal))
+                {
+                    lista.SelectedItem = item;
+                    return;
+                }
+        }
+
+        private static void ExibirResultadoCadastro(Label mensagem, string texto)
+        {
+            mensagem.ForeColor = System.Drawing.Color.FromArgb(43, 133, 104);
+            mensagem.Text = texto;
+        }
+
+        private void PrepararEditorCadastro(Panel painel, ListBox lista, TextBox nome,
+            Button novo, Button salvar, Label mensagem, Action remover)
+        {
+            string chave = painel.Name.Replace("panel", string.Empty);
+            painel.Height = 420;
+            lista.Name = "list" + chave;
+            lista.BorderStyle = BorderStyle.None;
+            lista.Font = new System.Drawing.Font("Segoe UI", 10F);
+            lista.SetBounds(24, 56, 650, 224);
+            if (string.IsNullOrEmpty(nome.Name))
+                nome.Name = "txtNome" + chave;
+            nome.SetBounds(24, 316, 330, 38);
+            Panel campoNome = EnvolverCampoArredondado(painel, nome, "panelCampo" + chave);
+            Label legendaNome = FrontendTheme.Legenda("Nome *", new System.Drawing.Rectangle(24, 290, 330, 22));
+            legendaNome.Name = "lblNomeCadastro" + chave;
+            painel.Controls.Add(legendaNome);
+            novo.Name = "btnNovo" + chave;
+            novo.SetBounds(364, 312, 90, 36);
+            salvar.Name = "btnSalvar" + chave;
+            salvar.SetBounds(464, 312, 110, 36);
+            salvar.BackColor = VisualUtils.Azul;
+            salvar.ForeColor = System.Drawing.Color.White;
+            novo.Enabled = administrador;
+            var excluir = new Button
+            {
+                Name = "btnExcluir" + chave, Text = "Excluir",
+                ForeColor = System.Drawing.Color.Firebrick, BackColor = System.Drawing.Color.White
+            };
+            excluir.SetBounds(584, 312, 90, 36);
+            painel.Controls.Add(excluir);
+            nome.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            mensagem.Name = "lblResultado" + chave;
+            mensagem.SetBounds(24, 362, 650, 44);
+            mensagem.Font = new System.Drawing.Font("Segoe UI", 9F);
+            mensagem.ForeColor = VisualUtils.TextoSuave;
+            mensagem.Text = "Digite o nome e clique em Adicionar. Para editar ou excluir, selecione um item da lista.";
+            painel.Controls.Add(mensagem);
+            Action atualizarAcoes = () =>
+            {
+                bool selecionado = lista.SelectedItem != null;
+                salvar.Text = selecionado ? "Salvar" : "Adicionar";
+                salvar.Enabled = administrador && !string.IsNullOrWhiteSpace(nome.Text);
+                excluir.Enabled = administrador && selecionado;
+            };
+            Action organizarEditor = () =>
+            {
+                int larguraPainel = painel.ClientSize.Width;
+                int xNovo = larguraPainel - 24 - 282;
+                lista.SetBounds(24, 56, larguraPainel - 48, 224);
+                legendaNome.SetBounds(24, 290, Math.Max(200, xNovo - 36), 22);
+                campoNome.SetBounds(24, 312, Math.Max(200, xNovo - 36), 38);
+                novo.SetBounds(xNovo, 312, 90, 40);
+                salvar.SetBounds(xNovo + 96, 312, 96, 40);
+                excluir.SetBounds(xNovo + 198, 312, 90, 40);
+                mensagem.SetBounds(24, 362, larguraPainel - 48, 44);
+            };
+            painel.SizeChanged += (s, e) => organizarEditor();
+            organizarEditor();
+            lista.SelectedIndexChanged += (s, e) => atualizarAcoes();
+            nome.TextChanged += (s, e) => atualizarAcoes();
+            novo.Click += (s, e) =>
+            {
+                mensagem.ForeColor = VisualUtils.TextoSuave;
+                mensagem.Text = "Novo cadastro: informe o nome e clique em Adicionar.";
+                atualizarAcoes();
+            };
+            excluir.Click += (s, e) =>
+            {
+                if (lista.SelectedItem == null)
+                    return;
+                if (MessageBox.Show(this, "Excluir o cadastro “" + lista.GetItemText(lista.SelectedItem) + "”?\n" +
+                    "Cadastros utilizados por outros registros não podem ser excluídos.", "Excluir cadastro",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                    return;
+                excluir.Enabled = false;
+                try
+                {
+                    remover();
+                    nome.Clear();
+                    ExibirResultadoCadastro(mensagem, "Cadastro excluído com sucesso.");
+                }
+                catch (Exception erro)
+                {
+                    MostrarErroCadastro(erro, mensagem);
+                }
+                finally
+                {
+                    atualizarAcoes();
+                }
+            };
+            foreach (Button botao in new[] { novo, salvar, excluir })
+            {
+                botao.CausesValidation = false;
+                VisualUtils.EstilizarBotao(botao);
+            }
+            VisualUtils.Arredondar(painel, 12);
+            VisualUtils.AplicarBorda(painel);
+            atualizarAcoes();
         }
     }
 }

@@ -38,6 +38,7 @@ namespace CASE
             numEstoqueMinimo.Enabled = false;
             numEstoqueIdeal.Enabled = false;
             txtPrecoUnitario.Enabled = false;
+            ConfigurarCamposDoCatalogo();
             lblSubtituloProduto.Text =
                 "Dados gerais do produto. Preços e estoque são configurados nos módulos próprios.";
             ConfigurarSelecaoDeImagem();
@@ -138,7 +139,7 @@ namespace CASE
             produto.IdCategoria = categoria.IdCategoria;
             produto.Nome = txtNomeProduto.Text.Trim();
             produto.Descricao = txtDescricaoProduto.Text.Trim();
-            produto.UnidadeMedida = "UN";
+            produto.UnidadeMedida = produtoEmEdicao == null ? "UN" : produtoEmEdicao.UnidadeMedida;
             produto.Imagem = imagemProduto;
 
             try
@@ -157,13 +158,11 @@ namespace CASE
             }
             catch (ArgumentException ex)
             {
-                MessageBox.Show(this, ex.Message, "Cadastro de produto",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do produto e tente novamente.");
             }
             catch (InvalidOperationException ex)
             {
-                MessageBox.Show(this, ex.Message, "Cadastro de produto",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível salvar o produto. Confira os dados e tente novamente.");
             }
             catch (UnauthorizedAccessException)
             {
@@ -175,6 +174,50 @@ namespace CASE
                 MessageBox.Show(this, "Não foi possível salvar o produto.",
                     "Cadastro de produto", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void ConfigurarCamposDoCatalogo()
+        {
+            cmbFornecedorProduto.Visible = false;
+            cmbFornecedorProduto.Items.Clear();
+            foreach (Control campo in new Control[]
+            {
+                lblQuantidadeInicial, numQuantidadeInicial, lblEstoqueMinimo, numEstoqueMinimo,
+                lblEstoqueIdeal, numEstoqueIdeal, lblPrecoUnitario, txtPrecoUnitario
+            })
+                campo.Visible = false;
+
+            lblFornecedorProduto.Text = "Fornecedores vinculados";
+            var fornecedores = new Button
+            {
+                Name = "btnFornecedoresProduto", Text = "Fornecedores do produto…",
+                Bounds = new Rectangle(cmbFornecedorProduto.Left, cmbFornecedorProduto.Top - 4,
+                    cmbFornecedorProduto.Width, 36),
+                BackColor = VisualUtils.Azul, ForeColor = Color.White,
+                TabIndex = cmbFornecedorProduto.TabIndex,
+                Enabled = produtoEmEdicao != null && usuarioAutenticado != null
+            };
+            panelProduto.Controls.Add(fornecedores);
+            VisualUtils.EstilizarBotao(fornecedores);
+            VisualUtils.Arredondar(fornecedores, 8);
+            fornecedores.Click += (s, e) => ProdutosControl.GerenciarFornecedores(
+                this, usuarioAutenticado, produtoEmEdicao);
+            var orientacao = new Label
+            {
+                Name = "lblOrientacaoEstoqueProduto", BackColor = VisualUtils.Fundo,
+                ForeColor = VisualUtils.TextoSuave, Padding = new Padding(10),
+                Font = new Font("Segoe UI", 9F),
+                Text = (produtoEmEdicao == null ? "Salve o produto para vincular fornecedores.\n" :
+                    "Os vínculos com fornecedores são salvos em uma janela própria.\n") +
+                    "Saldo: entradas e transferências em Estoque.\n" +
+                    "Mínimo e ideal: limites por local em Estoque.\n" +
+                    "Preço de venda: Equipes e setores → Produtos e preços."
+            };
+            orientacao.SetBounds(txtNomeProduto.Left, 236, txtNomeProduto.Width, 86);
+            panelProduto.Controls.Add(orientacao);
+            VisualUtils.Arredondar(orientacao, 8);
+            lblDescricaoProduto.Top = 334;
+            txtDescricaoProduto.Top = 363;
         }
 
         private void ConfigurarSelecaoDeImagem()
@@ -232,8 +275,7 @@ namespace CASE
                 }
                 catch (ArgumentException erro)
                 {
-                    MessageBox.Show(this, erro.Message, "Imagem do produto",
-                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "A imagem selecionada não pôde ser utilizada. Escolha outro arquivo.");
                 }
                 catch (Exception)
                 {

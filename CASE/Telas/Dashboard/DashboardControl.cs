@@ -22,6 +22,7 @@ namespace CASE
         private ComboBox cmbTipoGrafico;
         private Chart grafico;
         private ListBox movimentacoesRecentes;
+        private readonly ToolTip dicaIndicadorEntradas = new ToolTip();
         private DataTable movimentosConsultados;
         private DateTime inicioGrafico;
         private Label avisoGrafico;
@@ -52,6 +53,13 @@ namespace CASE
             AutoScroll = true;
             AutoScrollMinSize = new Size(970, 620);
             lblSubtituloDashboard.Text = "Resumo dos dados disponíveis";
+            lblEntradasMesTitulo.Text = "Unidades recebidas no mês";
+            dicaIndicadorEntradas.SetToolTip(
+                lblEntradasMesTitulo,
+                "Soma das quantidades registradas como entrada. Transferências entre estoques não são incluídas.");
+            dicaIndicadorEntradas.SetToolTip(
+                lblEntradasMesValor,
+                "Soma das quantidades registradas como entrada. Transferências entre estoques não são incluídas.");
             lblTituloDashboard.Font = new Font("Segoe UI", 22, FontStyle.Bold);
             lblTituloDashboard.SetBounds(80, 25, 400, 40);
             lblSubtituloDashboard.Location = new Point(82, 68);
@@ -114,7 +122,7 @@ namespace CASE
             catch (Exception)
             {
                 lblTotalProdutosValor.Text = "—";
-                lblSubtituloDashboard.Text = "Não foi possível carregar os dados do banco.";
+                lblSubtituloDashboard.Text = "Não foi possível atualizar os indicadores. Tente novamente.";
             }
         }
 
@@ -136,7 +144,8 @@ namespace CASE
 
                     foreach (CASE.Models.Estoque estoque in saldos)
                     {
-                        if (estoque.QuantidadeAtual <= estoque.QuantidadeMinima)
+                        if (estoque.QuantidadeAtual <= 0 ||
+                            estoque.QuantidadeAtual < estoque.QuantidadeMinima)
                         {
                             quantidadeEstoqueBaixo++;
                         }

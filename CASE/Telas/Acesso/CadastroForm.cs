@@ -286,7 +286,7 @@ namespace CASE
                 }
                 catch (ArgumentException erro)
                 {
-                    ExibirMensagem(erro.Message, true);
+                    ExibirMensagem(CASE.Utils.FeedbackUsuario.MensagemErro(erro, "A imagem selecionada não é válida. Escolha um arquivo JPG ou PNG."), true);
                 }
                 catch (Exception)
                 {
@@ -418,24 +418,24 @@ namespace CASE
             }
             catch (ArgumentException erro)
             {
-                ExibirMensagem(erro.Message, true);
+                ExibirMensagem(CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Confira os dados informados e tente novamente."), true);
                 txtUsuario.Focus();
             }
             catch (InvalidOperationException erro)
             {
-                ExibirMensagem(erro.Message, true);
+                ExibirMensagem(CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Confira os dados informados e tente novamente."), true);
                 txtSenha.Clear();
                 txtConfirmarSenha.Clear();
             }
             catch (MySqlException)
             {
-                ExibirMensagem("Não foi possível registrar o cadastro no banco de dados. Tente novamente.", true);
+                ExibirMensagem("Não foi possível enviar sua solicitação agora. Tente novamente em alguns instantes.", true);
                 txtSenha.Clear();
                 txtConfirmarSenha.Clear();
             }
             catch (NotSupportedException erro)
             {
-                ExibirMensagem(erro.Message, true);
+                ExibirMensagem(CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Não foi possível concluir o cadastro. Confira os dados e tente novamente."), true);
                 txtSenha.Clear();
                 txtConfirmarSenha.Clear();
             }
@@ -462,6 +462,8 @@ namespace CASE
                 : Color.FromArgb(43, 133, 104);
             lblMensagemCadastro.Visible = !string.IsNullOrWhiteSpace(mensagem);
             lblMensagemCadastro.BringToFront();
+            if (erro && !string.IsNullOrWhiteSpace(mensagem))
+                CASE.Utils.FeedbackUsuario.Exibir(this, mensagem, CASE.Utils.TipoFeedback.Erro);
         }
 
         private void linkVoltarLogin_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)

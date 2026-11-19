@@ -11,11 +11,13 @@ namespace CASE.Quermesse
 {
     public partial class QuermesseForm : Form
     {
+        public int? IdEventoSalvo { get; private set; }
         private readonly Usuario usuarioAutenticado;
         private readonly Evento eventoEmEdicao;
         private readonly EventoService eventoService = new EventoService();
         private readonly TipoEventoService tipoEventoService = new TipoEventoService();
         private ComboBox gerenteResponsavel;
+        private bool administrador;
 
         public QuermesseForm() : this(null, null)
         {
@@ -84,14 +86,16 @@ namespace CASE.Quermesse
                 {
                     string perfil;
                     new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
+                    administrador = perfil == "Administrador";
                     if (eventoEmEdicao != null)
                     {
                         txtResponsavelQuermesse.Text = eventoService.ConsultarNomeResponsavel(
                             usuarioAutenticado, eventoEmEdicao.IdEvento);
                     }
-                    if (perfil == "Administrador" && eventoEmEdicao == null)
+                    if (administrador)
                     {
-                        ConfigurarGerenteResponsavel();
+                        ConfigurarGerenteResponsavel(
+                            eventoEmEdicao == null ? (int?)null : eventoEmEdicao.IdResponsavel);
                     }
                     else if (perfil != "Gerente")
                     {
@@ -139,7 +143,7 @@ namespace CASE.Quermesse
             }
         }
 
-        private void ConfigurarGerenteResponsavel()
+        private void ConfigurarGerenteResponsavel(int? idResponsavelAtual)
         {
             lblResponsavel.Text = "Gerente responsável";
             txtResponsavelQuermesse.Visible = false;
@@ -155,9 +159,32 @@ namespace CASE.Quermesse
             };
             panelFormulario.Controls.Add(gerenteResponsavel);
             VisualUtils.EstilizarSelecao(gerenteResponsavel);
-            foreach (Pessoa gerente in eventoService.ListarGerentesResponsaveis(usuarioAutenticado))
+            List<Pessoa> gerentes = eventoService.ListarGerentesResponsaveis(usuarioAutenticado);
+            if (idResponsavelAtual.HasValue &&
+                !gerentes.Exists(pessoa => pessoa.IdPessoa == idResponsavelAtual.Value))
+            {
+                gerentes.Add(new Pessoa
+                {
+                    IdPessoa = idResponsavelAtual.Value,
+                    Nome = txtResponsavelQuermesse.Text
+                });
+            }
+
+            foreach (Pessoa gerente in gerentes)
             {
                 gerenteResponsavel.Items.Add(gerente);
+            }
+            if (idResponsavelAtual.HasValue)
+            {
+                for (int indice = 0; indice < gerenteResponsavel.Items.Count; indice++)
+                {
+                    Pessoa gerente = gerenteResponsavel.Items[indice] as Pessoa;
+                    if (gerente != null && gerente.IdPessoa == idResponsavelAtual.Value)
+                    {
+                        gerenteResponsavel.SelectedIndex = indice;
+                        break;
+                    }
+                }
             }
             gerenteResponsavel.SelectedIndexChanged += (s, e) =>
             {
@@ -268,6 +295,17 @@ namespace CASE.Quermesse
                     evento.Versao = eventoEmEdicao.Versao;
                     evento.IdUsuarioCriacao = eventoEmEdicao.IdUsuarioCriacao;
                     evento.CriadoEm = eventoEmEdicao.CriadoEm;
+                    if (administrador && gerenteResponsavel != null)
+                    {
+                        Pessoa gerente = gerenteResponsavel.SelectedItem as Pessoa;
+                        if (gerente == null)
+                        {
+                            ExibirAviso("Selecione o gerente responsável pelo evento.", true);
+                            gerenteResponsavel.Focus();
+                            return;
+                        }
+                        evento.IdResponsavel = gerente.IdPessoa;
+                    }
                 }
 
                 evento.IdTipoEvento = tipoEvento.IdTipoEvento;
@@ -279,23 +317,24 @@ namespace CASE.Quermesse
 
                 if (eventoEmEdicao == null)
                 {
-                    eventoService.Criar(usuarioAutenticado, evento);
+                    evento.IdEvento = eventoService.Criar(usuarioAutenticado, evento);
                 }
                 else
                 {
                     eventoService.Atualizar(usuarioAutenticado, evento);
                 }
 
+                IdEventoSalvo = evento.IdEvento;
                 DialogResult = DialogResult.OK;
                 Close();
             }
             catch (ArgumentException ex)
             {
-                ExibirAviso(ex.Message, true);
+                ExibirAviso(CASE.Utils.FeedbackUsuario.MensagemErro(ex, "Confira os dados do evento e tente novamente."), true);
             }
             catch (InvalidOperationException ex)
             {
-                ExibirAviso(ex.Message, true);
+                ExibirAviso(CASE.Utils.FeedbackUsuario.MensagemErro(ex, "Confira os dados do evento e tente novamente."), true);
             }
             catch (UnauthorizedAccessException)
             {
@@ -303,7 +342,7 @@ namespace CASE.Quermesse
             }
             catch (MySqlException)
             {
-                ExibirAviso("Não foi possível gravar o evento no banco de dados.", true);
+                ExibirAviso("Não foi possível salvar o evento. Confira os dados e tente novamente.", true);
             }
             catch (Exception)
             {
@@ -345,7 +384,7 @@ namespace CASE.Quermesse
             }
             catch (Exception)
             {
-                ExibirAviso("Não foi possível carregar os tipos de evento. Confira o acesso ao banco.", true);
+                ExibirAviso("Não foi possível carregar os tipos de evento. Atualize a tela e tente novamente.", true);
                 btnSalvarVisual.Enabled = false;
             }
         }
@@ -356,6 +395,9 @@ namespace CASE.Quermesse
             labelAvisoFormulario.ForeColor = erro
                 ? System.Drawing.Color.FromArgb(190, 55, 65)
                 : VisualUtils.TextoSuave;
+            if (!string.IsNullOrWhiteSpace(mensagem))
+                CASE.Utils.FeedbackUsuario.Exibir(this, mensagem,
+                    erro ? CASE.Utils.TipoFeedback.Erro : CASE.Utils.TipoFeedback.Sucesso);
         }
 
         private void SelecionarTipoEvento(int idTipoEvento)

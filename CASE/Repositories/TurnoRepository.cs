@@ -44,6 +44,13 @@ namespace CASE.Repositories
 
         }
 
+        public bool Excluir(int id)
+        {
+            new CASE.Services.AutorizacaoService().ExigirAdministrador(CASE.Services.SessaoUsuario.ObterUsuarioAtual());
+            return AcessoDados.Executar("DELETE FROM turno WHERE id_turno=@id",
+                comando => AcessoDados.AdicionarParametro(comando, "@id", id)) == 1;
+        }
+
         private static Turno ConverterLinha(MySqlDataReader leitor)
         {
             return new Turno

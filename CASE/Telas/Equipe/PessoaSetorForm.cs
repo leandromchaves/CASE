@@ -13,6 +13,8 @@ namespace CASE.Quermesse
         private readonly Evento evento;
         private readonly EquipeEvento vinculo;
         private readonly EquipeEventoService equipeService = new EquipeEventoService();
+        private ComboBox cmbMembroAprovado;
+        private readonly Label avisoListaVazia = new Label();
 
         public PessoaSetorForm() : this(null, null, null)
         {
@@ -27,6 +29,8 @@ namespace CASE.Quermesse
             usuarioAutenticado = usuario;
             this.evento = evento;
             vinculo = item;
+            labelAvisoFormulario.Text = string.Empty;
+            txtNomeFuncionario.ReadOnly = true;
 
             lblPerfildeacesso.Text = "Perfil neste evento";
             lblSetorbarraca.Text = "Setor (definido nas escalas)";
@@ -36,6 +40,38 @@ namespace CASE.Quermesse
             cmbSetorFuncionario.Items.Clear();
             cmbTurnoFuncionario.Items.Clear();
             cmbPerfilFuncionario.Items.Clear();
+            cmbSetorFuncionario.Visible = lblSetorbarraca.Visible = false;
+            cmbTurnoFuncionario.Visible = lblTurno.Visible = false;
+            lblUsuario.Top = 140;
+            txtLoginFuncionario.Top = 164;
+            lblUsuario.Text = "Usuário (preenchido automaticamente)";
+            var painelUsuario = new Panel
+            {
+                Name = "panelUsuarioFuncionario", BackColor = VisualUtils.Fundo
+            };
+            painelUsuario.SetBounds(28, 164, 550, 38);
+            panelFormulario.Controls.Remove(txtLoginFuncionario);
+            painelUsuario.Controls.Add(txtLoginFuncionario);
+            panelFormulario.Controls.Add(painelUsuario);
+            txtLoginFuncionario.BorderStyle = BorderStyle.None;
+            txtLoginFuncionario.BackColor = painelUsuario.BackColor;
+            txtLoginFuncionario.SetBounds(12, 8, 526, 23);
+            txtLoginFuncionario.TabStop = false;
+            VisualUtils.Arredondar(painelUsuario, 8);
+            VisualUtils.AplicarBorda(painelUsuario);
+            lblPerfildeacesso.Top = 210;
+            cmbPerfilFuncionario.Top = 234;
+            chkFuncionarioAtivo.Top = 360;
+            var orientacao = new Label
+            {
+                Name = "lblOrientacaoEscalas", Text = "O vínculo inclui a pessoa na equipe do evento.\n" +
+                    "Depois, use Escala de trabalho para definir setor, data e turno.",
+                ForeColor = VisualUtils.TextoSuave, BackColor = VisualUtils.Fundo,
+                Padding = new Padding(10), Font = new System.Drawing.Font("Segoe UI", 9F)
+            };
+            orientacao.SetBounds(28, 272, 550, 70);
+            panelFormulario.Controls.Add(orientacao);
+            VisualUtils.Arredondar(orientacao, 8);
 
             if (usuarioAutenticado == null || this.evento == null)
             {
@@ -49,12 +85,115 @@ namespace CASE.Quermesse
             if (vinculo == null)
             {
                 Text = lblTitulo.Text = "Vincular membro ao evento";
-                txtNomeFuncionario.ReadOnly = true;
+                ConfigurarMembrosAprovados();
                 txtLoginFuncionario.Leave += txtLoginFuncionario_Leave;
             }
             else
             {
                 CarregarVinculo();
+            }
+        }
+
+        private void ConfigurarMembrosAprovados()
+        {
+            lblNomecompleto.Text = "Membro aprovado para adicionar à equipe";
+            txtNomeFuncionario.Visible = false;
+            txtLoginFuncionario.ReadOnly = true;
+            chkFuncionarioAtivo.Checked = true;
+            chkFuncionarioAtivo.Enabled = false;
+            chkFuncionarioAtivo.Text = "O vínculo será criado como ativo";
+            var painel = new Panel
+            {
+                Name = "panelMembroAprovado", BackColor = VisualUtils.Fundo,
+                Padding = new Padding(8, 0, 8, 0)
+            };
+            painel.SetBounds(28, 94, 440, 38);
+            cmbMembroAprovado = new ComboBox
+            {
+                Name = "cmbMembroAprovado", DisplayMember = "Nome",
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                AutoCompleteSource = AutoCompleteSource.ListItems,
+                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                AccessibleName = "Membros aprovados disponíveis",
+                TabIndex = txtNomeFuncionario.TabIndex
+            };
+            painel.Controls.Add(cmbMembroAprovado);
+            panelFormulario.Controls.Add(painel);
+            VisualUtils.EstilizarSelecao(cmbMembroAprovado);
+            cmbMembroAprovado.FlatStyle = FlatStyle.Flat;
+            cmbMembroAprovado.BackColor = painel.BackColor;
+            avisoListaVazia.Name = "lblSemMembrosDisponiveis";
+            avisoListaVazia.Text = "Nenhum membro disponível para adicionar";
+            avisoListaVazia.BackColor = painel.BackColor;
+            avisoListaVazia.ForeColor = VisualUtils.TextoSuave;
+            avisoListaVazia.Font = new System.Drawing.Font("Segoe UI", 9F);
+            avisoListaVazia.SetBounds(12, 9, 390, 24);
+            avisoListaVazia.Visible = false;
+            painel.Controls.Add(avisoListaVazia);
+            VisualUtils.Arredondar(painel, 8);
+            VisualUtils.AplicarBorda(painel);
+            var atualizar = new Button
+            {
+                Name = "btnAtualizarMembrosDisponiveis", Text = "Atualizar",
+                BackColor = System.Drawing.Color.White, ForeColor = VisualUtils.Azul
+            };
+            atualizar.SetBounds(478, 94, 100, 38);
+            panelFormulario.Controls.Add(atualizar);
+            VisualUtils.EstilizarBotao(atualizar);
+            VisualUtils.Arredondar(atualizar, 8);
+            atualizar.Click += (s, e) => CarregarMembrosAprovados();
+            cmbMembroAprovado.SelectedIndexChanged += (s, e) =>
+            {
+                txtNomeFuncionario.Clear();
+                txtLoginFuncionario.Clear();
+                Pessoa pessoa = cmbMembroAprovado.SelectedItem as Pessoa;
+                if (pessoa == null)
+                    return;
+                try
+                {
+                    txtLoginFuncionario.Text = equipeService.BuscarLoginDaPessoaDisponivel(
+                        usuarioAutenticado, evento.IdEvento, pessoa.IdPessoa);
+                    txtNomeFuncionario.Text = pessoa.Nome;
+                    labelAvisoFormulario.Text = "Membro selecionado. Confira o perfil e clique em Salvar vínculo.";
+                    btnSalvarFuncionario.Enabled = cmbPerfilFuncionario.SelectedItem != null;
+                }
+                catch (Exception erro)
+                {
+                    btnSalvarFuncionario.Enabled = false;
+                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar o membro selecionado.", labelAvisoFormulario);
+                }
+            };
+            CarregarMembrosAprovados();
+        }
+
+        private void CarregarMembrosAprovados()
+        {
+            cmbMembroAprovado.Items.Clear();
+            txtNomeFuncionario.Clear();
+            txtLoginFuncionario.Clear();
+            btnSalvarFuncionario.Enabled = false;
+            cmbMembroAprovado.Enabled = false;
+            cmbMembroAprovado.Visible = false;
+            avisoListaVazia.Visible = true;
+            avisoListaVazia.Text = "Nenhum membro disponível para adicionar";
+            try
+            {
+                foreach (Pessoa pessoa in equipeService.ListarPessoasDisponiveis(usuarioAutenticado, evento.IdEvento))
+                    cmbMembroAprovado.Items.Add(pessoa);
+                bool disponiveis = cmbMembroAprovado.Items.Count > 0;
+                cmbMembroAprovado.Enabled = disponiveis;
+                cmbMembroAprovado.Visible = disponiveis;
+                avisoListaVazia.Visible = !disponiveis;
+                avisoListaVazia.BringToFront();
+                labelAvisoFormulario.Text = !disponiveis
+                    ? "Nenhum novo membro disponível. Quem já está na equipe deve ser alterado em Editar vínculo. " +
+                        "Novas contas precisam estar aprovadas com perfil Membro."
+                    : "Selecione um membro aprovado. O nome e o usuário serão preenchidos automaticamente.";
+            }
+            catch (Exception erro)
+            {
+                avisoListaVazia.Text = "Lista indisponível. Clique em Atualizar.";
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível carregar os membros aprovados. Clique em Atualizar para tentar novamente.", labelAvisoFormulario);
             }
         }
 
@@ -72,6 +211,8 @@ namespace CASE.Quermesse
                 }
 
                 cmbPerfilFuncionario.DisplayMember = "Nome";
+                if (cmbPerfilFuncionario.Items.Count > 0)
+                    cmbPerfilFuncionario.SelectedIndex = 0;
 
                 if (cmbPerfilFuncionario.Items.Count == 0)
                 {
@@ -207,11 +348,11 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                labelAvisoFormulario.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do vínculo e tente novamente.", labelAvisoFormulario);
             }
             catch (InvalidOperationException ex)
             {
-                labelAvisoFormulario.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do vínculo e tente novamente.", labelAvisoFormulario);
             }
             catch (UnauthorizedAccessException)
             {

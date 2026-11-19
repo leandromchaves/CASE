@@ -283,7 +283,7 @@ namespace CASE
             {
                 if (ex is ArgumentException || ex is InvalidOperationException)
                 {
-                    lblMensagem.Text = ex.Message;
+                    CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível registrar a entrada.", lblMensagem);
                 }
                 else if (ex is UnauthorizedAccessException)
                 {

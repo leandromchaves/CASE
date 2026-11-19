@@ -408,7 +408,17 @@ namespace CASE.Services
             string nomePerfil,
             Solicitacao solicitacao)
         {
-            if (solicitacao == null || !PerfilEh(nomePerfil, PerfilGerente))
+            if (solicitacao == null)
+            {
+                return false;
+            }
+
+            if (PerfilEh(nomePerfil, PerfilAdministrador))
+            {
+                return true;
+            }
+
+            if (!PerfilEh(nomePerfil, PerfilGerente))
             {
                 return false;
             }

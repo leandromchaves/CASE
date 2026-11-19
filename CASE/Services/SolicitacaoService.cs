@@ -100,10 +100,11 @@ namespace CASE.Services
                 usuario,
                 out nomePerfil);
 
-            if (!string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException(
-                    "Esta consulta está disponível para membros autenticados.");
+                    "Esta consulta está disponível para membros e administradores autenticados.");
             }
 
             return solicitacaoRepository.ListarPorSolicitante(usuarioAtual.IdUsuario);
@@ -144,14 +145,15 @@ namespace CASE.Services
                 out nomePerfil);
             Escala escala = escalaRepository.BuscarPorId(idEscala);
 
-            if (!string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase) ||
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if ((!administrador && !string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase)) ||
                 escala == null || !autorizacaoService.PodeAcessarEscala(
                     usuarioAtual,
                     nomePerfil,
                     escala))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente o membro vinculado à escala pode consultar seus produtos.");
+                    "Somente o administrador ou o membro vinculado à escala pode consultar os produtos.");
             }
 
             JornadaSetor jornada = jornadaRepository.BuscarPorId(escala.IdJornada);
@@ -205,10 +207,11 @@ namespace CASE.Services
                 usuario,
                 out nomePerfil);
 
-            if (!string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase))
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (!administrador && !string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente membros podem criar solicitações de produtos.");
+                    "Somente membros e administradores podem criar solicitações de produtos.");
             }
 
             Escala escala = escalaRepository.BuscarPorId(solicitacao.IdEscala);
@@ -277,9 +280,10 @@ namespace CASE.Services
                 out nomePerfil);
             Evento evento = eventoRepository.BuscarPorId(idEvento);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
-                evento == null ||
-                evento.IdResponsavel != usuarioAtual.IdPessoa)
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (evento == null || (!administrador &&
+                (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
+                evento.IdResponsavel != usuarioAtual.IdPessoa)))
             {
                 throw new UnauthorizedAccessException(
                     "Somente o gerente responsável pode consultar as solicitações do evento.");

@@ -65,6 +65,8 @@ namespace CASE.Services
                     return repository.Movimentacoes(perfil, atual.IdPessoa, inicio, fim);
                 case "Estoque":
                     return repository.Estoques(perfil, atual.IdPessoa);
+                case "Estoque crítico":
+                    return EstoqueCritico(perfil, atual.IdPessoa);
                 case "Vendas e perdas":
                     return repository.Registros(perfil, atual.IdPessoa, 0, inicio, fim);
                 case "Solicitações de reposição":
@@ -81,6 +83,29 @@ namespace CASE.Services
                 default:
                     throw new ArgumentException("Selecione um tipo de relatório válido.");
             }
+        }
+
+        private DataTable EstoqueCritico(string perfil, int idPessoa)
+        {
+            // Filtra apenas os saldos que a consulta de estoque já autoriza para esta conta.
+            DataTable estoques = repository.Estoques(perfil, idPessoa);
+            DataTable criticos = estoques.Clone();
+            criticos.Columns.Add("situacao", typeof(string));
+            criticos.Columns.Add("reposicao_minima", typeof(decimal));
+            foreach (DataRow estoque in estoques.Rows)
+            {
+                decimal atual = Convert.ToDecimal(estoque["quantidade_atual"]);
+                decimal minimo = Convert.ToDecimal(estoque["quantidade_minima"]);
+                if (atual > 0 && atual >= minimo)
+                    continue;
+                DataRow linha = criticos.NewRow();
+                foreach (DataColumn coluna in estoques.Columns)
+                    linha[coluna.ColumnName] = estoque[coluna];
+                linha["situacao"] = atual <= 0 ? "Sem estoque" : "Abaixo do mínimo";
+                linha["reposicao_minima"] = Math.Max(0, minimo - atual);
+                criticos.Rows.Add(linha);
+            }
+            return criticos;
         }
 
         public DataTable ItensParaCorrecao(Usuario usuario, string entidade, int id)
@@ -141,7 +166,9 @@ namespace CASE.Services
                 Titulo = tipo,
                 TipoGrafico = tipoGrafico,
                 Instituicao = repository.InstituicoesDoRelatorio(perfil, atual.IdPessoa),
-                Filtros = tipo == "Estoque" ? "Saldo atual — locais autorizados" :
+                Filtros = tipo == "Estoque crítico" ? "Saldo atual — sem estoque ou abaixo do mínimo, somente nos locais autorizados. " +
+                    "Reposição mínima = mínimo − saldo, limitada a zero; não movimenta mercadorias." :
+                    tipo == "Estoque" ? "Saldo atual — locais autorizados" :
                     "Período: " + inicio.ToString("dd/MM/yyyy") + " a " + fim.ToString("dd/MM/yyyy") +
                     " — escopo autorizado da conta"
             };

@@ -10,6 +10,9 @@ namespace CASE
     public partial class MovimentacoesControl : UserControl
     {
         private readonly Usuario usuarioAutenticado;
+        private bool incorporado;
+        private readonly ComboBox filtroLocal = new ComboBox();
+        public event EventHandler OperacaoCorrigida;
 
         public MovimentacoesControl() : this(null)
         {
@@ -34,10 +37,11 @@ namespace CASE
             VisualUtils.Arredondar(panelListaMovimentacoes, 12);
             panelListaMovimentacoes.SizeChanged += AjustarArredondamento;
             VisualUtils.AplicarBorda(panelListaMovimentacoes);
-            lblSubtituloMovimentacoes.Text = "Selecione uma linha e use Corrigir / histórico. O botão direito também está disponível.";
+            lblTituloMovimentacoes.Text = "Histórico de mercadorias";
+            lblSubtituloMovimentacoes.Text = "Veja o que entrou, saiu ou mudou de local. Valores em dinheiro ficam no Financeiro.";
             Button abrirCorrecao = new Button();
             abrirCorrecao.Name = "btnCorrigirMovimentacao";
-            abrirCorrecao.Text = "Corrigir / histórico";
+            abrirCorrecao.Text = "Revisar operação";
             abrirCorrecao.SetBounds(Width - 250, 25, 220, 36);
             abrirCorrecao.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             abrirCorrecao.Enabled = false;
@@ -46,7 +50,8 @@ namespace CASE
             Controls.Add(abrirCorrecao);
             abrirCorrecao.BringToFront();
             dgvMovimentacoes.SelectionChanged += (s, e) =>
-                abrirCorrecao.Enabled = usuarioAutenticado != null && dgvMovimentacoes.SelectedRows.Count > 0;
+                abrirCorrecao.Enabled = usuarioAutenticado != null && dgvMovimentacoes.SelectedRows.Count > 0 &&
+                    dgvMovimentacoes.SelectedRows[0].Visible;
             panelCardEntradasMes.Visible = panelCardSaidasMes.Visible = false;
             panelFiltrosMovimentacoes.Top = 115;
             panelListaMovimentacoes.Top = 225;
@@ -57,7 +62,7 @@ namespace CASE
             dtpDataInicial.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             dtpDataFinal.Value = DateTime.Today;
             cmbTipoMovimentacao.Items.Clear();
-            cmbTipoMovimentacao.Items.AddRange(new object[] { "Todos", "entrada", "transferencia", "venda", "perda" });
+            cmbTipoMovimentacao.Items.AddRange(new object[] { "Todos", "Entrada", "Transferência", "Venda", "Perda" });
             cmbTipoMovimentacao.SelectedIndex = 0;
             foreach (Control campo in new Control[] { cmbTipoMovimentacao, txtProdutoMovimentacao, dtpDataInicial, dtpDataFinal })
             {
@@ -82,10 +87,38 @@ namespace CASE
             dgvMovimentacoes.Columns[0].MinimumWidth = 145;
             dgvMovimentacoes.Columns[0].HeaderText = "Data / hora";
             dgvMovimentacoes.Columns[1].MinimumWidth = 180;
-            dgvMovimentacoes.Columns[3].DefaultCellStyle.Format = "N0";
+            dgvMovimentacoes.Columns[3].DefaultCellStyle.Format = "0.###";
             dgvMovimentacoes.Columns[5].MinimumWidth = 240;
+            filtroLocal.Name = "cmbLocalHistorico";
+            filtroLocal.AccessibleName = "Filtrar histórico por local de estoque";
+            filtroLocal.DropDownStyle = ComboBoxStyle.DropDownList;
+            filtroLocal.DisplayMember = "Descricao";
+            filtroLocal.Items.Add("Todos os locais");
+            filtroLocal.SelectedIndex = 0;
+            panelListaMovimentacoes.Controls.Add(filtroLocal);
+            VisualUtils.EstilizarSelecao(filtroLocal);
+            try
+            {
+                if (usuarioAutenticado != null)
+                    foreach (LocalEstoque local in new LocalEstoqueService().Listar(usuarioAutenticado))
+                        filtroLocal.Items.Add(local);
+            }
+            catch (Exception)
+            {
+                filtroLocal.Enabled = false;
+            }
+            filtroLocal.SelectedIndexChanged += (s, e) => FiltrarProduto();
+            dgvMovimentacoes.CellFormatting += (s, e) =>
+            {
+                if (e.ColumnIndex == 2)
+                {
+                    string valor = Convert.ToString(e.Value);
+                    e.Value = valor == "transferencia" ? "Transferência" : valor == "entrada" ? "Entrada" :
+                        valor == "venda" ? "Venda" : valor == "perda" ? "Perda" : valor;
+                }
+            };
             ContextMenuStrip menu = new ContextMenuStrip();
-            ToolStripMenuItem corrigir = new ToolStripMenuItem("Corrigir operação / consultar histórico");
+            ToolStripMenuItem corrigir = new ToolStripMenuItem("Revisar operação e histórico de correções");
             corrigir.Name = "menuCorrigirMovimentacao";
             corrigir.Click += CorrigirMovimentacao;
             menu.Items.Add(corrigir);
@@ -99,7 +132,41 @@ namespace CASE
                 }
             };
             Disposed += (s, e) => menu.Dispose();
+            SizeChanged += (s, e) => AjustarLayoutHistorico();
+            AjustarLayoutHistorico();
             CarregarMovimentacoes();
+        }
+
+        public void IncorporarAoEstoque()
+        {
+            incorporado = true;
+            lblTituloMovimentacoes.Visible = lblSubtituloMovimentacoes.Visible = pictureIconeTela.Visible = false;
+            AjustarLayoutHistorico();
+        }
+
+        public void AtualizarHistorico()
+        {
+            CarregarMovimentacoes();
+        }
+
+        private void AjustarLayoutHistorico()
+        {
+            int margem = incorporado ? 0 : 24;
+            int topo = incorporado ? 0 : 112;
+            int largura = Math.Max(920, ClientSize.Width - margem * 2);
+            panelFiltrosMovimentacoes.SetBounds(margem, topo, largura, 90);
+            panelListaMovimentacoes.SetBounds(margem, topo + 104, largura,
+                Math.Max(260, ClientSize.Height - topo - 120));
+            dgvMovimentacoes.SetBounds(16, 60, panelListaMovimentacoes.Width - 32, panelListaMovimentacoes.Height - 76);
+            filtroLocal.SetBounds(largura - 480, 16, 230, 28);
+            lblListaMovimentacoes.Width = Math.Max(260, largura - 520);
+            Control revisar = Controls["btnCorrigirMovimentacao"];
+            if (revisar != null)
+            {
+                revisar.Parent = panelListaMovimentacoes;
+                revisar.SetBounds(largura - 235, 12, 220, 36);
+            }
+            AutoScrollMinSize = new System.Drawing.Size(incorporado ? 920 : 970, panelListaMovimentacoes.Bottom + 16);
         }
 
         private void CarregarMovimentacoes()
@@ -124,6 +191,8 @@ Convert.ToDateTime(movimento["data_hora"]).ToString("dd/MM/yyyy HH:mm"),
 movimento["tipo"],
 movimento["quantidade"],
 movimento["responsavel"],
+                        string.IsNullOrWhiteSpace(Convert.ToString(movimento["origem"])) ? "Recebimento em " + movimento["destino"] :
+                        string.IsNullOrWhiteSpace(Convert.ToString(movimento["destino"])) ? "Saída de " + movimento["origem"] :
                         movimento["origem"] + " → " + movimento["destino"]);
                     dgvMovimentacoes.Rows[indice].Tag = movimento;
                 }
@@ -131,13 +200,14 @@ movimento["responsavel"],
                 dgvMovimentacoesColMotivo.HeaderText = "Origem → destino";
                 lblListaMovimentacoes.Text = movimentos.Rows.Count + " movimentação(ões) autorizada(s) no período";
                 FiltrarProduto();
+                VisualUtils.ExibirEstadoVazio(dgvMovimentacoes, "Nenhuma movimentação encontrada com estes filtros.");
             }
             catch (Exception erro)
             {
                 lblListaMovimentacoes.Text = "Não foi possível consultar o histórico.";
                 if (erro is ArgumentException || erro is UnauthorizedAccessException)
                 {
-                    lblListaMovimentacoes.Text = erro.Message;
+                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar o histórico.", lblListaMovimentacoes);
                 }
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em MovimentacoesControl: " + erro.StackTrace);
             }
@@ -145,7 +215,7 @@ movimento["responsavel"],
 
         private void CorrigirMovimentacao(object sender, EventArgs e)
         {
-            if (dgvMovimentacoes.SelectedRows.Count == 0 || usuarioAutenticado == null)
+            if (dgvMovimentacoes.SelectedRows.Count == 0 || !dgvMovimentacoes.SelectedRows[0].Visible || usuarioAutenticado == null)
             {
                 lblListaMovimentacoes.Text = "Selecione uma operação autorizada.";
                 return;
@@ -162,18 +232,30 @@ movimento["responsavel"],
                 {
                     CarregarMovimentacoes();
                     lblListaMovimentacoes.Text = "Correção confirmada. Saldos e histórico atualizados.";
+                    OperacaoCorrigida?.Invoke(this, EventArgs.Empty);
                 }
             }
         }
 
         private void FiltrarProduto()
         {
+            string[] tipos = { "", "entrada", "transferencia", "venda", "perda" };
+            LocalEstoque local = filtroLocal.SelectedItem as LocalEstoque;
+            int visiveis = 0;
             foreach (DataGridViewRow linha in dgvMovimentacoes.Rows)
             {
+                DataRow operacao = linha.Tag as DataRow;
                 linha.Visible = Convert.ToString(linha.Cells[1].Value).IndexOf(
                     txtProdutoMovimentacao.Text.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0 &&
-                    (cmbTipoMovimentacao.SelectedIndex <= 0 || Convert.ToString(linha.Cells[2].Value) == cmbTipoMovimentacao.Text);
+                    (cmbTipoMovimentacao.SelectedIndex <= 0 || Convert.ToString(linha.Cells[2].Value) == tipos[cmbTipoMovimentacao.SelectedIndex]) &&
+                    (local == null || operacao != null && (Convert.ToInt32(operacao["id_origem"]) == local.IdLocalEstoque ||
+                        Convert.ToInt32(operacao["id_destino"]) == local.IdLocalEstoque));
+                if (!linha.Visible)
+                    linha.Selected = false;
+                else
+                    visiveis++;
             }
+            lblListaMovimentacoes.Text = visiveis + " movimentação(ões)";
         }
 
         private void AjustarArredondamento(object sender, EventArgs e)

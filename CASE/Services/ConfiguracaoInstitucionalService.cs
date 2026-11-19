@@ -106,6 +106,22 @@ namespace CASE.Services
             return funcao.IdPerfil;
         }
 
+        public bool ExcluirTurno(Usuario usuario, int idTurno)
+        {
+            autorizacao.ExigirAdministrador(usuario);
+            if (idTurno <= 0)
+                throw new ArgumentException("Selecione um turno para excluir.");
+            return new TurnoRepository().Excluir(idTurno);
+        }
+
+        public bool ExcluirFuncaoEquipe(Usuario usuario, int idPerfil)
+        {
+            autorizacao.ExigirAdministrador(usuario);
+            if (idPerfil <= 0)
+                throw new ArgumentException("Selecione uma função da equipe para excluir.");
+            return new PerfilRepository().Excluir(idPerfil);
+        }
+
         private static void ValidarNome(string nome, int limite)
         {
             if (string.IsNullOrWhiteSpace(nome) || nome.Length > limite)

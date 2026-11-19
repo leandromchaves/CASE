@@ -22,6 +22,7 @@ namespace CASE.Quermesse
         private bool carregando = true;
         private bool registrando;
         private string chaveOperacao = Guid.NewGuid().ToString();
+        private readonly Label resumoRegistros = new Label();
 
         public RegistrosControl() : this(null, null)
         {
@@ -34,10 +35,10 @@ namespace CASE.Quermesse
             eventoSelecionado = evento;
             FrontendTheme.Aplicar(this);
             lblTitulo.Text = "Vendas e perdas";
-            lblSubtitulo.Text = "Selecione uma linha e use Corrigir / histórico. O botão direito também está disponível.";
+            lblSubtitulo.Text = "Consulte os lançamentos da escala selecionada. Revisar lançamento permite corrigir erros com justificativa.";
             Button abrirCorrecao = new Button();
             abrirCorrecao.Name = "btnCorrigirRegistro";
-            abrirCorrecao.Text = "Corrigir / histórico";
+            abrirCorrecao.Text = "Revisar lançamento";
             abrirCorrecao.SetBounds(Width - 250, 25, 220, 36);
             abrirCorrecao.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             abrirCorrecao.Enabled = false;
@@ -48,7 +49,8 @@ namespace CASE.Quermesse
             lblTitulo.AutoEllipsis = true;
             abrirCorrecao.BringToFront();
             dgvRegistrosEquipe.SelectionChanged += (s, e) =>
-                abrirCorrecao.Enabled = usuarioAutenticado != null && dgvRegistrosEquipe.SelectedRows.Count > 0;
+                abrirCorrecao.Enabled = usuarioAutenticado != null && dgvRegistrosEquipe.SelectedRows.Count > 0 &&
+                    dgvRegistrosEquipe.SelectedRows[0].Visible;
             lblContextoRegistro.Text = "Selecione uma escala de trabalho";
             panelNovoRegistro.Visible = false;
             lblObservacao.Width = 120;
@@ -86,34 +88,62 @@ namespace CASE.Quermesse
             panelListaRegistros.Top = 335;
             panelListaRegistros.Height = 260;
             panelListaRegistros.Padding = new Padding(12, 70, 12, 12);
+            resumoRegistros.Name = "lblResumoRegistros";
+            resumoRegistros.SetBounds(18, 20, 600, 30);
+            resumoRegistros.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            resumoRegistros.ForeColor = VisualUtils.Marinho;
+            panelListaRegistros.Controls.Add(resumoRegistros);
             pesquisa = VisualUtils.AdicionarPesquisa(panelListaRegistros, "txtPesquisarRegistro", "Pesquisar nos registros",
-                texto => VisualUtils.FiltrarGrades(panelListaRegistros, texto));
+                texto =>
+                {
+                    VisualUtils.FiltrarGrades(panelListaRegistros, texto);
+                    foreach (DataGridViewRow linha in dgvRegistrosEquipe.SelectedRows)
+                        if (!linha.Visible)
+                            linha.Selected = false;
+                });
             dgvRegistrosEquipe.Dock = DockStyle.Fill;
             panelCorpo.Height = panelListaRegistros.Bottom;
             labelAviso.Top = panelCorpo.Bottom + 12;
             labelAviso.Height = 42;
             AutoScrollMinSize = new Size(760, labelAviso.Bottom + 12);
             SizeChanged += (s, e) => AjustarCamposAoEspaco();
+            panelNovoRegistro.VisibleChanged += (s, e) => AjustarCamposAoEspaco();
             AjustarCamposAoEspaco();
             cmbProdutoRegistro.DisplayMember = "nome";
             cmbSetorRegistro.DisplayMember = "descricao";
             cmbProdutoRegistro.SelectedIndexChanged += ProdutoAlterado;
             cmbTipoRegistro.SelectedIndexChanged += TipoAlterado;
+            TipoAlterado(this, EventArgs.Empty);
             dgvRegistrosEquipe.Columns.Add("precoPraticado", "Preço praticado");
             dgvRegistrosEquipe.Columns.Add("pagamento", "Pagamento");
+            dgvRegistrosEquipe.Columns.Add("numeroRegistro", "Registro");
+            dgvRegistrosEquipe.Columns["numeroRegistro"].DisplayIndex = 0;
+            dgvRegistrosEquipe.Columns["numeroRegistro"].MinimumWidth = 75;
+            dgvRegistrosEquipe.Columns.Add("totalRegistroItem", "Total do item");
+            dgvRegistrosEquipe.Columns["totalRegistroItem"].MinimumWidth = 110;
+            dgvRegistrosEquipe.Columns["totalRegistroItem"].DefaultCellStyle.Format = "C2";
+            dgvRegistrosEquipe.Columns[0].DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
+            dgvRegistrosEquipe.Columns[8].DefaultCellStyle.Format = "C2";
+            dgvRegistrosEquipe.Columns[8].DefaultCellStyle.NullValue = "—";
+            dgvRegistrosEquipe.Columns["totalRegistroItem"].DefaultCellStyle.NullValue = "—";
             int[] largurasMinimas = { 145, 140, 140, 120, 85, 180, 65, 180, 110, 90 };
             for (int coluna = 0; coluna < largurasMinimas.Length; coluna++)
             {
                 dgvRegistrosEquipe.Columns[coluna].MinimumWidth = largurasMinimas[coluna];
             }
-            dgvRegistrosEquipe.Columns[6].DefaultCellStyle.Format = "N0";
+            dgvRegistrosEquipe.Columns[6].DefaultCellStyle.Format = "0.###";
+            // A escala selecionada já identifica o funcionário e o setor.
+            dgvRegistrosEquipe.Columns[1].Visible = false;
+            dgvRegistrosEquipe.Columns[2].Visible = false;
             labelAviso.Text = "Autentique-se para registrar operações.";
             ContextMenuStrip menu = new ContextMenuStrip();
-            ToolStripMenuItem corrigir = new ToolStripMenuItem("Corrigir registro / consultar histórico");
+            ToolStripMenuItem corrigir = new ToolStripMenuItem("Revisar lançamento e histórico de correções");
             corrigir.Name = "menuCorrigirRegistro";
             corrigir.Click += CorrigirRegistro;
             menu.Items.Add(corrigir);
             dgvRegistrosEquipe.ContextMenuStrip = menu;
+            menu.Opening += (s, e) => e.Cancel = dgvRegistrosEquipe.SelectedRows.Count == 0 ||
+                !dgvRegistrosEquipe.SelectedRows[0].Visible;
             dgvRegistrosEquipe.CellMouseDown += (s, e) =>
             {
                 if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
@@ -121,6 +151,8 @@ namespace CASE.Quermesse
                     dgvRegistrosEquipe.CurrentCell = dgvRegistrosEquipe.Rows[e.RowIndex].Cells[0];
                     dgvRegistrosEquipe.Rows[e.RowIndex].Selected = true;
                 }
+                else if (e.Button == MouseButtons.Right)
+                    dgvRegistrosEquipe.ClearSelection();
             };
             Disposed += (s, e) => menu.Dispose();
             btnRegistrar.Enabled = false;
@@ -145,7 +177,8 @@ namespace CASE.Quermesse
                 {
                     labelAviso.Text = "Não há escalas autorizadas. Cadastre equipe, jornada e escala primeiro.";
                 }
-                AtualizarRegistros();
+                if (cmbSetorRegistro.Items.Count == 0)
+                    AtualizarRegistros();
             }
             catch (Exception erro)
             {
@@ -179,6 +212,10 @@ namespace CASE.Quermesse
                 cmbProdutoRegistro.Items.Clear();
                 if (escala == null)
                 {
+                    panelNovoRegistro.Visible = false;
+                    btnRegistrar.Enabled = false;
+                    AtualizarRegistros();
+                    AjustarCamposAoEspaco();
                     return;
                 }
                 DataTable produtos = consultas.ProdutosDaEscala(usuarioAutenticado,
@@ -193,12 +230,22 @@ namespace CASE.Quermesse
                 }
                 string perfil;
                 new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
-                panelNovoRegistro.Visible = perfil == "Membro";
-                btnRegistrar.Enabled = perfil == "Membro" && produtos.Rows.Count > 0;
-                lblContextoRegistro.Text = Convert.ToString(escala["descricao"]);
-                labelAviso.Text = perfil == "Membro"
-                    ? "Vendas e perdas são permitidas durante eventos em andamento."
-                    : "Vendas e perdas são lançadas pelo membro escalado. Para revisar um lançamento, use Corrigir / histórico.";
+                bool administrador = string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+                bool podeRegistrar = administrador || string.Equals(perfil, "Membro", StringComparison.OrdinalIgnoreCase);
+                panelNovoRegistro.Visible = podeRegistrar;
+                btnRegistrar.Enabled = podeRegistrar && produtos.Rows.Count > 0;
+                lblContextoRegistro.Text = "Novo lançamento na escala selecionada";
+                lblTitulo.Text = podeRegistrar ? "Registrar vendas e perdas" : "Consulta de vendas e perdas";
+                lblSubtitulo.Text = podeRegistrar
+                    ? "Escolha sua escala, registre a venda ou perda e acompanhe seus lançamentos abaixo."
+                    : "Consulte os lançamentos da escala selecionada. Revisar lançamento permite corrigir erros com justificativa.";
+                labelAviso.Text = administrador
+                    ? "Como administrador, selecione uma escala para registrar a venda ou perda. O lançamento ficará associado à sua conta."
+                    : perfil == "Membro"
+                    ? "Cada lançamento reduz o estoque do setor. Perdas exigem justificativa; vendas informam preço e pagamento."
+                    : "Os membros registram as vendas e perdas. Aqui você consulta ou corrige lançamentos; o Financeiro confere os recebimentos.";
+                AtualizarRegistros();
+                AjustarCamposAoEspaco();
             }
             catch (Exception erro)
             {
@@ -222,6 +269,8 @@ namespace CASE.Quermesse
             bool venda = cmbTipoRegistro.Text == "venda";
             precoPraticado.Enabled = venda;
             formaPagamento.Enabled = venda;
+            btnRegistrar.Text = venda ? "Registrar venda" : "Registrar perda";
+            lblObservacao.Text = venda ? "Observação" : "Motivo da perda *";
         }
 
         private void AtualizarRegistros()
@@ -229,21 +278,46 @@ namespace CASE.Quermesse
 
             DataTable dados = consultas.Registros(usuarioAutenticado, IdEvento(),
                 new DateTime(2000, 1, 1), DateTime.Today);
+            DataRowView escala = cmbSetorRegistro.SelectedItem as DataRowView;
+            HashSet<int> permitidos = new HashSet<int>();
+            if (escala != null)
+                foreach (Registro registro in new RegistroService().ListarPorEscala(usuarioAutenticado, Convert.ToInt32(escala["id_escala"])))
+                    permitidos.Add(registro.IdRegistro);
+            HashSet<int> lancamentos = new HashSet<int>();
+            decimal totalVendas = 0;
+            bool totalCompleto = true;
             dgvRegistrosEquipe.Rows.Clear();
             foreach (DataRow linha in dados.Rows)
             {
+                int id = Convert.ToInt32(linha["id_registro"]);
+                if (!permitidos.Contains(id))
+                    continue;
+                lancamentos.Add(id);
+                bool venda = Convert.ToString(linha["tipo"]) == "venda";
+                if (venda)
+                {
+                    if (linha.IsNull("total"))
+                        totalCompleto = false;
+                    else
+                        totalVendas += Convert.ToDecimal(linha["total"]);
+                }
+                string pagamento = Convert.ToString(linha["forma_pagamento"]);
                 int indice = dgvRegistrosEquipe.Rows.Add(linha["data_hora"], linha["responsavel"], linha["setor"],
-                    linha["turno"], linha["tipo"], linha["produto"], linha["quantidade"],
-                    linha["observacao"], linha["preco_unitario_praticado"], linha["forma_pagamento"]);
-                dgvRegistrosEquipe.Rows[indice].Tag = Convert.ToInt32(linha["id_registro"]);
+                    linha["turno"], venda ? "Venda" : "Perda", linha["produto"], linha["quantidade"],
+                    linha["observacao"], venda ? linha["preco_unitario_praticado"] : DBNull.Value,
+                    !venda ? "—" : pagamento == "cartao" ? "Cartão" : pagamento == "pix" ? "Pix" : pagamento == "dinheiro" ? "Dinheiro" : "Não informado",
+                    id, venda ? linha["total"] : DBNull.Value);
+                dgvRegistrosEquipe.Rows[indice].Tag = id;
             }
-            VisualUtils.ExibirEstadoVazio(dgvRegistrosEquipe, "Nenhum registro autorizado encontrado.");
+            resumoRegistros.Text = "Na escala: " + lancamentos.Count + " lançamento(s) • " + dgvRegistrosEquipe.Rows.Count +
+                " item(ns) • Vendas: " + (totalCompleto ? totalVendas.ToString("C2") : "preços incompletos");
+            VisualUtils.ExibirEstadoVazio(dgvRegistrosEquipe, escala == null ? "Selecione uma escala para consultar os lançamentos." : "Nenhuma venda ou perda registrada nesta escala.");
             VisualUtils.FiltrarGrades(panelListaRegistros, pesquisa.Text.Trim());
         }
 
         private void CorrigirRegistro(object sender, EventArgs e)
         {
-            if (dgvRegistrosEquipe.SelectedRows.Count == 0 || usuarioAutenticado == null)
+            if (dgvRegistrosEquipe.SelectedRows.Count == 0 || !dgvRegistrosEquipe.SelectedRows[0].Visible || usuarioAutenticado == null)
             {
                 labelAviso.Text = "Selecione um registro autorizado.";
                 return;
@@ -292,6 +366,7 @@ namespace CASE.Quermesse
                 txtObservacaoRegistro.Clear();
                 numQuantidadeRegistro.Value = 1;
                 labelAviso.Text = "Registro " + id + " confirmado. O estoque foi atualizado.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
                 AtualizarRegistros();
             }
             catch (Exception erro)
@@ -339,6 +414,12 @@ namespace CASE.Quermesse
                 if (corrigir != null)
                     corrigir.Left = Math.Max(360, ClientSize.Width - corrigir.Width - 24);
                 lblTitulo.Width = Math.Max(240, ClientSize.Width - 350);
+                panelListaRegistros.Top = panelNovoRegistro.Visible ? 335 : 100;
+                panelListaRegistros.Height = Math.Max(260, ClientSize.Height - panelCorpo.Top - panelListaRegistros.Top - 72);
+                panelCorpo.Height = panelListaRegistros.Bottom;
+                labelAviso.Top = panelCorpo.Bottom + 10;
+                AutoScrollMinSize = new Size(1020, labelAviso.Bottom + 12);
+                resumoRegistros.Width = Math.Max(220, panelListaRegistros.ClientSize.Width - 370);
                 bool compacto = panelNovoRegistro.ClientSize.Width < 990;
                 int produtoEsquerda = compacto ? 164 : 255;
                 int produtoLargura = compacto ? Math.Max(180, panelNovoRegistro.ClientSize.Width - 464) : 300;
@@ -368,11 +449,11 @@ namespace CASE.Quermesse
             if (erro is ArgumentException || erro is InvalidOperationException ||
                 erro is UnauthorizedAccessException)
             {
-                labelAviso.Text = erro.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível concluir a operação. Confira os dados e tente novamente.", labelAviso);
             }
             else
             {
-                labelAviso.Text = "Não foi possível concluir a operação. Confira a conexão e tente novamente.";
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível concluir a operação. Tente novamente.", labelAviso);
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em RegistrosControl: " + erro.StackTrace);
             }
         }

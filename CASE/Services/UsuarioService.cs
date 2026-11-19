@@ -127,6 +127,23 @@ namespace CASE.Services
                 null);
         }
 
+        public void AlterarPerfilSistema(Usuario administrador, int idUsuario, int idPerfilSistema,
+            int idPerfilAnterior, string justificativa)
+        {
+            var autorizacao = new AutorizacaoService();
+            autorizacao.ExigirAdministrador(administrador);
+            if (idUsuario <= 0 || idPerfilSistema <= 0 || idPerfilAnterior <= 0)
+                throw new ArgumentException("Selecione uma conta aprovada e um perfil válido.");
+            if (idUsuario == administrador.IdUsuario)
+                throw new InvalidOperationException("Altere o perfil da sua conta utilizando outra conta de administrador.");
+            if (idPerfilSistema == idPerfilAnterior)
+                throw new ArgumentException("Escolha um perfil diferente do atual.");
+            if (justificativa != null && justificativa.Trim().Length > 500)
+                throw new ArgumentException("A justificativa deve ter até 500 caracteres.");
+            usuarioRepository.AlterarPerfilAdministrativo(idUsuario, administrador.IdUsuario,
+                idPerfilSistema, idPerfilAnterior, justificativa);
+        }
+
         public void RejeitarCadastro(Usuario administrador, int idUsuario, string justificativa)
         {
             string nomePerfil;

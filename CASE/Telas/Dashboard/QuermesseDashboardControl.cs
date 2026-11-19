@@ -57,7 +57,7 @@ namespace CASE.Quermesse
                 lblValorIndicador2.Text = new EquipeEventoService().ListarPorEvento(usuario, autorizado.IdEvento).Count.ToString();
                 lblValorIndicador3.Text = new SetorService().ListarPorEvento(usuario, autorizado.IdEvento).Count.ToString();
                 VisualUtils.ExibirEstadoVazio(dgvAtividade, "Nenhuma atividade autorizada encontrada.");
-                labelAviso.Text = "Informações consultadas no MySQL para o evento selecionado.";
+                labelAviso.Text = string.Empty;
             }
             catch (Exception erro)
             {

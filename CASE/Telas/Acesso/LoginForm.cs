@@ -22,6 +22,8 @@ namespace CASE
 
             VisualUtils.Arredondar(panelLogin, 15);
             btnEntrar.Click += BtnEntrar_Click;
+            // Os campos são validados no login, sem cancelar o clique durante a troca de foco.
+            btnEntrar.CausesValidation = false;
             AcceptButton = btnEntrar;
             VisualUtils.Arredondar(btnEntrar, 7);
             VisualUtils.Arredondar(panelUsuario, 7);
@@ -127,7 +129,7 @@ namespace CASE
                 RegistrarErroDeDesenvolvimento(erro);
                 if (!IsDisposed)
                 {
-                    DefinirMensagem("Não foi possível acessar o banco de dados. Verifique se o MySQL está iniciado e tente novamente.");
+                    DefinirMensagem("Não foi possível entrar agora. Tente novamente em alguns instantes.");
                     textSenha.Clear();
                 }
             }
@@ -194,6 +196,8 @@ namespace CASE
             {
                 lblMensagem.Visible = true;
                 lblMensagem.BringToFront();
+                if (!informativa)
+                    CASE.Utils.FeedbackUsuario.Exibir(this, mensagem, CASE.Utils.TipoFeedback.Erro);
             }
         }
 

@@ -41,6 +41,9 @@ namespace CASE.Quermesse
             txtNovoSetor.Enabled = false;
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
+            lblSubtitulo.Text = eventoSelecionado == null
+                ? "Selecione um evento na tela Eventos para consultar a equipe e os setores."
+                : "Evento: " + eventoSelecionado.Nome + " · Defina a equipe por setor, turno e perfil de acesso.";
 
             if (usuarioAutenticado == null)
             {
@@ -186,6 +189,7 @@ namespace CASE.Quermesse
                 {
                     CarregarEquipe();
                     labelAviso.Text = "Equipe atualizada.";
+                    CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
                 }
             }
         }
@@ -216,12 +220,14 @@ namespace CASE.Quermesse
                 {
                     setorService.Criar(usuarioAutenticado, setor);
                     labelAviso.Text = "Setor cadastrado e local de estoque criado.";
+                    CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
                 }
                 else
                 {
                     setorService.Renomear(usuarioAutenticado, setorEmEdicao.IdSetor,
                         setor.Nome, setorEmEdicao.Nome);
                     labelAviso.Text = "Nome do setor e do local atualizado. Saldos e vínculos preservados.";
+                    CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
                 }
                 setorEmEdicao = null;
                 btnAdicionarSetor.Text = "Adicionar setor";
@@ -231,19 +237,21 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                labelAviso.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar a equipe e os setores.", labelAviso);
             }
             catch (InvalidOperationException ex)
             {
-                labelAviso.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar a equipe e os setores.", labelAviso);
             }
             catch (UnauthorizedAccessException)
             {
                 labelAviso.Text = "Sua conta não pode criar setores neste evento.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
             }
             catch (Exception)
             {
                 labelAviso.Text = "Não foi possível cadastrar o setor.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
             }
         }
 
@@ -291,10 +299,12 @@ namespace CASE.Quermesse
             catch (UnauthorizedAccessException)
             {
                 labelAviso.Text = "Sua conta não pode consultar os setores deste evento.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
             }
             catch (Exception)
             {
                 labelAviso.Text = "Não foi possível carregar os setores do evento.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
             }
         }
 
@@ -376,9 +386,9 @@ namespace CASE.Quermesse
                             string mensagem = "Não foi possível configurar o produto.";
                             if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
                             {
-                                mensagem = erro.Message;
+                                mensagem = CASE.Utils.FeedbackUsuario.MensagemErro(erro, mensagem);
                             }
-                            MessageBox.Show(dialogo, mensagem, "Produto por setor", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            CASE.Utils.FeedbackUsuario.ExibirErro(dialogo, erro, mensagem);
                         }
                     };
                     dialogo.Controls.Add(FrontendTheme.Legenda("Produto", new System.Drawing.Rectangle(20, 15, 400, 22)));
@@ -394,6 +404,7 @@ namespace CASE.Quermesse
                     if (dialogo.ShowDialog(this) == DialogResult.OK)
                     {
                         labelAviso.Text = "Produto vinculado ao setor e preço padrão salvo. Vendas anteriores foram preservadas.";
+                        CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
                     }
                 }
             }
@@ -480,10 +491,12 @@ namespace CASE.Quermesse
             catch (UnauthorizedAccessException)
             {
                 labelAviso.Text = "Sua conta não pode consultar a equipe deste evento.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
             }
             catch (Exception)
             {
                 labelAviso.Text = "Não foi possível carregar a equipe do evento.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
             }
         }
 

@@ -156,25 +156,40 @@ namespace CASE.Services
                 usuario,
                 out nomePerfil);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente gerentes podem registrar transferências de estoque.");
+                    "Somente administradores e gerentes podem registrar transferências de estoque.");
             }
 
             LocalEstoque localOrigem = localRepository.BuscarPorId(transferencia.IdLocalOrigem);
             LocalEstoque localDestino = localRepository.BuscarPorId(transferencia.IdLocalDestino);
+            bool administrador = string.Equals(
+                nomePerfil,
+                "Administrador",
+                StringComparison.OrdinalIgnoreCase);
+            bool transferenciaDiretaDoCentral = administrador &&
+                localOrigem != null && localOrigem.EhCentral &&
+                localDestino != null && !localDestino.EhCentral &&
+                localDestino.EhGeralEvento &&
+                !localOrigem.IdEvento.HasValue &&
+                localDestino.IdEvento.HasValue &&
+                localOrigem.IdInstituicao == localDestino.IdInstituicao;
+            bool transferenciaEntreLocaisDoEvento =
+                localOrigem != null && localDestino != null &&
+                !localOrigem.EhCentral && !localDestino.EhCentral &&
+                !(localOrigem.EhGeralEvento && localDestino.EhGeralEvento) &&
+                localOrigem.IdEvento.HasValue && localDestino.IdEvento.HasValue &&
+                localOrigem.IdEvento.Value == localDestino.IdEvento.Value &&
+                localOrigem.IdInstituicao == localDestino.IdInstituicao;
 
             if (localOrigem == null || localDestino == null ||
                 !localOrigem.Ativo || !localDestino.Ativo ||
-                localOrigem.EhCentral || localDestino.EhCentral ||
-                localOrigem.EhGeralEvento && localDestino.EhGeralEvento ||
-                !localOrigem.IdEvento.HasValue || !localDestino.IdEvento.HasValue ||
-                localOrigem.IdEvento.Value != localDestino.IdEvento.Value ||
-                localOrigem.IdInstituicao != localDestino.IdInstituicao)
+                (!transferenciaDiretaDoCentral && !transferenciaEntreLocaisDoEvento))
             {
                 throw new ArgumentException(
-                    "A transferência comum deve ocorrer entre locais de estoque do mesmo evento.");
+                    "A transferência deve ocorrer entre locais compatíveis do mesmo evento. Somente o Administrador pode transferir diretamente do estoque central para o estoque geral.");
             }
 
             if (transferencia.IdSolicitacaoEstoqueCentral.HasValue)

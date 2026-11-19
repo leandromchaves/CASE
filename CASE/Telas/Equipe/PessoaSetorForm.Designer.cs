@@ -74,7 +74,7 @@ namespace CASE.Quermesse
             this.labelAvisoFormulario.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.labelAvisoFormulario.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.labelAvisoFormulario.TabIndex = 2;
-            this.labelAvisoFormulario.Text = "Prévia visual · alterações não são salvas";
+            this.labelAvisoFormulario.Text = "";
             this.labelAvisoFormulario.TextAlign = (System.Drawing.ContentAlignment)1;
             // btnCancelar
             this.btnCancelar.Name = "btnCancelar";

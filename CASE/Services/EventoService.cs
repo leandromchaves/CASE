@@ -188,11 +188,21 @@ namespace CASE.Services
                     "O evento foi alterado desde que a tela foi aberta. Atualize a lista antes de editar.");
             }
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
-                eventoExistente.IdResponsavel != usuarioAtual.IdPessoa)
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (!administrador &&
+                (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
+                eventoExistente.IdResponsavel != usuarioAtual.IdPessoa))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente o gerente responsável pode editar este evento.");
+                    "Somente o administrador ou o gerente responsável pode editar este evento.");
+            }
+
+            if (administrador && evento.IdResponsavel != eventoExistente.IdResponsavel &&
+                !ListarGerentesResponsaveis(usuarioAtual).Exists(
+                    pessoa => pessoa.IdPessoa == evento.IdResponsavel))
+            {
+                throw new ArgumentException(
+                    "Selecione uma conta aprovada com perfil Gerente como responsável pelo evento.");
             }
 
             if (string.IsNullOrWhiteSpace(evento.Nome) ||
@@ -217,7 +227,9 @@ namespace CASE.Services
 
             // A edição do formulário não altera instituição, responsável ou situação.
             evento.IdInstituicao = eventoExistente.IdInstituicao;
-            evento.IdResponsavel = eventoExistente.IdResponsavel;
+            evento.IdResponsavel = administrador
+                ? evento.IdResponsavel
+                : eventoExistente.IdResponsavel;
             evento.Situacao = eventoExistente.Situacao;
             evento.IdUsuarioCriacao = eventoExistente.IdUsuarioCriacao;
             evento.CriadoEm = eventoExistente.CriadoEm;
@@ -307,11 +319,12 @@ namespace CASE.Services
                 throw new InvalidOperationException("O evento não foi encontrado.");
             }
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) ||
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if ((!administrador && !string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase)) ||
                 !autorizacaoService.PodeAcessarEvento(usuarioAtual, nomePerfil, evento))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente o gerente responsável pode alterar a situação deste evento.");
+                    "Somente o administrador ou o gerente responsável pode alterar a situação deste evento.");
             }
 
             novaSituacao = SituacoesEvento.Normalizar(novaSituacao);

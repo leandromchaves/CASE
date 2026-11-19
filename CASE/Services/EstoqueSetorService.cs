@@ -106,10 +106,11 @@ namespace CASE.Services
                 usuario,
                 out nomePerfil);
 
-            if (!string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            if (!administrador && !string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException(
-                    "Somente o gerente responsável pode associar estoque a setores.");
+                    "Somente o administrador ou o gerente responsável pode associar estoque a setores.");
             }
 
             Setor setor = setorRepository.BuscarPorId(idSetor);

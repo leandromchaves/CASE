@@ -11,6 +11,8 @@ namespace CASE
     {
         private readonly Usuario usuarioAutenticado;
         private readonly List<LocalEstoque> locaisEvento = new List<LocalEstoque>();
+        private readonly bool transferenciaCentral;
+        private readonly int? idLocalOrigemSolicitado;
         private readonly TransferenciaEstoqueService transferenciaService =
             new TransferenciaEstoqueService();
         private readonly LocalEstoqueService localEstoqueService = new LocalEstoqueService();
@@ -23,11 +25,25 @@ namespace CASE
         {
         }
 
-        public TransferenciaEstoqueForm(Usuario usuario)
+        public TransferenciaEstoqueForm(Usuario usuario) : this(usuario, null)
+        {
+        }
+
+        public TransferenciaEstoqueForm(Usuario usuario, int? idLocalOrigem)
+            : this(usuario, idLocalOrigem, false)
+        {
+        }
+
+        public TransferenciaEstoqueForm(
+            Usuario usuario,
+            int? idLocalOrigem,
+            bool transferenciaCentral)
         {
             InitializeComponent();
             IconoAplicacao.Aplicar(this);
             usuarioAutenticado = usuario;
+            this.transferenciaCentral = transferenciaCentral;
+            idLocalOrigemSolicitado = idLocalOrigem;
             lblModoApresentacao.Visible = false;
 
             if (System.ComponentModel.LicenseManager.UsageMode ==
@@ -39,6 +55,16 @@ namespace CASE
             cmbOrigem.DisplayMember = "Descricao";
             cmbDestino.DisplayMember = "Descricao";
             cmbProduto.DisplayMember = "Nome";
+            if (transferenciaCentral)
+            {
+                Text = "Transferência do estoque central";
+                lblTitulo.Text = "Transferir para evento";
+                lblSubtitulo.Text = "Envie produtos do estoque central diretamente ao estoque geral do evento.";
+                lblOrigem.Text = "Estoque central";
+                lblDestino.Text = "Estoque geral do evento";
+                btnConfirmar.Text = "Confirmar transferência";
+                cmbOrigem.Enabled = false;
+            }
             numQuantidade.DecimalPlaces = 0;
             numQuantidade.Minimum = 1;
             cmbOrigem.SelectedIndexChanged += cmbOrigem_SelectedIndexChanged;
@@ -54,23 +80,66 @@ namespace CASE
             }
 
             CarregarDados();
+            if (idLocalOrigem.HasValue)
+                foreach (LocalEstoque local in cmbOrigem.Items)
+                    if (local.IdLocalEstoque == idLocalOrigem.Value)
+                    {
+                        cmbOrigem.SelectedItem = local;
+                        break;
+                    }
         }
 
         private void CarregarDados()
         {
             try
             {
-                foreach (LocalEstoque local in localEstoqueService.Listar(usuarioAutenticado))
+                List<LocalEstoque> locaisAutorizados = localEstoqueService.Listar(usuarioAutenticado);
+                LocalEstoque centralSelecionado = null;
+
+                foreach (LocalEstoque local in locaisAutorizados)
                 {
-                    if (local.Ativo && !local.EhCentral && local.IdEvento.HasValue)
+                    if (!local.Ativo)
+                    {
+                        continue;
+                    }
+
+                    if (transferenciaCentral && local.EhCentral &&
+                        (!idLocalOrigemSolicitado.HasValue ||
+                         local.IdLocalEstoque == idLocalOrigemSolicitado.Value))
+                    {
+                        centralSelecionado = local;
+                    }
+                    else if (!local.EhCentral && local.IdEvento.HasValue)
                     {
                         locaisEvento.Add(local);
                     }
                 }
 
-                foreach (LocalEstoque local in locaisEvento)
+                if (transferenciaCentral)
                 {
-                    cmbOrigem.Items.Add(local);
+                    if (centralSelecionado == null)
+                    {
+                        btnConfirmar.Enabled = false;
+                        lblMensagem.Text = "O estoque central selecionado não está disponível para sua conta.";
+                        return;
+                    }
+
+                    cmbOrigem.Items.Add(centralSelecionado);
+                    foreach (LocalEstoque local in locaisEvento)
+                    {
+                        if (local.EhGeralEvento &&
+                            local.IdInstituicao == centralSelecionado.IdInstituicao)
+                        {
+                            cmbDestino.Items.Add(local);
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (LocalEstoque local in locaisEvento)
+                    {
+                        cmbOrigem.Items.Add(local);
+                    }
                 }
 
                 foreach (Produto produto in produtoService.Listar(usuarioAutenticado))
@@ -91,11 +160,14 @@ namespace CASE
                     cmbProduto.SelectedIndex = 0;
                 }
 
-                if (cmbOrigem.Items.Count == 0 || cmbProduto.Items.Count == 0)
+                if (cmbOrigem.Items.Count == 0 || cmbProduto.Items.Count == 0 ||
+                    (transferenciaCentral && cmbDestino.Items.Count == 0))
                 {
                     btnConfirmar.Enabled = false;
                     lblMensagem.Text =
-                        "Não há locais ou produtos disponíveis para uma transferência autorizada.";
+                        transferenciaCentral
+                            ? "Não há estoque geral ativo de evento disponível para esta instituição."
+                            : "Não há locais ou produtos disponíveis para uma transferência autorizada.";
                 }
             }
             catch (Exception)
@@ -123,6 +195,23 @@ namespace CASE
 
             if (origem == null || !origem.IdEvento.HasValue)
             {
+                if (transferenciaCentral && origem != null && origem.EhCentral)
+                {
+                    cmbDestino.Items.Clear();
+                    foreach (LocalEstoque local in locaisEvento)
+                    {
+                        if (local.Ativo && local.EhGeralEvento &&
+                            local.IdInstituicao == origem.IdInstituicao)
+                        {
+                            cmbDestino.Items.Add(local);
+                        }
+                    }
+
+                    if (cmbDestino.Items.Count > 0)
+                    {
+                        cmbDestino.SelectedIndex = 0;
+                    }
+                }
                 return;
             }
 
@@ -232,12 +321,12 @@ namespace CASE
             }
             catch (ArgumentException ex)
             {
-                lblMensagem.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da transferência e tente novamente.", lblMensagem);
                 ReabilitarConfirmacao();
             }
             catch (InvalidOperationException ex)
             {
-                lblMensagem.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da transferência e tente novamente.", lblMensagem);
                 ReabilitarConfirmacao();
             }
             catch (UnauthorizedAccessException)
@@ -245,9 +334,11 @@ namespace CASE
                 lblMensagem.Text = "Sua conta não pode realizar esta transferência.";
                 ReabilitarConfirmacao();
             }
-            catch (Exception)
+            catch (Exception erro)
             {
-                lblMensagem.Text = "Não foi possível concluir a transferência.";
+                System.Diagnostics.Trace.WriteLine(
+                    erro.GetType().Name + " ao registrar transferência: " + erro.Message);
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível concluir a transferência. Confira os dados e tente novamente.", lblMensagem);
                 ReabilitarConfirmacao();
             }
         }

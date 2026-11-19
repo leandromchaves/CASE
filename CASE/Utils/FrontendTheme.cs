@@ -101,18 +101,22 @@ namespace CASE.Utils
             bool vermelho = valor == "Rejeitado" || valor == "Suspenso" || valor == "Saída" || valor == "Baixo" ||
             valor == "Estoque baixo" ||
             valor == "Sem estoque" ||
-            valor == "Inativo";
+            valor == "Inativo" ||
+            valor == "Perda";
             bool pendente = valor == "Pendente" || valor == "A confirmar";
             bool azul = valor == "Em andamento" || valor == "Em atendimento" || valor == "Venda";
-            if (!acao && !verde && !vermelho && !pendente && !azul)
+            bool roxa = valor == "Transferência";
+            if (!acao && !verde && !vermelho && !pendente && !azul && !roxa)
                 return;
             e.PaintBackground(e.ClipBounds, false);
             bool excluir = valor == "Excluir";
             Color fundo = acao ? (excluir ? Color.FromArgb(253, 238, 239) : Color.FromArgb(234, 242, 254))
                 : verde ? Color.FromArgb(233, 247, 241) : pendente ? Color.FromArgb(255, 247, 229)
+                : roxa ? Color.FromArgb(243, 238, 255)
                 : azul ? Color.FromArgb(234, 242, 254) : Color.FromArgb(253, 238, 239);
             Color texto = acao ? (excluir ? Color.FromArgb(194, 78, 88) : Azul)
                 : verde ? Color.FromArgb(43, 133, 104) : pendente ? Color.FromArgb(163, 120, 39)
+                : roxa ? Color.FromArgb(113, 73, 181)
                 : azul ? Azul : Color.FromArgb(194, 78, 88);
             int largura = Math.Min(e.CellBounds.Width - 12, TextRenderer.MeasureText(valor, grade.Font).Width + 16);
             var area = new Rectangle(e.CellBounds.Left + 6, e.CellBounds.Top + 10, largura, e.CellBounds.Height - 20);

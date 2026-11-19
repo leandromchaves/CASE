@@ -82,23 +82,24 @@ namespace CASE.Quermesse
             {
                 Evento evento = ObterEventoSelecionado();
                 resumo.Enabled = evento != null;
-                bool gerente = false;
+                bool podeAlterarSituacao = false;
                 if (usuarioAutenticado != null && evento != null)
                 {
                     try
                     {
                         string perfil;
                         new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
-                        gerente = perfil == "Gerente" && evento.IdResponsavel == usuarioAutenticado.IdPessoa;
+                        podeAlterarSituacao = perfil == "Administrador" ||
+                            perfil == "Gerente" && evento.IdResponsavel == usuarioAutenticado.IdPessoa;
                     }
                     catch (Exception)
                     {
-                        gerente = false;
+                        podeAlterarSituacao = false;
                     }
                 }
-                iniciar.Enabled = gerente && evento.Situacao == SituacoesEvento.Planejado;
-                finalizar.Enabled = gerente && evento.Situacao == SituacoesEvento.EmAndamento;
-                cancelar.Enabled = gerente && (evento.Situacao == SituacoesEvento.Planejado ||
+                iniciar.Enabled = podeAlterarSituacao && evento.Situacao == SituacoesEvento.Planejado;
+                finalizar.Enabled = podeAlterarSituacao && evento.Situacao == SituacoesEvento.EmAndamento;
+                cancelar.Enabled = podeAlterarSituacao && (evento.Situacao == SituacoesEvento.Planejado ||
                     evento.Situacao == SituacoesEvento.EmAndamento);
             };
             dgvQuermesses.ContextMenuStrip = menu;
@@ -137,11 +138,11 @@ namespace CASE.Quermesse
             panelListaQuermesses.SetBounds(0, 0, largura, altura);
             Control situacao = panelListaQuermesses.Controls["btnSituacaoEvento"];
             situacao.SetBounds(largura - 204, 18, 180, 40);
-            btnEditarQuermesse.SetBounds(situacao.Left - 182, 18, 170, 40);
-            btnNovaQuermesse.SetBounds(btnEditarQuermesse.Left - 182, 18, 170, 40);
+            btnEditarQuermesse.Visible = false;
+            btnEditarQuermesse.TabStop = false;
+            btnNovaQuermesse.SetBounds(situacao.Left - 182, 18, 170, 40);
             btnNovaQuermesse.TabIndex = 0;
-            btnEditarQuermesse.TabIndex = 1;
-            situacao.TabIndex = 2;
+            situacao.TabIndex = 1;
             lblEventoscadastrados.SetBounds(18, 25, Math.Max(140, btnNovaQuermesse.Left - 36), 28);
             dgvQuermesses.SetBounds(12, 76, largura - 24, altura - 90);
             dgvQuermesses.TabIndex = 3;
@@ -174,7 +175,7 @@ namespace CASE.Quermesse
                 labelAviso.Text = "Não foi possível atualizar a situação do evento.";
                 if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
                 {
-                    labelAviso.Text = erro.Message;
+                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível atualizar a situação do evento.", labelAviso);
                 }
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em AlterarSituacaoSelecionada");
             }
@@ -215,7 +216,7 @@ namespace CASE.Quermesse
             {
                 if (formulario.ShowDialog(this) == DialogResult.OK)
                 {
-                    CarregarEventos();
+                    CarregarEventos(formulario.IdEventoSalvo);
                 }
             }
         }
@@ -306,7 +307,7 @@ namespace CASE.Quermesse
             return false;
         }
 
-        private void CarregarEventos()
+        private void CarregarEventos(int? idEventoSelecionado = null)
         {
             try
             {
@@ -331,6 +332,10 @@ namespace CASE.Quermesse
                 }
 
                 Pesquisar(pesquisaAtual);
+                if (idEventoSelecionado.HasValue)
+                {
+                    SelecionarEvento(idEventoSelecionado.Value);
+                }
 
                 if (eventos.Count == 0)
                 {
@@ -338,7 +343,7 @@ namespace CASE.Quermesse
                 }
                 else
                 {
-                    labelAviso.Text = eventos.Count + " evento(s) carregado(s) do banco.";
+                    labelAviso.Text = eventos.Count + " evento(s) carregado(s).";
                 }
 
                 if (eventos.Count > 0)
@@ -370,10 +375,26 @@ namespace CASE.Quermesse
                 labelAviso.Text = "Não foi possível carregar os eventos.";
                 MessageBox.Show(
                     this,
-                    "Não foi possível consultar os eventos. Confira a conexão e suas permissões.",
+                    "Não foi possível consultar os eventos. Tente novamente ou confira se sua conta tem acesso a esta área.",
                     "Eventos",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+        }
+
+        private void SelecionarEvento(int idEvento)
+        {
+            foreach (DataGridViewRow linha in dgvQuermesses.Rows)
+            {
+                Evento evento = linha.Tag as Evento;
+                if (evento == null || evento.IdEvento != idEvento)
+                    continue;
+
+                dgvQuermesses.ClearSelection();
+                dgvQuermesses.CurrentCell = linha.Cells[0];
+                linha.Selected = true;
+                dgvQuermesses_SelectionChanged(dgvQuermesses, EventArgs.Empty);
+                break;
             }
         }
 

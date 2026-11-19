@@ -85,7 +85,7 @@ namespace CASE.Quermesse
             comboProdutos.BringToFront();
             txtProdutoSolicitacao.Visible = false;
             lblProduto.Text = "Produto disponível no setor";
-            lblSetor.Text = "Minha escala e setor";
+            lblSetor.Text = "Escala e setor";
             cmbSetorSolicitacao.Items.Clear();
             cmbSetorSolicitacao.SelectedIndexChanged += cmbSetorSolicitacao_SelectedIndexChanged;
         }
@@ -101,7 +101,7 @@ namespace CASE.Quermesse
 
             try
             {
-                List<Escala> escalas = escalaService.ListarMinhas(usuarioAutenticado);
+                List<Escala> escalas = escalaService.ListarDisponiveisParaSolicitacao(usuarioAutenticado);
 
                 foreach (Escala escala in escalas)
                 {
@@ -308,7 +308,7 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                labelAvisoFormulario.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", labelAvisoFormulario);
             }
             catch (UnauthorizedAccessException)
             {

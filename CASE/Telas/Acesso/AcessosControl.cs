@@ -16,6 +16,7 @@ namespace CASE
         private readonly PessoaService pessoaService = new PessoaService();
         private Usuario selecionado;
         private List<PerfilSistema> perfis = new List<PerfilSistema>();
+        private readonly Label lblOrientacaoDecisao = new Label();
 
         public AcessosControl() : this(null)
         {
@@ -34,6 +35,16 @@ namespace CASE
             usuarioAutenticado = usuario;
             FrontendTheme.Aplicar(this);
             dgvContas.Columns.Remove("col2");
+            lblPerfil.Text = "Perfil de acesso";
+            lblMotivo.Text = "Justificativa (obrigatória para rejeitar)";
+            btnAprovar.Text = "Aprovar cadastro";
+            btnRejeitar.Text = "Rejeitar cadastro";
+            btnPerfil.Text = "Salvar novo perfil";
+            btnPerfil.AccessibleDescription =
+                "Altera o perfil de uma conta aprovada. Para contas pendentes, selecione um perfil e use Aprovar cadastro.";
+            btnSuspender.Visible = false;
+            btnSuspender.TabStop = false;
+            ConfigurarOrientacaoDecisao();
             lblModoApresentacao.Visible = false;
             VisualUtils.ExibirEstadoVazio(
                 dgvContas,
@@ -58,6 +69,8 @@ namespace CASE
             dgvContas.SelectionChanged += dgvContas_SelectionChanged;
             btnAprovar.Click += btnAprovar_Click;
             btnRejeitar.Click += btnRejeitar_Click;
+            btnPerfil.Click += btnPerfil_Click;
+            cmbPerfil.SelectedIndexChanged += (s, e) => AtualizarBotoes();
             btnSuspender.Enabled = false;
             btnPerfil.Enabled = false;
 
@@ -75,9 +88,24 @@ namespace CASE
         {
             cmbSituacao.Enabled = habilitado;
             txtBusca.Enabled = habilitado;
+            cmbPerfil.Enabled = false;
+            txtMotivo.Enabled = false;
+            btnSuspender.Enabled = false;
             btnAprovar.Enabled = false;
             btnRejeitar.Enabled = false;
             btnPerfil.Enabled = false;
+        }
+
+        private void ConfigurarOrientacaoDecisao()
+        {
+            lblOrientacaoDecisao.Name = "lblOrientacaoDecisao";
+            lblOrientacaoDecisao.SetBounds(24, 112, 936, 24);
+            lblOrientacaoDecisao.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            lblOrientacaoDecisao.ForeColor = VisualUtils.TextoSuave;
+            lblOrientacaoDecisao.Font = new System.Drawing.Font("Segoe UI", 9F);
+            lblOrientacaoDecisao.AutoEllipsis = true;
+            panelDecisao.Controls.Add(lblOrientacaoDecisao);
+            lblOrientacaoDecisao.BringToFront();
         }
 
         private void CarregarDados()
@@ -213,11 +241,21 @@ namespace CASE
                 txtMotivo.Text = string.Empty;
                 SelecionarPerfil(selecionado.IdPerfilSistema);
 
-                List<AnaliseUsuario> historico = usuarioService.ListarHistorico(
-                    usuarioAutenticado,
-                    selecionado.IdUsuario);
+                List<AnaliseUsuario> historico;
+                try
+                {
+                    historico = usuarioService.ListarHistorico(usuarioAutenticado, selecionado.IdUsuario);
+                }
+                catch (Exception)
+                {
+                    selecionado = null;
+                    HabilitarLeitura(false);
+                    lblMensagem.Text = "Não foi possível validar o acesso à conta. Entre novamente para continuar.";
+                    return;
+                }
 
-                if (historico.Count > 0)
+                if (historico.Count > 0 && !string.Equals(selecionado.SituacaoConta,
+                    SituacoesUsuario.Aprovado, StringComparison.OrdinalIgnoreCase))
                 {
                     AnaliseUsuario ultimaAnalise = historico[historico.Count - 1];
                     txtMotivo.Text = ultimaAnalise.Justificativa;
@@ -261,12 +299,71 @@ namespace CASE
                 selecionado.SituacaoConta,
                 SituacoesUsuario.Pendente,
                 StringComparison.OrdinalIgnoreCase);
-            cmbPerfil.Enabled = pendente;
-            txtMotivo.Enabled = pendente;
-            btnAprovar.Enabled = pendente && cmbPerfil.Items.Count > 0;
+            bool aprovado = selecionado != null && string.Equals(selecionado.SituacaoConta,
+                SituacoesUsuario.Aprovado, StringComparison.OrdinalIgnoreCase);
+            bool propriaConta = selecionado != null && usuarioAutenticado != null &&
+                selecionado.IdUsuario == usuarioAutenticado.IdUsuario;
+            PerfilSistema perfil = cmbPerfil.SelectedItem as PerfilSistema;
+            lblPerfil.Text = pendente
+                ? "Perfil de acesso (obrigatório para aprovar)"
+                : "Perfil de acesso";
+            cmbPerfil.Enabled = pendente || (aprovado && !propriaConta);
+            txtMotivo.Enabled = pendente || (aprovado && !propriaConta);
+            btnAprovar.Enabled = pendente && perfil != null;
             btnRejeitar.Enabled = pendente;
             btnSuspender.Enabled = false;
+            btnPerfil.Enabled = aprovado && !propriaConta && perfil != null &&
+                perfil.IdPerfilSistema != selecionado.IdPerfilSistema;
+
+            if (selecionado == null)
+            {
+                lblOrientacaoDecisao.Text = "Selecione uma conta para ver as ações disponíveis.";
+            }
+            else if (pendente)
+            {
+                lblOrientacaoDecisao.Text = perfil == null
+                    ? "Obrigatório: selecione o perfil que a conta receberá antes de aprovar."
+                    : "Aprovar cadastro atribui o perfil selecionado à conta.";
+            }
+            else if (aprovado && propriaConta)
+            {
+                lblOrientacaoDecisao.Text = "O perfil da própria conta não pode ser alterado nesta tela.";
+            }
+            else if (aprovado)
+            {
+                lblOrientacaoDecisao.Text = btnPerfil.Enabled
+                    ? "Salvar novo perfil registra a alteração; o usuário precisará entrar novamente."
+                    : "Para alterar o acesso, selecione um perfil diferente e clique em Salvar novo perfil.";
+            }
+            else
+            {
+                lblOrientacaoDecisao.Text = "Aprovação e alteração de perfil ficam disponíveis conforme a situação da conta.";
+            }
+        }
+
+        private void btnPerfil_Click(object sender, EventArgs e)
+        {
+            PerfilSistema perfil = cmbPerfil.SelectedItem as PerfilSistema;
+            if (selecionado == null || perfil == null || !selecionado.IdPerfilSistema.HasValue)
+            {
+                lblMensagem.Text = "Selecione uma conta aprovada e o novo perfil.";
+                return;
+            }
             btnPerfil.Enabled = false;
+            try
+            {
+                usuarioService.AlterarPerfilSistema(usuarioAutenticado, selecionado.IdUsuario,
+                    perfil.IdPerfilSistema, selecionado.IdPerfilSistema.Value, txtMotivo.Text);
+                AcessosAlterados?.Invoke(this, EventArgs.Empty);
+                CarregarDados();
+                lblMensagem.Text = "Perfil atualizado e alteração registrada. O usuário deverá entrar novamente.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Sucesso);
+            }
+            catch (Exception erro)
+            {
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível alterar o perfil.", lblMensagem);
+                AtualizarBotoes();
+            }
         }
 
         private void btnAprovar_Click(object sender, EventArgs e)
@@ -279,6 +376,21 @@ namespace CASE
             }
 
             PerfilSistema perfil = (PerfilSistema)cmbPerfil.SelectedItem;
+            string nome = NomeSelecionado();
+            DialogResult confirmacao = MessageBox.Show(
+                this,
+                "Confirma a aprovação de \"" + nome + "\"?" + Environment.NewLine +
+                Environment.NewLine + "O perfil \"" + perfil.Nome +
+                "\" será atribuído e a conta ficará disponível para autenticação.",
+                "Confirmar aprovação",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2);
+
+            if (confirmacao != DialogResult.Yes)
+            {
+                return;
+            }
 
             try
             {
@@ -289,19 +401,22 @@ namespace CASE
                 AcessosAlterados?.Invoke(this, EventArgs.Empty);
                 CarregarDados();
                 lblMensagem.Text = "Cadastro aprovado e decisão registrada.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Sucesso);
             }
             catch (UnauthorizedAccessException)
             {
                 lblMensagem.Text = "Sua conta não pode aprovar cadastros.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
             }
             catch (InvalidOperationException ex)
             {
                 CarregarDados();
-                lblMensagem.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível aprovar o cadastro.", lblMensagem);
             }
             catch (Exception)
             {
                 lblMensagem.Text = "Não foi possível aprovar o cadastro.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
             }
         }
 
@@ -314,6 +429,28 @@ namespace CASE
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(txtMotivo.Text))
+            {
+                lblMensagem.Text = "Informe a justificativa antes de rejeitar o cadastro.";
+                txtMotivo.Focus();
+                return;
+            }
+
+            string motivo = txtMotivo.Text.Trim();
+            DialogResult confirmacao = MessageBox.Show(
+                this,
+                "Confirma a rejeição do cadastro de \"" + NomeSelecionado() + "\"?" +
+                Environment.NewLine + Environment.NewLine + "Justificativa: " + motivo,
+                "Confirmar rejeição",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+
+            if (confirmacao != DialogResult.Yes)
+            {
+                return;
+            }
+
             try
             {
                 usuarioService.RejeitarCadastro(
@@ -323,24 +460,42 @@ namespace CASE
                 AcessosAlterados?.Invoke(this, EventArgs.Empty);
                 CarregarDados();
                 lblMensagem.Text = "Cadastro rejeitado e decisão registrada.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Sucesso);
             }
             catch (ArgumentException ex)
             {
-                lblMensagem.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira a justificativa e tente novamente.", lblMensagem);
             }
             catch (UnauthorizedAccessException)
             {
                 lblMensagem.Text = "Sua conta não pode rejeitar cadastros.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
             }
             catch (InvalidOperationException ex)
             {
                 CarregarDados();
-                lblMensagem.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível rejeitar o cadastro.", lblMensagem);
             }
             catch (Exception)
             {
                 lblMensagem.Text = "Não foi possível rejeitar o cadastro.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
             }
+        }
+
+        private string NomeSelecionado()
+        {
+            if (dgvContas.SelectedRows.Count > 0)
+            {
+                DataGridViewRow linha = dgvContas.SelectedRows[0];
+                string nome = Convert.ToString(linha.Cells[0].Value);
+                string login = Convert.ToString(linha.Cells[1].Value);
+                return string.IsNullOrWhiteSpace(login)
+                    ? nome
+                    : nome + " (" + login + ")";
+            }
+
+            return selecionado == null ? "conta selecionada" : selecionado.Login;
         }
     }
 }

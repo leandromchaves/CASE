@@ -64,6 +64,7 @@ namespace CASE
             usuarioAutenticado = usuario;
             ConfigurarFotoPerfil();
             ConfigurarNovosCadastros();
+            InicializarEventoSelecionado();
             navegacao.Layout += (s, e) => AjustarLarguraMenu();
             navegacao.ClientSizeChanged += (s, e) => AjustarLarguraMenu();
             AjustarLarguraMenu();
@@ -141,6 +142,31 @@ namespace CASE
             eventoSelecionado = evento;
         }
 
+        private void InicializarEventoSelecionado()
+        {
+            try
+            {
+                string perfil;
+                new CASE.Services.AutorizacaoService().ValidarUsuarioEObterPerfil(
+                    usuarioAutenticado,
+                    out perfil);
+
+                if (string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+                {
+                    eventoSelecionado = new CASE.Services.EventoService()
+                        .Listar(usuarioAutenticado)
+                        .FirstOrDefault();
+                }
+            }
+            catch (Exception erro)
+            {
+                eventoSelecionado = null;
+                System.Diagnostics.Trace.WriteLine(
+                    erro.GetType().Name + " ao selecionar o evento inicial.");
+            }
+        }
+
         private void ConfigurarNovosCadastros()
         {
             buttonFornecedores = CriarBotaoMenu("buttonFornecedores", "Fornecedores");
@@ -151,8 +177,10 @@ namespace CASE
             buttonFornecedores.Click += (s, e) => AbrirTela(buttonFornecedores, () => new FornecedoresControl(usuarioAutenticado));
             buttonAcessos.Click += (s, e) => AbrirTela(buttonAcessos, CriarGestaoAcessos);
             Button historico = CriarBotaoMenu("buttonHistorico", "Movimentações");
+            historico.Visible = false;
+            historico.TabStop = false;
             AdicionarIconeMenu(historico, Properties.Resources.LucideAzulRegistros);
-            historico.Click += (s, e) => AbrirTela(historico, () => new MovimentacoesControl(usuarioAutenticado));
+            historico.Click += (s, e) => AbrirTela(buttonEstoque, CriarOperacoesEstoque);
         }
 
         private Button CriarBotaoMenu(string nome, string texto)
@@ -193,6 +221,12 @@ namespace CASE
         {
             var tela = new OperacoesEstoqueControl(usuarioAutenticado);
             tela.FornecedoresSolicitados += (s, e) => AbrirTela(buttonFornecedores, () => new FornecedoresControl(usuarioAutenticado));
+            tela.SolicitacoesSolicitadas += (s, e) => AbrirTela(buttonSolicitacoes, () =>
+            {
+                var pedidos = (SolicitacoesControl)CriarSolicitacoes();
+                pedidos.ExibirPedidosCentrais();
+                return pedidos;
+            });
             return tela;
         }
 
@@ -478,7 +512,7 @@ namespace CASE
             catch (InvalidOperationException ex)
             {
                 MessageBox.Show(
-                    ex.Message,
+                    CASE.Utils.FeedbackUsuario.MensagemErro(ex, "Não foi possível processar o pedido. Atualize a tela e tente novamente."),
                     "Solicitação ao estoque central",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
@@ -583,12 +617,18 @@ namespace CASE
 
         private void ConfigurarFotoPerfil()
         {
+            ToolStripMenuItem itemUsuario = new ToolStripMenuItem("Nome de usuário: " + usuarioAutenticado.Login)
+            {
+                Enabled = false
+            };
             ToolStripMenuItem itemAlterarFoto = new ToolStripMenuItem("Alterar foto");
             itemAlterarFoto.Click += AlterarFotoPerfil_Click;
 
             ToolStripMenuItem itemRemoverFoto = new ToolStripMenuItem("Remover foto");
             itemRemoverFoto.Click += RemoverFotoPerfil_Click;
 
+            menuFotoPerfil.Items.Add(itemUsuario);
+            menuFotoPerfil.Items.Add(new ToolStripSeparator());
             menuFotoPerfil.Items.Add(itemAlterarFoto);
             menuFotoPerfil.Items.Add(itemRemoverFoto);
             menuFotoPerfil.Opening += MenuFotoPerfil_Opening;
@@ -596,6 +636,7 @@ namespace CASE
             pictureUsuario.ContextMenuStrip = menuFotoPerfil;
             pictureUsuario.Cursor = Cursors.Hand;
             pictureUsuario.Click += pictureUsuario_Click;
+            pictureUsuario.Paint += PictureUsuario_Paint;
             FormClosed += PrincipalForm_FormClosed;
 
             try
@@ -620,11 +661,27 @@ namespace CASE
                 new Point(0, pictureUsuario.Height));
         }
 
+        private void PictureUsuario_Paint(object sender, PaintEventArgs e)
+        {
+            if (fotoPerfilPersonalizada == null)
+            {
+                return;
+            }
+
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using (var contorno = new Pen(Color.FromArgb(203, 213, 225), 1.5F))
+            {
+                Rectangle area = pictureUsuario.ClientRectangle;
+                area.Inflate(-1, -1);
+                e.Graphics.DrawEllipse(contorno, area);
+            }
+        }
+
         private void MenuFotoPerfil_Opening(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            if (menuFotoPerfil.Items.Count > 1)
+            if (menuFotoPerfil.Items.Count > 3)
             {
-                menuFotoPerfil.Items[1].Enabled = fotoPerfilPersonalizada != null;
+                menuFotoPerfil.Items[3].Enabled = fotoPerfilPersonalizada != null;
             }
         }
 
@@ -677,7 +734,7 @@ namespace CASE
                 {
                     MessageBox.Show(
                         this,
-                        erro.Message,
+                        CASE.Utils.FeedbackUsuario.MensagemErro(erro, "A imagem de perfil selecionada não pôde ser utilizada."),
                         "Foto de perfil",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Information);
@@ -705,7 +762,7 @@ namespace CASE
             {
                 MessageBox.Show(
                     this,
-                    erro.Message,
+                    CASE.Utils.FeedbackUsuario.MensagemErro(erro, "A imagem de perfil selecionada não pôde ser utilizada."),
                     "Foto de perfil",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Information);
@@ -730,6 +787,7 @@ namespace CASE
                 LiberarFotoPersonalizada();
                 fotoPerfilPersonalizada = copiaImagem;
                 pictureUsuario.Image = fotoPerfilPersonalizada;
+                pictureUsuario.Invalidate();
             }
         }
 
@@ -737,6 +795,7 @@ namespace CASE
         {
             pictureUsuario.Image = Properties.Resources.LucideUsuario;
             LiberarFotoPersonalizada();
+            pictureUsuario.Invalidate();
         }
 
         private void LiberarFotoPersonalizada()
@@ -756,7 +815,7 @@ namespace CASE
 
         private void AtualizarCabecalho()
         {
-            labelNomeUsuario.Text = usuarioAutenticado.Login;
+            AtualizarNomeExibido();
             labelTipoUsuario.Text = "Conta autenticada";
             buttonAcessos.Visible = false;
 
@@ -788,14 +847,30 @@ namespace CASE
             labelNomeUsuario.AutoSize = false;
             labelNomeUsuario.Size = new Size(110, 20);
             labelNomeUsuario.AutoEllipsis = true;
-            dicaNomeUsuario.SetToolTip(labelNomeUsuario, usuarioAutenticado.Login);
-            buttonMovimentacoes.Text = "Registros";
+            dicaNomeUsuario.SetToolTip(labelNomeUsuario, "Nome de usuário: " + usuarioAutenticado.Login);
+            buttonMovimentacoes.Text = "Vendas e perdas";
+        }
+
+        private void AtualizarNomeExibido()
+        {
+            try
+            {
+                Pessoa pessoa = new CASE.Services.PessoaService().BuscarMeusDados(usuarioAutenticado);
+                labelNomeUsuario.Text = string.IsNullOrWhiteSpace(pessoa?.Nome)
+                    ? usuarioAutenticado.Login
+                    : pessoa.Nome;
+            }
+            catch (Exception)
+            {
+                labelNomeUsuario.Text = usuarioAutenticado.Login;
+            }
         }
 
         private UserControl CriarConfiguracoes()
         {
             var controle = new ConfiguracoesControl(usuarioAutenticado);
             controle.GerenciarAcessosSolicitado += (s, e) => AbrirTela(buttonAcessos, CriarGestaoAcessos);
+            controle.PerfilAtualizado += (s, e) => AtualizarNomeExibido();
             controle.SenhaAlterada += (s, e) => Close();
             return controle;
         }
@@ -817,8 +892,8 @@ namespace CASE
                     "buttonFinanceiro",
 "buttonHistorico",
 "buttonRelatorios",
-"buttonAcessos",
-"buttonConfiguracoes" };
+"buttonConfiguracoes",
+"buttonAcessos" };
             }
             else if (string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase))
             {
@@ -896,6 +971,17 @@ namespace CASE
             try
             {
                 // Mantém a tela atual se a abertura da próxima falhar.
+                bool dependeDeEvento = menu == buttonEquipeSetores ||
+                    menu == buttonFinanceiro ||
+                    menu == buttonEscala ||
+                    menu == buttonSolicitacoes ||
+                    menu == buttonMovimentacoes;
+
+                if (dependeDeEvento && eventoSelecionado == null)
+                {
+                    InicializarEventoSelecionado();
+                }
+
                 tela = criar();
                 tela.Dock = DockStyle.Fill;
                 panelConteudo.SuspendLayout();
@@ -914,7 +1000,7 @@ namespace CASE
                     tela.Dispose();
                 }
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em AbrirTela: " + erro.StackTrace);
-                MessageBox.Show(this, "Não foi possível abrir esta tela. Confira a conexão e suas permissões.",
+                MessageBox.Show(this, "Não foi possível abrir esta tela. Confira se sua conta tem acesso e tente novamente.",
                     "CASE", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             finally

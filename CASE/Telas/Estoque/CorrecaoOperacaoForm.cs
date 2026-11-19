@@ -33,7 +33,7 @@ namespace CASE
             entidade = tipoOperacao;
             idOperacao = id;
             Name = "CorrecaoOperacaoForm";
-            Text = "Correção de operação";
+            Text = tipoOperacao == "registro" ? "Revisar venda ou perda" : "Correção de operação";
             Font = new Font("Segoe UI", 10F);
             StartPosition = FormStartPosition.CenterParent;
             ClientSize = new Size(840, 630);
@@ -201,7 +201,8 @@ namespace CASE
                     tipo.SelectedItem = registro.Tipo;
                     pagamento.SelectedItem = registro.FormaPagamento;
                     observacao.Text = registro.Observacao;
-                    contexto.Text = "Registro " + idOperacao + " · " + registro.DataHora.ToString("g") + " · versão " + registro.Versao;
+                    contexto.Text = (registro.Tipo == "venda" ? "Venda" : "Perda") + " • Registro " + idOperacao +
+                        " • " + registro.DataHora.ToString("g") + "\nCorreção do lançamento original e histórico de alterações.";
                     tipo.SelectedIndexChanged += (s, e) => AtualizarTipoRegistro();
                     AtualizarTipoRegistro();
                 }
@@ -367,11 +368,8 @@ namespace CASE
 
         private void ExibirErro(Exception erro)
         {
-            mensagem.Text = "Não foi possível consultar ou corrigir a operação. Verifique a conexão.";
-            if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
-            {
-                mensagem.Text = erro.Message;
-            }
+            CASE.Utils.FeedbackUsuario.ExibirErro(this, erro,
+                "Não foi possível consultar ou corrigir a operação. Confira os dados e tente novamente.", mensagem);
             System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em CorrecaoOperacaoForm: " + erro.StackTrace);
         }
     }

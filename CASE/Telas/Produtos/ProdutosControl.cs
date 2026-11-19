@@ -44,6 +44,7 @@ namespace CASE
             panelListaProdutos.SizeChanged += AjustarArredondamento;
 
             colCodigo.Visible = false;
+            colQuantidade.Visible = false;
 
             DataGridViewImageColumn colunaImagem = new DataGridViewImageColumn();
             colunaImagem.Name = "colImagemProduto";
@@ -134,6 +135,12 @@ namespace CASE
             {
                 return;
             }
+            GerenciarFornecedores(this, usuarioAutenticado, produto);
+        }
+
+        internal static void GerenciarFornecedores(IWin32Window proprietario, Usuario usuarioAutenticado, Produto produto)
+        {
+            ProdutoService produtoService = new ProdutoService();
             try
             {
                 List<Fornecedor> fornecedores = new FornecedorService().Listar(usuarioAutenticado);
@@ -161,6 +168,8 @@ namespace CASE
                     codigo.SetBounds(375, 48, 205, 28);
                     codigo.ReadOnly = perfil != "Administrador";
                     salvar.Text = "Salvar vínculo";
+                    salvar.BackColor = VisualUtils.Azul;
+                    salvar.ForeColor = System.Drawing.Color.White;
                     salvar.Name = "btnSalvarVinculoFornecedor";
                     salvar.SetBounds(20, 93, 160, 36);
                     salvar.Enabled = perfil == "Administrador" && fornecedores.Count > 0;
@@ -172,6 +181,9 @@ namespace CASE
                     grade.AllowUserToAddRows = false;
                     grade.AllowUserToDeleteRows = false;
                     grade.ReadOnly = true;
+                    grade.RowHeadersVisible = false;
+                    grade.BackgroundColor = System.Drawing.Color.White;
+                    grade.BorderStyle = BorderStyle.None;
                     grade.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
                     grade.Columns.Add("fornecedor", "Fornecedor");
                     grade.Columns.Add("codigo", "Código no fornecedor");
@@ -225,15 +237,17 @@ namespace CASE
                             produtoService.VincularFornecedor(usuarioAutenticado, produto.IdProduto,
                                 selecionado.IdFornecedor, codigo.Text.Trim());
                             atualizar();
-                            mensagem.Text = "Vínculo salvo no MySQL. Preços e saldos preservados.";
+                            mensagem.Text = "Fornecedor vinculado ao produto.";
+                            CASE.Utils.FeedbackUsuario.Exibir(janela, mensagem.Text, CASE.Utils.TipoFeedback.Sucesso);
                         }
                         catch (Exception erro)
                         {
                             mensagem.Text = "Não foi possível salvar o vínculo.";
                             if (erro is ArgumentException || erro is UnauthorizedAccessException)
                             {
-                                mensagem.Text = erro.Message;
+                                mensagem.Text = CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Não foi possível salvar o vínculo.");
                             }
+                            CASE.Utils.FeedbackUsuario.Exibir(janela, mensagem.Text, CASE.Utils.TipoFeedback.Erro);
                             System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em VincularFornecedor");
                         }
                     };
@@ -251,12 +265,12 @@ namespace CASE
                     }
                     FrontendTheme.Aplicar(janela);
                     atualizar();
-                    janela.ShowDialog(this);
+                    janela.ShowDialog(proprietario);
                 }
             }
             catch (Exception erro)
             {
-                MessageBox.Show(this, "Não foi possível consultar os fornecedores autorizados.", "Produtos",
+                MessageBox.Show(proprietario, "Não foi possível consultar os fornecedores autorizados.", "Produtos",
                     MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em FornecedoresDoProduto");
             }
@@ -309,7 +323,7 @@ namespace CASE
                     produto.IdProduto,
                     produto.Nome,
                     nomeCategoria,
-                    "Não disponível nesta tela",
+                    null,
                     "Definido por setor"
                 };
 

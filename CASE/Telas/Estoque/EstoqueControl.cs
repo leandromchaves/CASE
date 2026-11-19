@@ -11,6 +11,7 @@ namespace CASE
     {
         private readonly Usuario usuarioAutenticado;
         private string filtroSelecionado = "Todos";
+        private Panel areaPesquisa;
 
         public EstoqueControl() : this(null)
         {
@@ -77,32 +78,50 @@ namespace CASE
                         item.BackColor = item == botao ? System.Drawing.Color.FromArgb(226, 238, 255) : System.Drawing.Color.White;
                         item.ForeColor = item == botao ? FrontendTheme.Azul : FrontendTheme.Texto;
                     }
-                    foreach (DataGridViewRow linha in dgvEstoque.Rows)
-                        linha.Visible = filtro == "Todos" || Convert.ToString(linha.Cells[dgvEstoqueColStatus.Index].Value) == filtro;
-                    dgvEstoque.ClearSelection();
+                    filtroSelecionado = filtro;
+                    AplicarFiltros();
                 };
             }
             FrontendTheme.Aplicar(panelFiltrosEstoque);
             botoes[0].PerformClick();
-            foreach (Button botao in botoes)
-            {
-                botao.Click += (s, e) =>
-                {
-                    filtroSelecionado = ((Button)s).Text;
-                    AplicarFiltros();
-                };
-            }
             txtPesquisarEstoque.Visible = true;
             txtPesquisarEstoque.SetBounds(635, 22, 220, txtPesquisarEstoque.PreferredHeight);
             VisualUtils.DefinirPlaceholder(txtPesquisarEstoque, "Produto ou local");
             txtPesquisarEstoque.TextChanged += (s, e) => AplicarFiltros();
-            VisualUtils.EstilizarPesquisa(txtPesquisarEstoque, "Pesquisar produto ou local").Top = 18;
+            areaPesquisa = VisualUtils.EstilizarPesquisa(txtPesquisarEstoque, "Pesquisar produto ou local");
             btnAtualizarEstoque.Visible = true;
             btnAtualizarEstoque.SetBounds(870, 18, 100, 36);
             btnAtualizarEstoque.Click += AtualizarSaldos;
             dgvEstoqueColCategoria.HeaderText = "Local";
             dgvEstoqueColIdeal.Visible = true;
+            panelFiltrosEstoque.MinimumSize = System.Drawing.Size.Empty;
+            panelListaEstoque.MinimumSize = System.Drawing.Size.Empty;
+            panelFiltrosEstoque.Anchor = panelListaEstoque.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            btnAtualizarEstoque.Anchor = areaPesquisa.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            SizeChanged += (s, e) => AjustarLayoutEstoque();
+            AjustarLayoutEstoque();
             AtualizarSaldos(this, EventArgs.Empty);
+        }
+
+        private void AjustarLayoutEstoque()
+        {
+            int largura = Math.Max(680, ClientSize.Width) - 60;
+            bool duasLinhas = largura < 960;
+            panelFiltrosEstoque.SetBounds(30, 115, largura, duasLinhas ? 124 : 75);
+            int larguraFiltro = Math.Min(140, (largura - 62) / 4);
+            for (int i = 0; i < 4; i++)
+                panelFiltrosEstoque.Controls["btnFiltroEstoque" + i].SetBounds(
+                    16 + i * (larguraFiltro + 10), 18, larguraFiltro, 36);
+            int topo = duasLinhas ? 68 : 18;
+            btnAtualizarEstoque.SetBounds(largura - 116, topo, 100, 40);
+            int esquerda = duasLinhas ? 16 : 620;
+            areaPesquisa.SetBounds(esquerda, topo, btnAtualizarEstoque.Left - esquerda - 12, 40);
+            int topoLista = panelFiltrosEstoque.Bottom + 20;
+            panelListaEstoque.SetBounds(30, topoLista, largura, Math.Max(300, ClientSize.Height - topoLista - 25));
+            lblListaEstoque.Width = largura - 40;
+            dgvEstoque.SetBounds(20, 60, largura - 40, panelListaEstoque.Height - 80);
+            lblSubtituloEstoque.Width = largura - 50;
+            AutoScrollMinSize = new System.Drawing.Size(680, panelListaEstoque.Bottom + 25);
         }
 
         private void AtualizarSaldos(object sender, EventArgs e)

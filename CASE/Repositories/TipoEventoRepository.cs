@@ -44,6 +44,13 @@ namespace CASE.Repositories
 
         }
 
+        public bool Excluir(int id)
+        {
+            new CASE.Services.AutorizacaoService().ExigirAdministrador(CASE.Services.SessaoUsuario.ObterUsuarioAtual());
+            return AcessoDados.Executar("DELETE FROM tipoevento WHERE id_tipo_evento=@id",
+                comando => AcessoDados.AdicionarParametro(comando, "@id", id)) == 1;
+        }
+
         private static TipoEvento ConverterLinha(MySqlDataReader leitor)
         {
             return new TipoEvento

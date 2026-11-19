@@ -326,11 +326,11 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                labelAvisoFormulario.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da escala e tente novamente.", labelAvisoFormulario);
             }
             catch (InvalidOperationException ex)
             {
-                labelAvisoFormulario.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da escala e tente novamente.", labelAvisoFormulario);
             }
             catch (UnauthorizedAccessException)
             {

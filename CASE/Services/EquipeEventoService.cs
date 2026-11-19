@@ -32,6 +32,14 @@ namespace CASE.Services
             return equipeEventoRepository.ListarPessoasDisponiveis(idEvento);
         }
 
+        public string BuscarLoginDaPessoaDisponivel(Usuario usuario, int idEvento, int idPessoa)
+        {
+            List<Pessoa> disponiveis = ListarPessoasDisponiveis(usuario, idEvento);
+            if (!disponiveis.Exists(p => p.IdPessoa == idPessoa))
+                throw new InvalidOperationException("O membro não está mais disponível para este evento. Atualize a lista.");
+            return usuarioRepository.BuscarLoginPorPessoa(idPessoa);
+        }
+
         public Pessoa BuscarPessoaDisponivelPorLogin(
             Usuario usuario,
             int idEvento,

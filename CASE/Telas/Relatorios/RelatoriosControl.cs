@@ -92,7 +92,7 @@ namespace CASE
             panelGraficoEsquerdoArea.Height = panelGraficoDireitoArea.Height = 250;
             cmbRelatorioCategoria.Items.Clear();
             cmbRelatorioCategoria.Items.AddRange(new object[] {
-                "Movimentações", "Estoque", "Vendas e perdas", "Solicitações de reposição" });
+                "Movimentações", "Estoque", "Estoque crítico", "Vendas e perdas", "Solicitações de reposição" });
             if (usuario != null)
             {
                 try
@@ -113,7 +113,7 @@ namespace CASE
             cmbRelatorioCategoria.SelectedIndex = 0;
             cmbRelatorioCategoria.SelectedIndexChanged += (s, e) =>
             {
-                bool utilizaPeriodo = cmbRelatorioCategoria.Text != "Estoque";
+                bool utilizaPeriodo = cmbRelatorioCategoria.Text != "Estoque" && cmbRelatorioCategoria.Text != "Estoque crítico";
                 dtpRelatorioInicio.Enabled = utilizaPeriodo;
                 dtpRelatorioFim.Enabled = utilizaPeriodo;
                 dadosRelatorio = null;
@@ -161,7 +161,13 @@ namespace CASE
                 ConsultaOperacionalService consulta = new ConsultaOperacionalService();
                 dadosRelatorio = consulta.Relatorio(usuarioAutenticado, cmbRelatorioCategoria.Text,
                     dtpRelatorioInicio.Value, dtpRelatorioFim.Value);
-                if (cmbRelatorioCategoria.Text == "Estoque")
+                if (cmbRelatorioCategoria.Text == "Estoque crítico")
+                {
+                    resumoRelatorio.Text = "Produtos sem estoque ou com saldo abaixo do mínimo, por local autorizado. " +
+                        "Falta para o mínimo indica a quantidade necessária para atingir o limite cadastrado. " +
+                        "Saldo atual: o filtro de datas não se aplica. A consulta não realiza reposições.";
+                }
+                else if (cmbRelatorioCategoria.Text == "Estoque")
                 {
                     resumoRelatorio.Text = "Saldo atual por produto e local. O filtro de datas não se aplica ao saldo atual.";
                 }
@@ -176,6 +182,9 @@ namespace CASE
                 }
                 gradeRelatorio.DataSource = dadosRelatorio;
                 FormatarColunasRelatorio();
+                VisualUtils.ExibirEstadoVazio(gradeRelatorio, cmbRelatorioCategoria.Text == "Estoque crítico"
+                    ? "Nenhum produto sem estoque ou abaixo do mínimo nos locais autorizados."
+                    : "Nenhum registro encontrado para esta consulta.");
                 resumoRelatorio.Text += Environment.NewLine + Environment.NewLine +
                     dadosRelatorio.Rows.Count + " linha(s) autorizada(s).";
                 btnExportarCsv.Enabled = dadosRelatorio.Rows.Count > 0;
@@ -186,7 +195,7 @@ namespace CASE
                 AtualizarGraficoRelatorio();
                 if (erro is ArgumentException || erro is UnauthorizedAccessException)
                 {
-                    resumoRelatorio.Text = erro.Message;
+                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar os dados do relatório.", resumoRelatorio);
                 }
                 else
                 {
@@ -198,6 +207,9 @@ namespace CASE
 
         private void FormatarColunasRelatorio()
         {
+            bool estoqueCritico = cmbRelatorioCategoria.Text == "Estoque crítico";
+            gradeRelatorio.AutoSizeColumnsMode = estoqueCritico
+                ? DataGridViewAutoSizeColumnsMode.Fill : DataGridViewAutoSizeColumnsMode.DisplayedCells;
             foreach (DataGridViewColumn coluna in gradeRelatorio.Columns)
             {
                 string nome = coluna.Name;
@@ -225,17 +237,33 @@ namespace CASE
                 {
                     coluna.HeaderText = "Descrição";
                 }
+                else if (nome == "reposicao_minima")
+                {
+                    coluna.HeaderText = "Falta para o mínimo";
+                    coluna.DefaultCellStyle.Format = "0.###";
+                }
                 if (nome == "quantidade" || nome == "quantidade_atual" || nome == "quantidade_minima" ||
                     nome == "quantidade_ideal")
                 {
-                    coluna.DefaultCellStyle.Format = "N0";
+                    coluna.DefaultCellStyle.Format = "0.###";
                 }
                 if (nome == "valor" || nome == "total" || nome == "esperado_atual" || nome.StartsWith("valor_") ||
                     nome.StartsWith("preco_") || nome.StartsWith("diferenca_"))
                 {
                     coluna.DefaultCellStyle.Format = "C2";
                 }
+                if (estoqueCritico)
+                {
+                    if (nome == "quantidade_ideal") coluna.Visible = false;
+                    if (nome == "quantidade_atual") coluna.HeaderText = "Saldo atual";
+                    if (nome == "quantidade_minima") coluna.HeaderText = "Mínimo";
+                    if (nome == "unidade_medida") coluna.HeaderText = "Unidade";
+                    coluna.FillWeight = nome == "local" || nome == "produto" ? 155 :
+                        nome == "situacao" ? 125 : nome == "reposicao_minima" ? 90 : 65;
+                }
             }
+            if (estoqueCritico)
+                gradeRelatorio.Columns["reposicao_minima"].DisplayIndex = gradeRelatorio.Columns["situacao"].DisplayIndex;
         }
 
         private void ExportarCsv(object sender, EventArgs e)
@@ -292,8 +320,7 @@ namespace CASE
                 }
                 catch (Exception erro)
                 {
-                    resumoRelatorio.Text = erro is UnauthorizedAccessException || erro is ArgumentException
-                        ? erro.Message : "Não foi possível salvar o relatório. Verifique a pasta e se o arquivo está aberto.";
+                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível salvar o relatório. Confira a pasta escolhida e tente novamente.", resumoRelatorio);
                     System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExportarRelatorio");
                 }
                 finally

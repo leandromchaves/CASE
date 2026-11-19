@@ -150,6 +150,7 @@ namespace CASE
             catch (UnauthorizedAccessException)
             {
                 lblMensagem.Text = "Seu perfil não pode cadastrar ou editar fornecedores.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
                 return;
             }
             catch (Exception)
@@ -196,14 +197,14 @@ namespace CASE
                 panelEdicao.Anchor = AnchorStyles.Top | AnchorStyles.Left;
                 panelEdicao.SetBounds(24, 74, 612, 310);
                 lblNome.SetBounds(24, 18, 564, 24);
-                txtNome.SetBounds(24, 44, 564, 28);
-                lblDocumento.SetBounds(24, 86, 270, 24);
-                txtDocumento.SetBounds(24, 110, 270, 28);
-                lblTelefone.SetBounds(318, 86, 270, 24);
-                txtTelefone.SetBounds(318, 110, 270, 28);
-                lblEmail.SetBounds(24, 152, 564, 24);
-                txtEmail.SetBounds(24, 176, 564, 28);
-                btnSalvar.SetBounds(438, 240, 150, 40);
+                PrepararCampoFormulario(txtNome, new Rectangle(24, 44, 564, 38));
+                lblDocumento.SetBounds(24, 92, 270, 24);
+                lblTelefone.SetBounds(318, 92, 270, 24);
+                PrepararCampoFormulario(txtDocumento, new Rectangle(24, 116, 270, 38));
+                PrepararCampoFormulario(txtTelefone, new Rectangle(318, 116, 270, 38));
+                lblEmail.SetBounds(24, 164, 564, 24);
+                PrepararCampoFormulario(txtEmail, new Rectangle(24, 188, 564, 38));
+                btnSalvar.SetBounds(438, 246, 150, 40);
                 btnSalvar.Text = editar ? "Salvar alterações" : "Cadastrar";
                 panelEdicao.Visible = true;
                 janela.Controls.Add(lblMensagem);
@@ -212,7 +213,7 @@ namespace CASE
                 cancelar.Name = "btnCancelarFornecedor";
                 cancelar.Text = "Cancelar";
                 cancelar.DialogResult = DialogResult.Cancel;
-                cancelar.SetBounds(318, 240, 110, 40);
+                cancelar.SetBounds(318, 246, 110, 40);
                 panelEdicao.Controls.Add(cancelar);
                 txtNome.TabIndex = 0;
                 txtDocumento.TabIndex = 1;
@@ -223,6 +224,10 @@ namespace CASE
                 janela.AcceptButton = btnSalvar;
                 janela.CancelButton = cancelar;
                 FrontendTheme.Aplicar(janela);
+                VisualUtils.EstilizarCampo(txtNome);
+                VisualUtils.EstilizarCampo(txtDocumento);
+                VisualUtils.EstilizarCampo(txtTelefone);
+                VisualUtils.EstilizarCampo(txtEmail);
                 janela.Shown += (s, e) => txtNome.Focus();
                 formularioFornecedor = janela;
                 DialogResult resultado;
@@ -250,6 +255,26 @@ namespace CASE
                 else
                     lblMensagem.Text = "Edição encerrada. Nenhuma alteração foi salva.";
             }
+        }
+
+        private void PrepararCampoFormulario(TextBox campo, Rectangle limites)
+        {
+            panelEdicao.Controls.Remove(campo);
+            Panel painel = new Panel
+            {
+                Name = "painel" + campo.Name,
+                Bounds = limites,
+                BackColor = Color.White,
+                Padding = new Padding(12, 2, 12, 2),
+                Cursor = Cursors.IBeam
+            };
+            campo.Dock = DockStyle.Fill;
+            campo.Margin = Padding.Empty;
+            campo.Font = new Font("Segoe UI", 10F);
+            painel.Controls.Add(campo);
+            panelEdicao.Controls.Add(painel);
+            VisualUtils.Arredondar(painel, 7);
+            VisualUtils.AplicarBorda(painel);
         }
 
         private void ConfigurarExclusao()
@@ -315,7 +340,8 @@ namespace CASE
                 LimparCampos();
                 if (excluido)
                 {
-                    lblMensagem.Text = "Fornecedor excluído do banco de dados.";
+                    lblMensagem.Text = "Fornecedor excluído.";
+                    CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Sucesso);
                 }
                 else
                 {
@@ -326,11 +352,12 @@ namespace CASE
             {
                 if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
                 {
-                    lblMensagem.Text = erro.Message;
+                    lblMensagem.Text = CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Não foi possível excluir o fornecedor.");
                 }
                 else
                 {
-                    lblMensagem.Text = "Não foi possível excluir o fornecedor. Verifique a conexão.";
+                    lblMensagem.Text = "Não foi possível excluir o fornecedor. Tente novamente.";
+                    CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
                 }
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExcluirFornecedor: " + erro.StackTrace);
             }
@@ -485,7 +512,7 @@ namespace CASE
             }
             catch (ArgumentException erro)
             {
-                lblMensagem.Text = erro.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Confira os dados do fornecedor e tente novamente.", lblMensagem);
             }
             catch (UnauthorizedAccessException)
             {
@@ -493,11 +520,12 @@ namespace CASE
             }
             catch (InvalidOperationException erro)
             {
-                lblMensagem.Text = erro.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível salvar o fornecedor.", lblMensagem);
             }
             catch (Exception)
             {
                 lblMensagem.Text = "Não foi possível salvar o fornecedor.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
             }
             finally
             {

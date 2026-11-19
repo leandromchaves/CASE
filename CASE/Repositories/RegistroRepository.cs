@@ -320,13 +320,14 @@ CriarSnapshot(conexao, transacao, atual.IdRegistro));
             using (var comando = new MySqlCommand(
                 "SELECT u.id_usuario FROM usuario u " +
                 "JOIN perfilsistema pf ON pf.id_perfil_sistema=u.id_perfil_sistema " +
-                "JOIN equipeevento eq ON eq.id_pessoa=u.id_pessoa " +
+                "WHERE u.id_usuario=@usuario AND u.situacao_conta='aprovado' " +
+                "AND (pf.nome='Administrador' OR (pf.nome='Membro' AND EXISTS (" +
+                "SELECT 1 FROM equipeevento eq " +
                 "JOIN escala e ON e.id_equipe=eq.id_equipe " +
                 "JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +
                 "JOIN setor s ON s.id_setor=j.id_setor " +
-                "WHERE u.id_usuario=@usuario AND u.situacao_conta='aprovado' " +
-                "AND pf.nome='Membro' AND eq.ativo=1 AND e.id_escala=@escala " +
-                "AND s.id_evento=eq.id_evento AND e.situacao<>'cancelada' FOR UPDATE",
+                "WHERE eq.id_pessoa=u.id_pessoa AND eq.ativo=1 AND e.id_escala=@escala " +
+                "AND s.id_evento=eq.id_evento AND e.situacao<>'cancelada'))) FOR UPDATE",
                 conexao, transacao))
             {
                 comando.Parameters.AddWithValue("@usuario", registro.IdUsuarioResponsavel);

@@ -97,11 +97,33 @@ namespace CASE.Quermesse
             CarregarSolicitacoes();
         }
 
+        public void ExibirPedidosCentrais()
+        {
+            if (!administrador && !gerenteAutorizado)
+                throw new UnauthorizedAccessException("Sua conta não pode consultar pedidos ao estoque central.");
+            exibindoPedidosCentrais = true;
+            mostrandoReposicoesAdministrativas = false;
+            Control[] alternar = Controls.Find(administrador ? "btnAlternarSolicitacoesAdmin" : "btnAlternarSolicitacoesGerente", true);
+            if (alternar.Length > 0)
+                alternar[0].Text = "Reposições dos setores";
+            CarregarSolicitacoes();
+        }
+
         private void btnNovaSolicitacao_Click(object sender, EventArgs e)
         {
-            if (administrador)
+            if (administrador && !mostrandoReposicoesAdministrativas)
             {
                 CarregarSolicitacoes();
+                return;
+            }
+
+            if (administrador)
+            {
+                using (SolicitacaoForm formulario = new SolicitacaoForm(usuarioAutenticado))
+                {
+                    if (formulario.ShowDialog(this) == DialogResult.OK)
+                        CarregarSolicitacoes();
+                }
                 return;
             }
 
@@ -203,7 +225,7 @@ namespace CASE.Quermesse
                 SituacoesSolicitacao.Pendente,
                 StringComparison.OrdinalIgnoreCase))
             {
-                if (gerenteAutorizado)
+                if (gerenteAutorizado || administrador)
                 {
                     DecidirSolicitacao(solicitacao);
                 }
@@ -220,7 +242,7 @@ namespace CASE.Quermesse
                 SituacoesSolicitacao.Aprovada,
                 StringComparison.OrdinalIgnoreCase))
             {
-                if (!gerenteAutorizado)
+                if (!gerenteAutorizado && !administrador)
                 {
                     MostrarDetalhes(solicitacao.IdSolicitacao);
                     return;
@@ -305,7 +327,7 @@ namespace CASE.Quermesse
             catch (InvalidOperationException ex)
             {
                 CarregarSolicitacoes();
-                labelAviso.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar as solicitações.", labelAviso);
             }
             catch (Exception)
             {
@@ -384,7 +406,7 @@ namespace CASE.Quermesse
             }
             catch (InvalidOperationException ex)
             {
-                labelAviso.Text = ex.Message;
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível concluir a solicitação.", labelAviso);
             }
             catch (Exception)
             {
@@ -421,10 +443,10 @@ namespace CASE.Quermesse
             if (administrador)
             {
                 exibindoPedidosCentrais = false;
-                btnNovaSolicitacao.Text = "Atualizar reposições";
-                btnDetalhesSolicitacao.Text = "Consultar detalhes";
+                btnNovaSolicitacao.Text = "+ Nova reposição";
+                btnDetalhesSolicitacao.Text = "Analisar / atender";
                 btnDetalhesSolicitacao.Enabled = true;
-                lblSubtitulo.Text = "Consulta administrativa às reposições solicitadas nos setores de todos os eventos";
+                lblSubtitulo.Text = "Analise, aprove ou rejeite reposições dos eventos e atenda os pedidos aprovados.";
                 lblSetor.Text = "Setor";
                 colSolicitacoesQuermesseSetor.HeaderText = "Setor";
                 colSolicitacoesQuermesseQtd.Visible = false;

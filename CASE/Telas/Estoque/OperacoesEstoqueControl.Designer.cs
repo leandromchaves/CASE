@@ -115,7 +115,9 @@ namespace CASE
             this.dgvSaldos.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.dgvSaldos.Columns.Add("col0", "Produto");
             this.dgvSaldos.Columns.Add("col1", "Quantidade disponível");
-            this.dgvSaldos.Columns.Add("col2", "Unidade");
+            this.dgvSaldos.Columns.Add("col2", "Mínimo");
+            this.dgvSaldos.Columns.Add("col3", "Situação");
+            this.dgvSaldos.Columns.Add("col4", "Unidade");
             this.panelSaldos.Controls.Add(this.dgvSaldos);
             this.panelHistorico.Name = "panelHistorico";
             this.panelHistorico.Location = new System.Drawing.Point(24, 280);

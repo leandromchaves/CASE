@@ -96,6 +96,14 @@ namespace CASE.Services
             return tipoEventoRepository.Atualizar(tipoEvento);
         }
 
+        public bool Excluir(Usuario usuario, int idTipoEvento)
+        {
+            autorizacaoService.ExigirAdministrador(usuario);
+            if (idTipoEvento <= 0)
+                throw new ArgumentException("Selecione um tipo de evento para excluir.");
+            return tipoEventoRepository.Excluir(idTipoEvento);
+        }
+
         private static void ValidarTipoEvento(TipoEvento tipoEvento)
         {
             if (tipoEvento == null)

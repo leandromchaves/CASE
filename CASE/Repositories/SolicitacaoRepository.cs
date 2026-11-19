@@ -197,8 +197,9 @@ namespace CASE.Repositories
                 "JOIN perfilsistema ps ON ps.id_perfil_sistema=u.id_perfil_sistema " +
                 "WHERE so.id_solicitacao=@id AND so.situacao='pendente' " +
                 "AND so.versao=@versao AND ee.id_evento=ev.id_evento " +
-                "AND ev.id_responsavel=p.id_pessoa AND ee.ativo=1 " +
-                "AND u.situacao_conta='aprovado' AND ps.nome='Gerente' FOR UPDATE",
+                "AND u.situacao_conta='aprovado' " +
+                "AND (ps.nome='Administrador' OR " +
+                "(ps.nome='Gerente' AND ev.id_responsavel=p.id_pessoa AND ee.ativo=1)) FOR UPDATE",
                 conexao,
                 transacao))
             {
@@ -209,7 +210,7 @@ namespace CASE.Repositories
                 if (comando.ExecuteScalar() == null)
                 {
                     throw new UnauthorizedAccessException(
-                        "A decisão exige o gerente responsável pelo evento e uma solicitação pendente.");
+                        "A decisão exige um administrador ou o gerente responsável pelo evento e uma solicitação pendente.");
                 }
             }
         }
@@ -302,16 +303,17 @@ namespace CASE.Repositories
         {
             using (MySqlCommand comando = new MySqlCommand(
                 "SELECT e.id_escala FROM escala e " +
-                "JOIN equipeevento ee ON ee.id_equipe=e.id_equipe " +
                 "JOIN usuario u ON u.id_usuario=@usuario " +
                 "JOIN pessoa p ON p.id_pessoa=u.id_pessoa " +
                 "JOIN perfilsistema ps ON ps.id_perfil_sistema=u.id_perfil_sistema " +
                 "JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +
                 "JOIN setor s ON s.id_setor=j.id_setor " +
                 "JOIN evento ev ON ev.id_evento=s.id_evento " +
-                "WHERE e.id_escala=@escala AND ee.id_pessoa=p.id_pessoa " +
-                "AND ee.id_evento=ev.id_evento AND ee.ativo=1 AND LOWER(e.situacao)<>'cancelada' " +
-                "AND u.situacao_conta='aprovado' AND ps.nome='Membro' " +
+                "WHERE e.id_escala=@escala AND LOWER(e.situacao)<>'cancelada' " +
+                "AND u.situacao_conta='aprovado' AND (ps.nome='Administrador' OR " +
+                "(ps.nome='Membro' AND EXISTS (SELECT 1 FROM equipeevento ee " +
+                "WHERE ee.id_equipe=e.id_equipe AND ee.id_evento=ev.id_evento " +
+                "AND ee.id_pessoa=p.id_pessoa AND ee.ativo=1))) " +
                 "AND ev.situacao IN ('planejado','em_andamento') FOR UPDATE",
                 conexao,
                 transacao))

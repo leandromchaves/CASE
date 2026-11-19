@@ -55,6 +55,8 @@ namespace CASE.Utils
                     return "Preço praticado";
                 case "forma_pagamento":
                     return "Pagamento";
+                case "reposicao_minima":
+                    return "Falta para o mínimo";
             }
             return Cultura.TextInfo.ToTitleCase(coluna.ColumnName.Replace('_', ' '));
         }
@@ -230,8 +232,9 @@ namespace CASE.Utils
             bool paisagem = tabela.Columns.Count > 6 || !string.IsNullOrWhiteSpace(contexto.TipoGrafico);
             secao.PageSetup.Orientation = paisagem ? Orientation.Landscape : Orientation.Portrait;
             secao.PageSetup.LeftMargin = secao.PageSetup.RightMargin = Unit.FromCentimeter(1.3);
-            secao.PageSetup.TopMargin = Unit.FromCentimeter(2.2);
-            secao.PageSetup.BottomMargin = Unit.FromCentimeter(1.6);
+            secao.PageSetup.TopMargin = Unit.FromCentimeter(1.7);
+            secao.PageSetup.BottomMargin = Unit.FromCentimeter(1.7);
+            secao.PageSetup.FooterDistance = Unit.FromCentimeter(0.7);
             secao.PageSetup.HeaderDistance = Unit.FromCentimeter(0.8);
             var identidade = secao.Headers.Primary.AddParagraph("CASE  /  GESTÃO DE ESTOQUE E EVENTOS");
             identidade.Format.Font.Bold = true;
@@ -245,13 +248,13 @@ namespace CASE.Utils
                 var instituicao = secao.AddParagraph(contexto.Instituicao);
                 instituicao.Format.Font.Size = 9;
                 instituicao.Format.Font.Color = Color.FromRgb(91, 111, 132);
-                instituicao.Format.SpaceAfter = Unit.FromMillimeter(2);
+                instituicao.Format.SpaceAfter = Unit.FromMillimeter(1);
                 instituicao.Format.KeepWithNext = true;
             }
             var titulo = secao.AddParagraph(contexto.Titulo);
-            titulo.Format.Font.Size = 22;
+            titulo.Format.Font.Size = 20;
             titulo.Format.Font.Bold = true;
-            titulo.Format.SpaceAfter = Unit.FromCentimeter(0.3);
+            titulo.Format.SpaceAfter = Unit.FromCentimeter(0.2);
             titulo.Format.KeepWithNext = true;
             var emissao = secao.AddParagraph("Emitido em " + contexto.Emissao.ToString("dd/MM/yyyy 'às' HH:mm", Cultura));
             emissao.Format.Font.Color = Color.FromRgb(91, 111, 132);
@@ -259,7 +262,7 @@ namespace CASE.Utils
             emissao.Format.KeepWithNext = true;
             var filtros = secao.AddParagraph(contexto.Filtros);
             filtros.Format.Font.Color = Color.FromRgb(91, 111, 132);
-            filtros.Format.SpaceAfter = Unit.FromCentimeter(0.6);
+            filtros.Format.SpaceAfter = Unit.FromCentimeter(0.3);
             filtros.Format.KeepWithNext = true;
             double largura = (muitoLargo ? 42 : paisagem ? 29.7 : 21) - 2.6;
             if (!string.IsNullOrWhiteSpace(contexto.TipoGrafico))
@@ -274,18 +277,25 @@ namespace CASE.Utils
             rodape.Format.Borders.Top.Color = Color.FromRgb(220, 228, 237);
             rodape.Format.Borders.Top.Width = 0.5;
             rodape.Format.Borders.DistanceFromTop = Unit.FromMillimeter(2);
+            var quantidade = secao.AddParagraph(tabela.Rows.Count + " registro(s) no relatório.");
+            quantidade.Format.SpaceAfter = Unit.FromMillimeter(2);
+            quantidade.Format.Font.Color = Color.FromRgb(91, 111, 132);
+            quantidade.Format.KeepWithNext = true;
+            foreach (DataColumn c in tabela.Columns)
+                if (Totalizavel(tabela, c, contexto))
+                {
+                    var total = secao.AddParagraph("Total — " + Cabecalho(c) + ": " + Somar(tabela, c).ToString("C2", Cultura));
+                    total.Format.Font.Bold = true;
+                    total.Format.SpaceAfter = Unit.FromMillimeter(2);
+                    total.Format.KeepWithNext = true;
+                }
             var grade = secao.AddTable();
             grade.Borders.Color = Color.FromRgb(220, 228, 237);
             grade.Borders.Width = 0;
             grade.Borders.Bottom.Width = 0.4;
             grade.TopPadding = grade.BottomPadding = Unit.FromMillimeter(1);
             grade.LeftPadding = grade.RightPadding = Unit.FromMillimeter(1.5);
-            double[] pesos = tabela.Columns.Cast<DataColumn>().Select(c =>
-                c.DataType == typeof(string)
-                    ? (c.ColumnName.Contains("observacao") || c.ColumnName.Contains("descricao")
-                        ? 2.2
-                        : 1.5)
-                    : 1.2).ToArray();
+            double[] pesos = tabela.Columns.Cast<DataColumn>().Select(PesoColunaPdf).ToArray();
             for (int c = 0; c < tabela.Columns.Count; c++)
                 grade.AddColumn(Unit.FromCentimeter(largura * pesos[c] / pesos.Sum()));
             var header = grade.AddRow();
@@ -304,25 +314,17 @@ namespace CASE.Utils
                 for (int c = 0; c < tabela.Columns.Count; c++)
                 {
                     string texto = Formatar(registro[c], tabela.Columns[c]);
+                    if (tabela.Columns[c].ColumnName.StartsWith("quantidade") && registro[c] != DBNull.Value)
+                        texto = Convert.ToDecimal(registro[c], Cultura).ToString("#,0.###", Cultura);
                     if (tabela.Columns[c].DataType == typeof(string))
                         texto = Regex.Replace(texto, @"(\S{12})(?=\S)", "$1\u200B");
                     linha.Cells[c].AddParagraph(texto);
-                    if (Monetaria(tabela.Columns[c]))
+                    if (Monetaria(tabela.Columns[c]) || tabela.Columns[c].ColumnName.StartsWith("quantidade"))
                         linha.Cells[c].Format.Alignment = ParagraphAlignment.Right;
                 }
             }
             if (tabela.Rows.Count == 0)
                 secao.AddParagraph("Nenhum registro encontrado.");
-            var quantidade = secao.AddParagraph(tabela.Rows.Count + " registro(s) no relatório.");
-            quantidade.Format.SpaceBefore = Unit.FromMillimeter(3);
-            quantidade.Format.Font.Color = Color.FromRgb(91, 111, 132);
-            foreach (DataColumn c in tabela.Columns)
-                if (Totalizavel(tabela, c, contexto))
-                {
-                    var total = secao.AddParagraph("Total — " + Cabecalho(c) + ": " + Somar(tabela, c).ToString("C2", Cultura));
-                    total.Format.Font.Bold = true;
-                    total.Format.SpaceBefore = Unit.FromMillimeter(2);
-                }
             var renderizador = new PdfDocumentRenderer { Document = documento };
             renderizador.RenderDocument();
             renderizador.PdfDocument.Save(caminho);
@@ -346,33 +348,60 @@ namespace CASE.Utils
             composicao.AddColumn(Unit.FromCentimeter(largura * 0.62));
             var linha = composicao.AddRow();
             var valores = linha.Cells[0].Elements.AddTable();
-            valores.AddColumn(Unit.FromCentimeter(largura * 0.25));
-            valores.AddColumn(Unit.FromCentimeter(largura * 0.12));
+            valores.AddColumn(Unit.FromCentimeter(largura * 0.21));
+            valores.AddColumn(Unit.FromCentimeter(largura * 0.09));
+            valores.AddColumn(Unit.FromCentimeter(largura * 0.07));
             var cabecalho = valores.AddRow();
-            cabecalho.Shading.Color = Color.FromRgb(235, 241, 249);
+            cabecalho.Shading.Color = Color.FromRgb(17, 46, 77);
             cabecalho.Format.Font.Bold = true;
+            cabecalho.Format.Font.Color = Colors.White;
             cabecalho.Cells[0].AddParagraph("Grupo");
             cabecalho.Cells[1].AddParagraph(resumo.Monetario ? "Valor (R$)" : "Quantidade");
+            cabecalho.Cells[2].AddParagraph("Percentual");
             valores.TopPadding = valores.BottomPadding = Unit.FromMillimeter(1.4);
+            decimal soma = resumo.Valores.Rows.Cast<DataRow>().Sum(r => Convert.ToDecimal(r[1]));
+            int indiceResumo = 0;
             foreach (DataRow item in resumo.Valores.Rows.Cast<DataRow>().Take(8))
             {
                 var registro = valores.AddRow();
+                if (indiceResumo++ % 2 == 1)
+                    registro.Shading.Color = Color.FromRgb(245, 248, 252);
                 registro.Cells[0].AddParagraph(Convert.ToString(item[0]));
                 registro.Cells[1].AddParagraph(Convert.ToDecimal(item[1]).ToString(resumo.Monetario ? "C2" : "0.###", Cultura));
                 registro.Cells[1].Format.Alignment = ParagraphAlignment.Right;
+                registro.Cells[2].AddParagraph(soma == 0 ? "—" : (Convert.ToDecimal(item[1]) / soma).ToString("P1", Cultura));
+                registro.Cells[2].Format.Alignment = ParagraphAlignment.Right;
             }
             if (resumo.Valores.Rows.Count > 8)
                 linha.Cells[0].AddParagraph("Primeiros 8 grupos. O gráfico considera todos os grupos.");
-            byte[] imagem = GraficoRelatorio.CriarImagem(dados, contexto.Titulo, contexto.TipoGrafico);
+            byte[] imagem = GraficoRelatorio.CriarImagem(dados, contexto.Titulo, contexto.TipoGrafico, true);
             linha.Cells[1].Format.Alignment = ParagraphAlignment.Center;
             var figura = linha.Cells[1].AddImage("base64:" + Convert.ToBase64String(imagem));
-            figura.Width = Unit.FromCentimeter(Math.Min(12, largura * 0.62 - 0.4));
+            figura.Width = Unit.FromCentimeter(largura * 0.62 - 0.4);
             figura.LockAspectRatio = true;
             var detalhe = secao.AddParagraph("Dados detalhados");
             detalhe.Format.Font.Bold = true;
-            detalhe.Format.SpaceBefore = Unit.FromMillimeter(4);
+            detalhe.Format.SpaceBefore = Unit.FromMillimeter(2);
             detalhe.Format.SpaceAfter = Unit.FromMillimeter(2);
             detalhe.Format.KeepWithNext = true;
+        }
+
+        private static double PesoColunaPdf(DataColumn coluna)
+        {
+            string nome = coluna.ColumnName;
+            if (nome == "produto" || nome == "destino")
+                return 2;
+            if (nome == "origem")
+                return 1.6;
+            if (nome == "tipo")
+                return 1;
+            if (nome.StartsWith("quantidade"))
+                return 0.8;
+            if (coluna.DataType == typeof(DateTime))
+                return 1.3;
+            if (nome.Contains("observacao") || nome.Contains("descricao"))
+                return 2.2;
+            return 1.2;
         }
     }
 }

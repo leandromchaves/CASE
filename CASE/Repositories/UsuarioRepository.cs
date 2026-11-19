@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using CASE.Models;
+using CASE.Services;
 using MySql.Data.MySqlClient;
 
 using CASE.Data;
@@ -180,20 +181,101 @@ namespace CASE.Repositories
             MySqlTransaction transacao,
             int idAnalisador)
         {
+            Usuario sessao = SessaoUsuario.ObterUsuarioAtual();
+            if (sessao.IdUsuario != idAnalisador)
+                throw new System.UnauthorizedAccessException("O responsável deve corresponder à sessão autenticada.");
             using (var comando = new MySqlCommand(
                 "SELECT u.id_usuario FROM usuario u " +
                 "JOIN perfilsistema ps ON ps.id_perfil_sistema=u.id_perfil_sistema " +
                 "WHERE u.id_usuario=@id AND LOWER(u.situacao_conta)='aprovado' " +
-                "AND LOWER(ps.nome)='administrador' FOR UPDATE",
+                "AND LOWER(ps.nome)='administrador' AND u.id_perfil_sistema=@perfilSessao " +
+                "AND u.id_pessoa=@pessoaSessao FOR UPDATE",
                 conexao,
                 transacao))
             {
                 AcessoDados.AdicionarParametro(comando, "@id", idAnalisador);
+                AcessoDados.AdicionarParametro(comando, "@perfilSessao", sessao.IdPerfilSistema);
+                AcessoDados.AdicionarParametro(comando, "@pessoaSessao", sessao.IdPessoa);
 
                 if (comando.ExecuteScalar() == null)
                 {
                     throw new System.UnauthorizedAccessException(
                         "A decisão exige uma conta de administrador aprovada.");
+                }
+            }
+        }
+
+        public void AlterarPerfilAdministrativo(int idUsuario, int idAnalisador,
+            int idPerfilSistema, int idPerfilAnterior, string justificativa)
+        {
+            using (var conexao = Conexao.CriarConexao())
+            {
+                conexao.Open();
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        ValidarAdministrador(conexao, transacao, idAnalisador);
+                        if (idUsuario == idAnalisador)
+                            throw new System.InvalidOperationException("Use outra conta de administrador para alterar seu perfil.");
+                        string nomeAnterior;
+                        using (var comando = new MySqlCommand(
+                            "SELECT u.id_perfil_sistema,u.situacao_conta,p.nome FROM usuario u " +
+                            "LEFT JOIN perfilsistema p ON p.id_perfil_sistema=u.id_perfil_sistema " +
+                            "WHERE u.id_usuario=@usuario FOR UPDATE", conexao, transacao))
+                        {
+                            comando.Parameters.AddWithValue("@usuario", idUsuario);
+                            using (var leitor = comando.ExecuteReader())
+                            {
+                                if (!leitor.Read() || leitor.IsDBNull(0) ||
+                                    !string.Equals(leitor.GetString(1), SituacoesUsuario.Aprovado, System.StringComparison.OrdinalIgnoreCase))
+                                    throw new System.InvalidOperationException("Somente contas aprovadas podem ter o perfil alterado.");
+                                if (leitor.GetInt32(0) != idPerfilAnterior)
+                                    throw new System.InvalidOperationException("O perfil foi alterado por outra pessoa. Atualize a lista.");
+                                nomeAnterior = leitor.GetString(2);
+                            }
+                        }
+                        string novoNome;
+                        using (var comando = new MySqlCommand(
+                            "SELECT nome FROM perfilsistema WHERE id_perfil_sistema=@perfil", conexao, transacao))
+                        {
+                            comando.Parameters.AddWithValue("@perfil", idPerfilSistema);
+                            novoNome = System.Convert.ToString(comando.ExecuteScalar());
+                        }
+                        if (novoNome != "Administrador" && novoNome != "Gerente" && novoNome != "Membro")
+                            throw new System.ArgumentException("O perfil selecionado não é válido.");
+                        if (idPerfilSistema == idPerfilAnterior)
+                            throw new System.ArgumentException("Escolha um perfil diferente do atual.");
+                        if (justificativa != null && justificativa.Trim().Length > 500)
+                            throw new System.ArgumentException("A justificativa deve ter até 500 caracteres.");
+                        using (var comando = new MySqlCommand(
+                            "UPDATE usuario SET id_perfil_sistema=@perfil WHERE id_usuario=@usuario " +
+                            "AND id_perfil_sistema=@anterior AND LOWER(situacao_conta)='aprovado'", conexao, transacao))
+                        {
+                            comando.Parameters.AddWithValue("@perfil", idPerfilSistema);
+                            comando.Parameters.AddWithValue("@usuario", idUsuario);
+                            comando.Parameters.AddWithValue("@anterior", idPerfilAnterior);
+                            if (comando.ExecuteNonQuery() != 1)
+                                throw new System.InvalidOperationException("A conta foi alterada. Atualize a lista.");
+                        }
+                        using (var comando = new MySqlCommand(
+                            "INSERT INTO analiseusuario (id_usuario,id_analisador,decisao,data_hora,justificativa) " +
+                            "VALUES (@usuario,@analisador,'perfil_alterado',NOW(),@motivo)", conexao, transacao))
+                        {
+                            comando.Parameters.AddWithValue("@usuario", idUsuario);
+                            comando.Parameters.AddWithValue("@analisador", idAnalisador);
+                            comando.Parameters.AddWithValue("@motivo", "Perfil geral alterado de " + nomeAnterior +
+                                " para " + novoNome + ". " + (justificativa ?? string.Empty).Trim());
+                            comando.ExecuteNonQuery();
+                        }
+                        transacao.Commit();
+                    }
+                    catch
+                    {
+                        try { transacao.Rollback(); }
+                        catch { }
+                        throw;
+                    }
                 }
             }
         }

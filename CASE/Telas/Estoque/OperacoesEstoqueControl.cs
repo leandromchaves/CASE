@@ -11,13 +11,17 @@ namespace CASE
     public partial class OperacoesEstoqueControl : UserControl
     {
         private readonly Usuario usuarioAutenticado;
+        private bool administrador;
         private readonly LocalEstoqueService localEstoqueService = new LocalEstoqueService();
         private readonly EstoqueService estoqueService = new EstoqueService();
         private readonly ProdutoService produtoService = new ProdutoService();
         private readonly Dictionary<int, Produto> produtosPorId = new Dictionary<int, Produto>();
         private TextBox pesquisa;
+        private MovimentacoesControl historicoMercadorias;
+        private bool exibindoHistorico;
 
         public event EventHandler FornecedoresSolicitados;
+        public event EventHandler SolicitacoesSolicitadas;
 
         public OperacoesEstoqueControl() : this(null)
         {
@@ -26,7 +30,14 @@ namespace CASE
         public OperacoesEstoqueControl(Usuario usuario)
         {
             InitializeComponent();
+            btnFornecedores.Visible = false;
+            btnFornecedores.TabStop = false;
             usuarioAutenticado = usuario;
+            lblTitulo.Text = "Estoque";
+            lblSubtitulo.Text = "Consulte os saldos ou acompanhe o histórico de mercadorias.";
+            btnAbaSaldo.Text = "Saldo disponível";
+            btnAbaHistorico.Text = "Histórico de mercadorias";
+            btnAbaHistorico.Width = 230;
             lblModoApresentacao.Visible = false;
 
             if (System.ComponentModel.LicenseManager.UsageMode ==
@@ -39,6 +50,10 @@ namespace CASE
             cmbLocal.SelectedIndexChanged += cmbLocal_SelectedIndexChanged;
             btnEntrada.Click += RegistrarEntrada;
             btnTransferir.Click += TransferirEstoque;
+            btnTransferir.CausesValidation = false;
+            btnTransferir.BackColor = VisualUtils.Azul;
+            btnTransferir.ForeColor = System.Drawing.Color.White;
+            btnTransferir.Width = 220;
             dgvSaldos.CellDoubleClick += ConfigurarLimitesEstoque;
             ContextMenuStrip menuSaldos = new ContextMenuStrip();
             ToolStripMenuItem resumoSaldos = new ToolStripMenuItem("Visão geral dos saldos autorizados");
@@ -70,7 +85,11 @@ namespace CASE
             VisualUtils.ExibirEstadoVazio(dgvHistorico, "O histórico consolidado ainda não está disponível.");
             dgvSaldos.Columns[0].FillWeight = 180;
             dgvSaldos.Columns[1].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-            dgvSaldos.Columns[2].FillWeight = 50;
+            dgvSaldos.Columns[1].FillWeight = 90;
+            dgvSaldos.Columns[2].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvSaldos.Columns[2].FillWeight = 70;
+            dgvSaldos.Columns[3].FillWeight = 100;
+            dgvSaldos.Columns[4].FillWeight = 55;
             dgvHistorico.Columns[4].FillWeight = 180;
             VisualUtils.AplicarIcone(btnEntrada, Properties.Resources.LucideAcaoEntrada);
             VisualUtils.AplicarIcone(btnTransferir, Properties.Resources.LucideAcaoTransferencia);
@@ -94,9 +113,11 @@ namespace CASE
             {
                 string perfil;
                 new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
+                administrador = perfil == "Administrador";
                 btnEntrada.Enabled = perfil == "Administrador" && cmbLocal.Items.Count > 0;
-                btnTransferir.Enabled = perfil == "Gerente" && cmbLocal.Items.Count > 0;
+                btnTransferir.Enabled = (perfil == "Administrador" || perfil == "Gerente") && cmbLocal.Items.Count > 0;
                 btnFornecedores.Enabled = perfil == "Administrador" || perfil == "Gerente";
+                AtualizarAcaoTransferencia();
             }
             catch (Exception)
             {
@@ -171,7 +192,7 @@ namespace CASE
                         string mensagem = "Não foi possível salvar os limites.";
                         if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
                         {
-                            mensagem = erro.Message;
+                            mensagem = CASE.Utils.FeedbackUsuario.MensagemErro(erro, mensagem);
                         }
                         MessageBox.Show(janela, mensagem, "Estoque", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     }
@@ -230,21 +251,74 @@ namespace CASE
                 {
                     Atualizar();
                     lblMensagem.Text = "Entrada registrada. O saldo foi atualizado pelo sistema.";
+                    CASE.Utils.FeedbackUsuario.Exibir(this, "Entrada registrada com sucesso. O saldo foi atualizado.", CASE.Utils.TipoFeedback.Sucesso);
                 }
             }
         }
 
         private void TransferirEstoque(object sender, EventArgs e)
         {
-
-            using (var formulario = new TransferenciaEstoqueForm(usuarioAutenticado))
+            try
             {
-                if (formulario.ShowDialog(this) == DialogResult.OK)
+                new AutorizacaoService().ExigirAdministradorOuGerente(usuarioAutenticado);
+                LocalEstoque local = cmbLocal.SelectedItem as LocalEstoque;
+                if (local == null)
                 {
-                    Atualizar();
-                    lblMensagem.Text = "Transferência registrada. Os saldos foram atualizados pelo sistema.";
+                    lblMensagem.Text = "Selecione o local de estoque antes de continuar.";
+                    return;
+                }
+                if (local.EhCentral)
+                {
+                    if (administrador)
+                    {
+                        using (var formulario = new TransferenciaEstoqueForm(
+                            usuarioAutenticado,
+                            local.IdLocalEstoque,
+                            true))
+                        {
+                            if (formulario.ShowDialog(this) == DialogResult.OK)
+                            {
+                                Atualizar();
+                                lblMensagem.Text = "Transferência para o estoque geral registrada.";
+                                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Sucesso);
+                            }
+                        }
+                        return;
+                    }
+
+                    if (SolicitacoesSolicitadas != null)
+                        SolicitacoesSolicitadas(this, EventArgs.Empty);
+                    else
+                        lblMensagem.Text = "Abra Solicitações para aprovar e atender os pedidos de liberação ou devolução do central.";
+                    return;
+                }
+                using (var formulario = new TransferenciaEstoqueForm(usuarioAutenticado, local.IdLocalEstoque))
+                {
+                    if (formulario.ShowDialog(this) == DialogResult.OK)
+                    {
+                        Atualizar();
+                        lblMensagem.Text = "Transferência registrada. Os saldos foram atualizados pelo sistema.";
+                        CASE.Utils.FeedbackUsuario.Exibir(this, "Transferência registrada com sucesso. Os saldos foram atualizados.", CASE.Utils.TipoFeedback.Sucesso);
+                    }
                 }
             }
+            catch (Exception erro)
+            {
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível abrir a transferência. Confira os dados e tente novamente.", lblMensagem);
+            }
+        }
+
+        private void AtualizarAcaoTransferencia()
+        {
+            LocalEstoque local = cmbLocal.SelectedItem as LocalEstoque;
+            btnTransferir.Text = local != null && local.EhCentral
+                ? (administrador ? "Transferir para evento" : "Solicitações do central")
+                : "Transferir entre estoques";
+            btnTransferir.AccessibleDescription = local != null && local.EhCentral
+                ? (administrador
+                    ? "Transfere mercadorias do estoque central diretamente para o estoque geral de um evento."
+                    : "Abre os pedidos de liberação e devolução do estoque central. O atendimento exige autorização.")
+                : "Abre a transferência entre locais do mesmo evento, com a origem selecionada.";
         }
 
         private void Organizar()
@@ -269,6 +343,7 @@ namespace CASE
                 btnFornecedores.SetBounds(762, 40, btnFornecedores.Width, 40);
             }
             panelAcoes.SetBounds(24 + deslocamentoX, 112 + deslocamentoY, largura - 48, alturaAcoes);
+            // As ações e o local selecionado permanecem visíveis nas duas abas.
             int topoAbas = 112 + alturaAcoes + 16;
             btnAbaSaldo.Top = btnAbaHistorico.Top = topoAbas + deslocamentoY;
             panelSaldos.Left = panelHistorico.Left = 24 + deslocamentoX;
@@ -280,10 +355,26 @@ namespace CASE
 
         private void SelecionarAba(bool historico)
         {
+            exibindoHistorico = historico;
+            panelAcoes.Visible = true;
+            lblResumo.Visible = true;
+            if (pesquisa != null && pesquisa.Parent != this)
+                pesquisa.Parent.Visible = true;
             panelSaldos.Visible = !historico;
             panelHistorico.Visible = historico;
             if (historico)
             {
+                if (historicoMercadorias == null)
+                {
+                    historicoMercadorias = new MovimentacoesControl(usuarioAutenticado) { Dock = DockStyle.Fill };
+                    historicoMercadorias.IncorporarAoEstoque();
+                    historicoMercadorias.OperacaoCorrigida += (s, e) => Atualizar();
+                    dgvHistorico.Visible = false;
+                    panelHistorico.Controls.Add(historicoMercadorias);
+                    historicoMercadorias.BringToFront();
+                }
+                else
+                    historicoMercadorias.AtualizarHistorico();
                 btnAbaSaldo.BackColor = System.Drawing.Color.White;
                 btnAbaSaldo.ForeColor = VisualUtils.Texto;
                 btnAbaHistorico.BackColor = VisualUtils.Azul;
@@ -304,10 +395,12 @@ namespace CASE
                 btnAbaSaldo.AccessibleDescription = "Saldo selecionado";
                 btnAbaHistorico.AccessibleDescription = "Mostrar histórico";
             }
+            Organizar();
         }
 
         private void cmbLocal_SelectedIndexChanged(object sender, EventArgs e)
         {
+            AtualizarAcaoTransferencia();
             Atualizar();
         }
 
@@ -341,6 +434,8 @@ namespace CASE
                     usuarioAutenticado,
                     local.IdLocalEstoque);
                 int produtosComSaldo = 0;
+                int estoquesBaixos = 0;
+                int semEstoque = 0;
 
                 foreach (Estoque estoque in saldos)
                 {
@@ -354,9 +449,16 @@ namespace CASE
                         unidade = produto.UnidadeMedida;
                     }
 
+                    string situacao = estoque.QuantidadeAtual <= 0
+                        ? "Sem estoque"
+                        : estoque.QuantidadeAtual <= estoque.QuantidadeMinima
+                            ? "Estoque baixo"
+                            : "Normal";
                     int linha = dgvSaldos.Rows.Add(
                         nomeProduto,
                         estoque.QuantidadeAtual.ToString("N0", CultureInfo.GetCultureInfo("pt-BR")),
+                        estoque.QuantidadeMinima.ToString("N0", CultureInfo.GetCultureInfo("pt-BR")),
+                        situacao,
                         unidade);
 
                     dgvSaldos.Rows[linha].Tag = estoque;
@@ -365,6 +467,18 @@ namespace CASE
                     {
                         produtosComSaldo++;
                     }
+                    if (situacao == "Estoque baixo")
+                    {
+                        estoquesBaixos++;
+                    }
+                    else if (situacao == "Sem estoque")
+                    {
+                        semEstoque++;
+                    }
+
+                    dgvSaldos.Rows[linha].Cells[3].Style.ForeColor = situacao == "Normal"
+                        ? System.Drawing.Color.FromArgb(5, 150, 105)
+                        : System.Drawing.Color.FromArgb(185, 28, 28);
                 }
 
                 dgvSaldos.ClearSelection();
@@ -388,7 +502,8 @@ namespace CASE
                         movimento["origem"] + " → " + movimento["destino"] + " / " + movimento["responsavel"]);
                 }
                 VisualUtils.ExibirEstadoVazio(dgvHistorico, "Nenhuma movimentação neste local nos últimos 30 dias.");
-                lblResumo.Text = produtosComSaldo + " produto(s) com saldo neste local";
+                lblResumo.Text = produtosComSaldo + " com saldo · " +
+                    estoquesBaixos + " abaixo do mínimo · " + semEstoque + " sem estoque";
                 VisualUtils.FiltrarGrades(this, pesquisa.Text.Trim());
             }
             catch (UnauthorizedAccessException)

@@ -24,7 +24,7 @@ namespace CASE.Utils
     {
         public static string[] TiposDisponiveis(string relatorio)
         {
-            return relatorio == "Estoque"
+            return relatorio == "Estoque" || relatorio == "Estoque crítico"
                 ? new[] { "Colunas", "Barras", "Pizza", "Rosca" }
                 : new[] { "Colunas", "Barras", "Linhas", "Área", "Pizza", "Rosca" };
         }
@@ -50,6 +50,10 @@ namespace CASE.Utils
                 case "Estoque":
                     grupo = "produto"; valor = "quantidade_atual";
                     resumo.Titulo = "Saldo por produto (unidade cadastrada)";
+                    break;
+                case "Estoque crítico":
+                    grupo = "local";
+                    resumo.Titulo = "Produtos críticos por local";
                     break;
                 case "Vendas e perdas":
                     grupo = "forma_pagamento"; valor = "total";
@@ -217,6 +221,11 @@ namespace CASE.Utils
 
         public static byte[] CriarImagem(DataTable dados, string relatorio, string formato)
         {
+            return CriarImagem(dados, relatorio, formato, false);
+        }
+
+        internal static byte[] CriarImagem(DataTable dados, string relatorio, string formato, bool compacto)
+        {
             using (Chart grafico = Criar(dados, relatorio, formato))
             using (var memoria = new MemoryStream())
             {
@@ -226,6 +235,20 @@ namespace CASE.Utils
                 grafico.Series[0].Font = new Font("Segoe UI", 20F);
                 foreach (Legend legenda in grafico.Legends)
                     legenda.Font = new Font("Segoe UI", 17F);
+                if (compacto)
+                {
+                    grafico.Width = 1440;
+                    grafico.Height = 360;
+                    foreach (Title titulo in grafico.Titles)
+                        titulo.Visible = titulo.Docking != Docking.Top;
+                    grafico.Series[0].Font = new Font("Segoe UI", 24F);
+                    foreach (Legend legenda in grafico.Legends)
+                    {
+                        legenda.Docking = Docking.Right;
+                        legenda.Font = new Font("Segoe UI", 22F);
+                        legenda.MaximumAutoSize = 45;
+                    }
+                }
                 var area = grafico.ChartAreas[0];
                 area.AxisX.LabelStyle.Font = area.AxisY.LabelStyle.Font = new Font("Segoe UI", 17F);
                 area.AxisX.LabelStyle.Interval = Math.Max(1, (int)Math.Ceiling(grafico.Series[0].Points.Count / 6.0));

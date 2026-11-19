@@ -51,6 +51,32 @@ namespace CASE.Services
             return minhasEscalas;
         }
 
+        public List<Escala> ListarDisponiveisParaSolicitacao(Usuario usuario)
+        {
+            string nomePerfil;
+            Usuario usuarioAtual = autorizacaoService.ValidarUsuarioEObterPerfil(
+                usuario,
+                out nomePerfil);
+
+            if (string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase))
+            {
+                return ListarMinhas(usuarioAtual);
+            }
+
+            if (!string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException(
+                    "Somente membros e administradores podem abrir solicitações para uma escala.");
+            }
+
+            List<Escala> escalas = new List<Escala>();
+            foreach (Evento evento in eventoRepository.ListarTodos())
+            {
+                escalas.AddRange(escalaRepository.ListarPorEvento(evento.IdEvento));
+            }
+            return escalas;
+        }
+
         public List<Escala> ListarPorEvento(Usuario usuario, int idEvento)
         {
             Evento evento = eventoRepository.BuscarPorId(idEvento);

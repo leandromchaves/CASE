@@ -34,10 +34,12 @@ namespace CASE.Services
                 usuario,
                 out nomePerfil);
 
-            if (!string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase))
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            bool membro = string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase);
+            if (!administrador && !membro)
             {
                 throw new UnauthorizedAccessException(
-                    "Somente membros podem registrar vendas ou perdas.");
+                    "Somente administradores ou membros podem registrar vendas ou perdas.");
             }
 
             Escala escala = escalaRepository.BuscarPorId(registro.IdEscala);
