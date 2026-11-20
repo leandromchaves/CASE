@@ -312,25 +312,31 @@ namespace CASE.Quermesse
             try
             {
                 List<TipoEvento> tipos = tipoEventoService.Listar(usuarioAutenticado);
-                nomesTiposEvento.Clear();
+                Dictionary<int, string> novosNomesTipos = new Dictionary<int, string>();
 
                 foreach (TipoEvento tipo in tipos)
                 {
-                    nomesTiposEvento[tipo.IdTipoEvento] = tipo.Nome;
+                    novosNomesTipos[tipo.IdTipoEvento] = tipo.Nome;
                 }
 
                 List<Evento> eventos = eventoService.Listar(usuarioAutenticado);
-                eventosCarregados = eventos;
-                nomesResponsaveis.Clear();
+                Dictionary<int, string> novosNomesResponsaveis = new Dictionary<int, string>();
                 foreach (Evento evento in eventos)
                 {
-                    if (!nomesResponsaveis.ContainsKey(evento.IdResponsavel))
+                    if (!novosNomesResponsaveis.ContainsKey(evento.IdResponsavel))
                     {
-                        nomesResponsaveis[evento.IdResponsavel] = eventoService.ConsultarNomeResponsavel(
+                        novosNomesResponsaveis[evento.IdResponsavel] = eventoService.ConsultarNomeResponsavel(
                             usuarioAutenticado, evento.IdEvento);
                     }
                 }
 
+                eventosCarregados = eventos;
+                nomesTiposEvento.Clear();
+                foreach (KeyValuePair<int, string> par in novosNomesTipos)
+                    nomesTiposEvento[par.Key] = par.Value;
+                nomesResponsaveis.Clear();
+                foreach (KeyValuePair<int, string> par in novosNomesResponsaveis)
+                    nomesResponsaveis[par.Key] = par.Value;
                 Pesquisar(pesquisaAtual);
                 if (idEventoSelecionado.HasValue)
                 {
@@ -358,8 +364,6 @@ namespace CASE.Quermesse
             }
             catch (UnauthorizedAccessException)
             {
-                eventosCarregados = new List<Evento>();
-                dgvQuermesses.Rows.Clear();
                 labelAviso.Text = "Sua conta não tem permissão para consultar eventos.";
                 MessageBox.Show(
                     this,
@@ -370,8 +374,6 @@ namespace CASE.Quermesse
             }
             catch (Exception)
             {
-                eventosCarregados = new List<Evento>();
-                dgvQuermesses.Rows.Clear();
                 labelAviso.Text = "Não foi possível carregar os eventos.";
                 MessageBox.Show(
                     this,

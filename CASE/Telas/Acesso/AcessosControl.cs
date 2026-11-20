@@ -110,20 +110,13 @@ namespace CASE
 
         private void CarregarDados()
         {
-            dgvContas.Rows.Clear();
-
             try
             {
-                perfis = usuarioService.ListarPerfisDeSistema(usuarioAutenticado);
-                cmbPerfil.Items.Clear();
-
-                foreach (PerfilSistema perfil in perfis)
-                {
-                    cmbPerfil.Items.Add(perfil);
-                }
+                List<PerfilSistema> perfisCarregados = usuarioService.ListarPerfisDeSistema(usuarioAutenticado);
 
                 List<Usuario> usuarios = usuarioService.ListarUsuariosAdministrativos(
                     usuarioAutenticado);
+                List<object[]> linhas = new List<object[]>();
 
                 foreach (Usuario usuario in usuarios)
                 {
@@ -137,14 +130,20 @@ namespace CASE
                         nome = pessoa.Nome;
                     }
 
-                    string nomePerfil = ObterNomePerfil(usuario.IdPerfilSistema);
-                    int indice = dgvContas.Rows.Add(
-                        nome,
-                        usuario.Login,
-                        usuario.SituacaoConta,
-                        nomePerfil,
-                        usuario.SolicitadoEm.ToString("dd/MM/yyyy"));
-                    dgvContas.Rows[indice].Tag = usuario;
+                    string nomePerfil = ObterNomePerfil(usuario.IdPerfilSistema, perfisCarregados);
+                    linhas.Add(new object[] { usuario, nome, usuario.Login, usuario.SituacaoConta,
+                        nomePerfil, usuario.SolicitadoEm.ToString("dd/MM/yyyy") });
+                }
+
+                cmbPerfil.Items.Clear();
+                foreach (PerfilSistema perfil in perfisCarregados)
+                    cmbPerfil.Items.Add(perfil);
+                perfis = perfisCarregados;
+                dgvContas.Rows.Clear();
+                foreach (object[] linha in linhas)
+                {
+                    int indice = dgvContas.Rows.Add(linha[1], linha[2], linha[3], linha[4], linha[5]);
+                    dgvContas.Rows[indice].Tag = linha[0];
                 }
 
                 Selecionar();
@@ -163,14 +162,14 @@ namespace CASE
             }
         }
 
-        private string ObterNomePerfil(int? idPerfilSistema)
+        private static string ObterNomePerfil(int? idPerfilSistema, List<PerfilSistema> listaPerfis)
         {
             if (!idPerfilSistema.HasValue)
             {
                 return "Sem perfil";
             }
 
-            foreach (PerfilSistema perfil in perfis)
+            foreach (PerfilSistema perfil in listaPerfis)
             {
                 if (perfil.IdPerfilSistema == idPerfilSistema.Value)
                 {

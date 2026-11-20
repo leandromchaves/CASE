@@ -20,6 +20,8 @@ namespace CASE.Quermesse
         private bool podeAdministrarEvento;
         private Setor setorEmEdicao;
         private TextBox pesquisa;
+        private readonly Button btnProdutosPrecosSetor = new Button();
+        private readonly Label lblAjudaProdutosPrecos = new Label();
 
         public EquipeSetoresControl() : this(null, null)
         {
@@ -29,6 +31,9 @@ namespace CASE.Quermesse
         {
             InitializeComponent();
             FrontendTheme.Aplicar(this);
+            VisualUtils.ExibirEstadoVazio(dgvSetores, "Este evento ainda não tem setores. Cadastre o primeiro setor nesta tela.");
+            VisualUtils.ExibirEstadoVazio(dgvEquipe, "Este evento ainda não tem membros vinculados.");
+            ConfigurarAcaoProdutosPrecos();
             pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarEquipe", "Pesquisar equipe ou setor",
                 texto => VisualUtils.FiltrarGrades(panelCorpo, texto));
             // O painel superior não pode crescer sobre a seção de setores ao redimensionar.
@@ -85,15 +90,11 @@ namespace CASE.Quermesse
             btnNovoFuncionario.Enabled = podeAdministrarEvento;
             btnEditarFuncionario.Enabled = podeAdministrarEvento;
             txtNovoSetor.Enabled = podeAdministrarEvento;
+            AtualizarAcaoProdutosPrecos();
 
             CarregarSetores();
             CarregarEquipe();
-            dgvSetores.CellDoubleClick += ConfigurarProdutoDoSetor;
             ContextMenuStrip menuSetor = new ContextMenuStrip();
-            ToolStripMenuItem configurarProduto = new ToolStripMenuItem("Produtos e preços do setor selecionado");
-            configurarProduto.Click += (s, e) => ConfigurarProdutoDoSetor(s, null);
-            configurarProduto.Enabled = podeAdministrarEvento;
-            menuSetor.Items.Add(configurarProduto);
             ToolStripMenuItem renomear = new ToolStripMenuItem("Renomear setor selecionado");
             renomear.Enabled = podeAdministrarEvento;
             renomear.Click += (s, e) =>
@@ -126,12 +127,53 @@ namespace CASE.Quermesse
                 }
             };
             dgvSetores.ContextMenuStrip = menuSetor;
+            dgvSetores.SelectionChanged += (s, e) => AtualizarAcaoProdutosPrecos();
             Disposed += (s, e) => menuSetor.Dispose();
 
             if (!podeAdministrarEvento)
             {
                 labelAviso.Text = "Consulta administrativa. Equipes, setores e preços são gerenciados pelo gerente responsável pelo evento.";
             }
+        }
+
+        private void ConfigurarAcaoProdutosPrecos()
+        {
+            btnProdutosPrecosSetor.Name = "btnProdutosPrecosSetor";
+            btnProdutosPrecosSetor.Text = "Produtos e preços";
+            btnProdutosPrecosSetor.SetBounds(24, 150, 235, 38);
+            btnProdutosPrecosSetor.FlatStyle = FlatStyle.Flat;
+            btnProdutosPrecosSetor.BackColor = System.Drawing.Color.White;
+            btnProdutosPrecosSetor.ForeColor = VisualUtils.Texto;
+            btnProdutosPrecosSetor.Enabled = false;
+            btnProdutosPrecosSetor.CausesValidation = false;
+            btnProdutosPrecosSetor.AccessibleDescription =
+                "Configure quais produtos são vendidos no setor e o preço padrão de cada um.";
+            VisualUtils.EstilizarBotao(btnProdutosPrecosSetor);
+            VisualUtils.Arredondar(btnProdutosPrecosSetor, 8);
+            btnProdutosPrecosSetor.Click += (s, e) => ConfigurarProdutoDoSetor(s, null);
+            panelSetores.Controls.Add(btnProdutosPrecosSetor);
+
+            lblAjudaProdutosPrecos.Name = "lblAjudaProdutosPrecosSetor";
+            lblAjudaProdutosPrecos.Text = "Selecione um setor para configurar os produtos vendidos e seus preços.";
+            lblAjudaProdutosPrecos.SetBounds(24, 192, 235, 34);
+            lblAjudaProdutosPrecos.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            lblAjudaProdutosPrecos.ForeColor = VisualUtils.TextoSuave;
+            lblAjudaProdutosPrecos.AutoEllipsis = true;
+            panelSetores.Controls.Add(lblAjudaProdutosPrecos);
+        }
+
+        private void AtualizarAcaoProdutosPrecos()
+        {
+            if (btnProdutosPrecosSetor == null || dgvSetores == null)
+                return;
+
+            bool setorSelecionado = dgvSetores.SelectedRows.Count > 0;
+            btnProdutosPrecosSetor.Enabled = podeAdministrarEvento && setorSelecionado;
+            lblAjudaProdutosPrecos.Text = !podeAdministrarEvento
+                ? "Os preços são configurados pelo administrador ou gerente responsável."
+                : setorSelecionado
+                    ? "Defina os produtos disponíveis e o preço padrão de venda deste setor."
+                    : "Selecione um setor para configurar os produtos vendidos e seus preços.";
         }
 
         private void btnNovoFuncionario_Click(object sender, EventArgs e)
@@ -257,8 +299,6 @@ namespace CASE.Quermesse
 
         private void CarregarSetores()
         {
-            dgvSetores.Rows.Clear();
-
             try
             {
                 List<Setor> setores = setorService.ListarPorEvento(
@@ -269,6 +309,7 @@ namespace CASE.Quermesse
                 System.Data.DataTable registros = consultas.Registros(usuarioAutenticado, eventoSelecionado.IdEvento,
                     eventoSelecionado.DataInicio, eventoSelecionado.DataFim);
 
+                List<object[]> linhas = new List<object[]>();
                 foreach (Setor setor in setores)
                 {
                     HashSet<int> pessoas = new HashSet<int>();
@@ -289,7 +330,14 @@ namespace CASE.Quermesse
                             operacoes.Add(Convert.ToInt32(registro["id_registro"]));
                         }
                     }
-                    int indiceLinha = dgvSetores.Rows.Add(setor.Nome, pessoas.Count, operacoes.Count);
+                    linhas.Add(new object[] { setor, setor.Nome, pessoas.Count, operacoes.Count });
+                }
+
+                dgvSetores.Rows.Clear();
+                foreach (object[] linha in linhas)
+                {
+                    Setor setor = (Setor)linha[0];
+                    int indiceLinha = dgvSetores.Rows.Add(linha[1], linha[2], linha[3]);
                     dgvSetores.Rows[indiceLinha].Tag = setor;
                 }
 
@@ -425,8 +473,6 @@ namespace CASE.Quermesse
 
         private void CarregarEquipe()
         {
-            dgvEquipe.Rows.Clear();
-
             try
             {
                 List<EquipeEvento> equipe = equipeService.ListarPorEvento(
@@ -436,6 +482,7 @@ namespace CASE.Quermesse
                     usuarioAutenticado,
                     eventoSelecionado.IdEvento);
 
+                List<object[]> linhas = new List<object[]>();
                 foreach (EquipeEvento membro in equipe)
                 {
                     Pessoa pessoa = equipeService.BuscarPessoaVinculada(
@@ -475,14 +522,14 @@ namespace CASE.Quermesse
                         situacao = "Ativo";
                     }
 
-                    int indiceLinha = dgvEquipe.Rows.Add(
-                        nomePessoa,
-                        login,
-                        nomePerfil,
-                        resumoSetores,
-                        resumoTurnos,
-                        situacao);
-                    dgvEquipe.Rows[indiceLinha].Tag = membro;
+                    linhas.Add(new object[] { membro, nomePessoa, login, nomePerfil, resumoSetores, resumoTurnos, situacao });
+                }
+
+                dgvEquipe.Rows.Clear();
+                foreach (object[] linha in linhas)
+                {
+                    int indiceLinha = dgvEquipe.Rows.Add(linha[1], linha[2], linha[3], linha[4], linha[5], linha[6]);
+                    dgvEquipe.Rows[indiceLinha].Tag = linha[0];
                 }
 
                 dgvEquipe.ClearSelection();

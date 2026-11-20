@@ -24,12 +24,20 @@ namespace CASE.Utils
 
         private static readonly ConditionalWeakTable<TextBox, EstadoVisualCampo> EstadosCampos =
             new ConditionalWeakTable<TextBox, EstadoVisualCampo>();
+        private static readonly ConditionalWeakTable<DataGridView, EstadoVazioGrade> EstadosVaziosGrade =
+            new ConditionalWeakTable<DataGridView, EstadoVazioGrade>();
 
         private sealed class EstadoVisualCampo
         {
             public bool TemErro { get; set; }
             public bool EstiloAplicado { get; set; }
+            public Control ParentEstilo { get; set; }
             public bool PesquisaAplicada { get; set; }
+        }
+
+        private sealed class EstadoVazioGrade
+        {
+            public string Mensagem { get; set; }
         }
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
@@ -128,16 +136,19 @@ namespace CASE.Utils
 
             EstadoVisualCampo estadoCampo = EstadosCampos.GetOrCreateValue(campo);
 
-            if (estadoCampo.EstiloAplicado)
+            if (estadoCampo.EstiloAplicado &&
+                ReferenceEquals(estadoCampo.ParentEstilo, campo.Parent))
             {
                 return;
             }
 
             estadoCampo.EstiloAplicado = true;
+            estadoCampo.ParentEstilo = campo.Parent;
 
             campo.AutoSize = false;
             campo.ForeColor = Texto;
             campo.Cursor = Cursors.IBeam;
+            campo.TextAlign = HorizontalAlignment.Left;
 
             Control parent = campo.Parent;
             Panel painelCampo = parent as Panel;
@@ -208,8 +219,15 @@ namespace CASE.Utils
             }
             else
             {
-                // Uma borda pintada fora do TextBox pode cobrir controles vizinhos no mesmo painel.
-                campo.BorderStyle = BorderStyle.FixedSingle;
+                // Cada entrada recebe um único contorno arredondado próprio. O TextBox nativo
+                // fica sem borda dentro dele, evitando o efeito de duas caixas sobrepostas.
+                Panel novoPainelCampo = EnvolverCampoEmPainel(campo);
+                if (novoPainelCampo != null)
+                {
+                    EstilizarCampo(campo);
+                    return;
+                }
+                campo.BorderStyle = BorderStyle.None;
                 campo.BackColor = Color.White;
             }
 
@@ -218,6 +236,66 @@ namespace CASE.Utils
             {
                 AplicarMargensInternas(campo);
             }
+        }
+
+        private static Panel EnvolverCampoEmPainel(TextBox campo)
+        {
+            Control origem = campo.Parent;
+            if (origem == null || EstadosCampos.GetOrCreateValue(campo).PesquisaAplicada)
+                return null;
+
+            int indice = origem.Controls.GetChildIndex(campo);
+            Rectangle limites = campo.Bounds;
+            AnchorStyles ancora = campo.Anchor;
+            DockStyle encaixe = campo.Dock;
+            Padding margem = campo.Margin;
+            int tabIndex = campo.TabIndex;
+            TableLayoutPanel tabela = origem as TableLayoutPanel;
+            TableLayoutPanelCellPosition celula = tabela == null
+                ? new TableLayoutPanelCellPosition(-1, -1)
+                : tabela.GetCellPosition(campo);
+            int colunaSpan = tabela == null ? 1 : tabela.GetColumnSpan(campo);
+            int linhaSpan = tabela == null ? 1 : tabela.GetRowSpan(campo);
+            string nome = string.IsNullOrWhiteSpace(campo.Name) ? "Campo" : campo.Name;
+            Panel painelCampo = new Panel
+            {
+                Name = "panelCampo" + nome,
+                Bounds = limites,
+                Anchor = ancora,
+                Dock = encaixe,
+                Margin = margem,
+                Padding = new Padding(10, 2, 10, 2),
+                BackColor = Color.White,
+                TabIndex = tabIndex,
+                Cursor = Cursors.IBeam
+            };
+
+            origem.SuspendLayout();
+            try
+            {
+                origem.Controls.Remove(campo);
+                origem.Controls.Add(painelCampo);
+                origem.Controls.SetChildIndex(painelCampo, Math.Min(indice, origem.Controls.Count - 1));
+                if (tabela != null && celula.Column >= 0 && celula.Row >= 0)
+                {
+                    tabela.SetCellPosition(painelCampo, celula);
+                    tabela.SetColumnSpan(painelCampo, colunaSpan);
+                    tabela.SetRowSpan(painelCampo, linhaSpan);
+                }
+                painelCampo.Controls.Add(campo);
+                campo.Dock = DockStyle.Fill;
+                campo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+                campo.Margin = Padding.Empty;
+                campo.BorderStyle = BorderStyle.None;
+                campo.BackColor = painelCampo.BackColor;
+                campo.AutoSize = false;
+            }
+            finally
+            {
+                origem.ResumeLayout(true);
+            }
+
+            return painelCampo;
         }
 
         public static TextBox AdicionarPesquisa(Control tela, string nome, string placeholder,
@@ -286,6 +364,7 @@ namespace CASE.Utils
             origem.Controls.SetChildIndex(painel, indice);
             estado.PesquisaAplicada = true;
             estado.EstiloAplicado = true;
+            estado.ParentEstilo = painel;
             campo.Dock = DockStyle.None;
             campo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             campo.AutoSize = true;
@@ -318,6 +397,13 @@ namespace CASE.Utils
 
         private static void CentralizarLinhaNoPainel(TextBox campo, Panel painel)
         {
+            // Campos podem ser movidos por formulários que montam layouts próprios.
+            // Eventos do painel anterior não devem reposicionar o campo no novo pai.
+            if (campo == null || painel == null || !ReferenceEquals(campo.Parent, painel) || campo.Multiline)
+            {
+                return;
+            }
+
             int altura = campo.PreferredHeight;
             int largura = Math.Max(0, painel.ClientSize.Width - painel.Padding.Horizontal);
             int topo = Math.Max(0, (painel.ClientSize.Height - altura) / 2);
@@ -525,20 +611,35 @@ namespace CASE.Utils
 
         public static void ExibirEstadoVazio(DataGridView grade, string mensagem)
         {
+            if (grade == null)
+                return;
+
+            EstadoVazioGrade estado;
+            if (EstadosVaziosGrade.TryGetValue(grade, out estado))
+            {
+                estado.Mensagem = mensagem ?? string.Empty;
+                grade.Invalidate();
+                return;
+            }
+
+            estado = new EstadoVazioGrade { Mensagem = mensagem ?? string.Empty };
+            EstadosVaziosGrade.Add(grade, estado);
             grade.Paint += (s, e) =>
             {
-                bool possuiLinhas = false;
-                foreach (DataGridViewRow linha in grade.Rows)
-                    if (linha.Visible && !linha.IsNewRow) { possuiLinhas = true; break; }
-                if (possuiLinhas) return;
+                DataGridView atual = s as DataGridView;
+                EstadoVazioGrade estadoAtual;
+                if (atual == null || !EstadosVaziosGrade.TryGetValue(atual, out estadoAtual))
+                    return;
+                foreach (DataGridViewRow linha in atual.Rows)
+                    if (linha.Visible && !linha.IsNewRow) return;
 
-                var area = new Rectangle(16, grade.ColumnHeadersHeight + 16,
-                    Math.Max(0, grade.ClientSize.Width - 32), Math.Max(0, grade.ClientSize.Height - grade.ColumnHeadersHeight - 32));
-                TextRenderer.DrawText(e.Graphics, mensagem, grade.Font, area, TextoSuave,
+                var area = new Rectangle(16, atual.ColumnHeadersHeight + 16,
+                    Math.Max(0, atual.ClientSize.Width - 32), Math.Max(0, atual.ClientSize.Height - atual.ColumnHeadersHeight - 32));
+                TextRenderer.DrawText(e.Graphics, estadoAtual.Mensagem, atual.Font, area, TextoSuave,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordBreak);
             };
-            grade.RowsAdded += (s, e) => grade.Invalidate();
-            grade.RowsRemoved += (s, e) => grade.Invalidate();
+            grade.RowsAdded += (s, e) => ((DataGridView)s).Invalidate();
+            grade.RowsRemoved += (s, e) => ((DataGridView)s).Invalidate();
         }
 
         public static GraphicsPath CriarRetanguloArredondado(Rectangle area, int raio)

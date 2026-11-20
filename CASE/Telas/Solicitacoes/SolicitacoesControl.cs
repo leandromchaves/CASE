@@ -378,6 +378,7 @@ namespace CASE.Quermesse
                 dialogo.Controls.Add(campo);
                 dialogo.Controls.Add(confirmar);
                 dialogo.Controls.Add(cancelar);
+                FrontendTheme.Aplicar(dialogo);
                 dialogo.AcceptButton = confirmar;
                 dialogo.CancelButton = cancelar;
 

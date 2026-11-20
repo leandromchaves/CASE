@@ -42,7 +42,11 @@ namespace CASE.Quermesse
             colCustosResponsavel.HeaderText = "Responsável (ID)";
             lblSetor2.Visible = cmbSetorCusto.Visible = false;
             lblDescricaodocusto.Text = "Descrição da despesa *";
-            txtDescricaoCusto.Width = 510;
+            Control contornoDescricao = txtDescricaoCusto.Parent is Panel painelDescricao &&
+                painelDescricao.Controls.Count == 1 && painelDescricao.Controls[0] == txtDescricaoCusto
+                ? (Control)painelDescricao
+                : txtDescricaoCusto;
+            contornoDescricao.Width = 510;
             PrepararAbasFinanceiro();
             lblValorFinanceiroResumo0.Text = "—";
             lblValorFinanceiroResumo1.Text = "—";

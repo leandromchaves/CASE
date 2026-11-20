@@ -24,6 +24,8 @@ namespace CASE
         {
             InitializeComponent();
             usuarioAutenticado = usuario;
+            lblSubtituloProdutos.Text =
+                "Gerencie o catálogo. Preços de venda são definidos por setor em Equipes e setores.";
 
             if (System.ComponentModel.LicenseManager.UsageMode ==
                 System.ComponentModel.LicenseUsageMode.Designtime)
@@ -50,9 +52,10 @@ namespace CASE
             colunaImagem.Name = "colImagemProduto";
             colunaImagem.HeaderText = "Imagem";
             colunaImagem.ImageLayout = DataGridViewImageCellLayout.Zoom;
-            colunaImagem.FillWeight = 65;
+            colunaImagem.FillWeight = 8;
+            colunaImagem.MinimumWidth = 76;
             colunaImagem.DefaultCellStyle.NullValue = null;
-            colunaImagem.DefaultCellStyle.Padding = new Padding(4);
+            colunaImagem.DefaultCellStyle.Padding = new Padding(6);
             colunaImagem.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dgvProdutos.Columns.Insert(0, colunaImagem);
 
@@ -64,11 +67,12 @@ namespace CASE
             colunaExcluir.Text = "Excluir";
             colunaExcluir.UseColumnTextForButtonValue = true;
             colunaExcluir.FlatStyle = FlatStyle.Flat;
-            colunaExcluir.FillWeight = 65;
+            colunaExcluir.FillWeight = 14;
             colunaExcluir.DefaultCellStyle.ForeColor = System.Drawing.Color.Firebrick;
             // A exclusão de produtos ainda não está disponível.
             colunaExcluir.Visible = false;
             dgvProdutos.Columns.Add(colunaExcluir);
+            ConfigurarApresentacaoDaGrade();
 
             btnNovoProduto.Click += BtnNovoProduto_Click;
             VisualUtils.EstilizarPesquisa(txtPesquisarProduto, "Pesquisar produtos");
@@ -122,6 +126,43 @@ namespace CASE
                 lblPaginacao.Text = "Entre no sistema para consultar os produtos.";
             }
             Disposed += (s, e) => LiberarImagensDaGrade();
+        }
+
+        private void ConfigurarApresentacaoDaGrade()
+        {
+            // O Designer compartilhava este estilo com a coluna de ações. Separar as
+            // instâncias impede que centralizar o botão "Editar" centralize também
+            // todas as células das linhas alternadas.
+            dgvProdutos.AlternatingRowsDefaultCellStyle =
+                new DataGridViewCellStyle(dgvProdutos.AlternatingRowsDefaultCellStyle);
+            colAcoes.DefaultCellStyle = new DataGridViewCellStyle(colAcoes.DefaultCellStyle);
+
+            dgvProdutos.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+            dgvProdutos.RowTemplate.Height = 68;
+            dgvProdutos.ColumnHeadersHeight = 44;
+            dgvProdutos.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dgvProdutos.DefaultCellStyle.Padding = new Padding(10, 0, 10, 0);
+            dgvProdutos.AlternatingRowsDefaultCellStyle.Font = dgvProdutos.DefaultCellStyle.Font;
+            dgvProdutos.AlternatingRowsDefaultCellStyle.Padding = dgvProdutos.DefaultCellStyle.Padding;
+            dgvProdutos.AlternatingRowsDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dgvProdutos.ColumnHeadersDefaultCellStyle.Font = dgvProdutos.DefaultCellStyle.Font;
+            dgvProdutos.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            dgvProdutos.ColumnHeadersDefaultCellStyle.Padding = new Padding(10, 0, 10, 0);
+
+            colProduto.FillWeight = 30;
+            colCategoria.FillWeight = 22;
+            colPreco.FillWeight = 22;
+            colAcoes.FillWeight = 14;
+
+            foreach (DataGridViewColumn coluna in dgvProdutos.Columns)
+            {
+                coluna.DefaultCellStyle.Font = dgvProdutos.DefaultCellStyle.Font;
+                coluna.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
+            }
+
+            colAcoes.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            colAcoes.DefaultCellStyle.Padding = new Padding(6, 8, 6, 8);
+            dgvProdutos.RowTemplate.Height = 68;
         }
 
         private void AbrirFornecedoresDoProduto(object sender, EventArgs e)
@@ -281,17 +322,18 @@ namespace CASE
 
             try
             {
-                produtos = produtoService.Listar(usuarioAutenticado);
-                categorias = categoriaService.Listar(usuarioAutenticado);
+                List<Produto> novosProdutos = produtoService.Listar(usuarioAutenticado);
+                List<Categoria> novasCategorias = categoriaService.Listar(usuarioAutenticado);
+                produtos = novosProdutos;
+                categorias = novasCategorias;
                 CarregarFiltroDeCategorias();
                 ExibirProdutos();
             }
             catch (Exception)
             {
-                produtos = new List<Produto>();
-                categorias = new List<Categoria>();
-                dgvProdutos.Rows.Clear();
-                lblPaginacao.Text = "Não foi possível carregar os produtos.";
+                lblPaginacao.Text = produtos.Count == 0
+                    ? "Não foi possível carregar os produtos. Tente novamente."
+                    : produtos.Count + " produtos em exibição. A atualização falhou; tente novamente.";
             }
         }
 
@@ -345,21 +387,33 @@ namespace CASE
                 using (var memoria = new System.IO.MemoryStream(produto.Imagem))
                 using (var original = System.Drawing.Image.FromStream(memoria))
                 {
-                    double proporcao = Math.Min(64.0 / original.Width, 64.0 / original.Height);
-                    var tamanho = new System.Drawing.Size(Math.Max(1, (int)(original.Width * proporcao)),
-                        Math.Max(1, (int)(original.Height * proporcao)));
-                    var miniatura = new System.Drawing.Bitmap(tamanho.Width, tamanho.Height,
+                    const int tamanhoMiniatura = 56;
+                    const int margemImagem = 7;
+                    var miniatura = new System.Drawing.Bitmap(tamanhoMiniatura, tamanhoMiniatura,
                         System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-                    using (var redimensionada = new System.Drawing.Bitmap(original, tamanho))
                     using (var desenho = System.Drawing.Graphics.FromImage(miniatura))
-                    using (var textura = new System.Drawing.TextureBrush(redimensionada,
-                        System.Drawing.Drawing2D.WrapMode.Clamp))
+                    using (var fundo = new System.Drawing.SolidBrush(System.Drawing.Color.White))
+                    using (var borda = new System.Drawing.Pen(System.Drawing.Color.FromArgb(226, 232, 240)))
                     using (var contorno = VisualUtils.CriarRetanguloArredondado(
-                        new System.Drawing.Rectangle(0, 0, tamanho.Width, tamanho.Height), 10))
+                        new System.Drawing.Rectangle(0, 0, tamanhoMiniatura - 1, tamanhoMiniatura - 1), 9))
                     {
                         desenho.Clear(System.Drawing.Color.Transparent);
                         desenho.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                        desenho.FillPath(textura, contorno);
+                        desenho.FillPath(fundo, contorno);
+                        desenho.SetClip(contorno);
+
+                        double escala = Math.Min(
+                            (double)(tamanhoMiniatura - margemImagem * 2) / original.Width,
+                            (double)(tamanhoMiniatura - margemImagem * 2) / original.Height);
+                        int largura = Math.Max(1, (int)Math.Round(original.Width * escala));
+                        int altura = Math.Max(1, (int)Math.Round(original.Height * escala));
+                        int x = (tamanhoMiniatura - largura) / 2;
+                        int y = (tamanhoMiniatura - altura) / 2;
+
+                        desenho.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        desenho.DrawImage(original, new System.Drawing.Rectangle(x, y, largura, altura));
+                        desenho.ResetClip();
+                        desenho.DrawPath(borda, contorno);
                     }
                     imagensDaGrade.Add(miniatura);
                     return miniatura;

@@ -12,10 +12,12 @@ namespace CASE
     {
         private readonly Usuario usuarioAutenticado;
         private bool administrador;
+        private bool gerente;
         private readonly LocalEstoqueService localEstoqueService = new LocalEstoqueService();
         private readonly EstoqueService estoqueService = new EstoqueService();
         private readonly ProdutoService produtoService = new ProdutoService();
         private readonly Dictionary<int, Produto> produtosPorId = new Dictionary<int, Produto>();
+        private readonly Button btnConfigurarLimites = new Button();
         private TextBox pesquisa;
         private MovimentacoesControl historicoMercadorias;
         private bool exibindoHistorico;
@@ -34,7 +36,7 @@ namespace CASE
             btnFornecedores.TabStop = false;
             usuarioAutenticado = usuario;
             lblTitulo.Text = "Estoque";
-            lblSubtitulo.Text = "Consulte os saldos ou acompanhe o histórico de mercadorias.";
+            lblSubtitulo.Text = "Consulte saldos e situações. Selecione um produto para ajustar o mínimo e o ideal.";
             btnAbaSaldo.Text = "Saldo disponível";
             btnAbaHistorico.Text = "Histórico de mercadorias";
             btnAbaHistorico.Width = 230;
@@ -54,7 +56,25 @@ namespace CASE
             btnTransferir.BackColor = VisualUtils.Azul;
             btnTransferir.ForeColor = System.Drawing.Color.White;
             btnTransferir.Width = 220;
+            btnConfigurarLimites.Name = "btnConfigurarLimitesEstoque";
+            btnConfigurarLimites.Text = "Definir mínimo e ideal";
+            btnConfigurarLimites.Size = new System.Drawing.Size(190, 40);
+            btnConfigurarLimites.Visible = false;
+            btnConfigurarLimites.CausesValidation = false;
+            btnConfigurarLimites.Enabled = false;
+            btnConfigurarLimites.Click += (s, e) =>
+            {
+                if (dgvSaldos.SelectedRows.Count == 0)
+                {
+                    lblMensagem.Text = "Selecione um produto para definir o mínimo e o ideal.";
+                    return;
+                }
+                ConfigurarLimitesEstoque(this,
+                    new DataGridViewCellEventArgs(0, dgvSaldos.SelectedRows[0].Index));
+            };
+            panelAcoes.Controls.Add(btnConfigurarLimites);
             dgvSaldos.CellDoubleClick += ConfigurarLimitesEstoque;
+            dgvSaldos.SelectionChanged += (s, e) => AtualizarAcaoLimites();
             ContextMenuStrip menuSaldos = new ContextMenuStrip();
             ToolStripMenuItem resumoSaldos = new ToolStripMenuItem("Visão geral dos saldos autorizados");
             resumoSaldos.Click += (s, e) =>
@@ -93,6 +113,8 @@ namespace CASE
             dgvHistorico.Columns[4].FillWeight = 180;
             VisualUtils.AplicarIcone(btnEntrada, Properties.Resources.LucideAcaoEntrada);
             VisualUtils.AplicarIcone(btnTransferir, Properties.Resources.LucideAcaoTransferencia);
+            VisualUtils.EstilizarBotao(btnConfigurarLimites);
+            VisualUtils.Arredondar(btnConfigurarLimites, 8);
             VisualUtils.AplicarIcone(btnFornecedores, Properties.Resources.LucideAcaoFornecedores);
             btnAbaSaldo.Click += (s, e) => SelecionarAba(false);
             btnAbaHistorico.Click += (s, e) => SelecionarAba(true);
@@ -105,6 +127,7 @@ namespace CASE
                 lblMensagem.Text = "Autentique-se para consultar os estoques.";
                 btnEntrada.Enabled = false;
                 btnTransferir.Enabled = false;
+                btnConfigurarLimites.Visible = false;
                 return;
             }
 
@@ -114,16 +137,20 @@ namespace CASE
                 string perfil;
                 new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
                 administrador = perfil == "Administrador";
+                gerente = perfil == "Gerente";
+                btnConfigurarLimites.Visible = administrador || gerente;
                 btnEntrada.Enabled = perfil == "Administrador" && cmbLocal.Items.Count > 0;
                 btnTransferir.Enabled = (perfil == "Administrador" || perfil == "Gerente") && cmbLocal.Items.Count > 0;
                 btnFornecedores.Enabled = perfil == "Administrador" || perfil == "Gerente";
                 AtualizarAcaoTransferencia();
+                AtualizarAcaoLimites();
             }
             catch (Exception)
             {
                 btnEntrada.Enabled = false;
                 btnTransferir.Enabled = false;
                 btnFornecedores.Enabled = false;
+                btnConfigurarLimites.Visible = false;
             }
         }
 
@@ -321,6 +348,16 @@ namespace CASE
                 : "Abre a transferência entre locais do mesmo evento, com a origem selecionada.";
         }
 
+        private void AtualizarAcaoLimites()
+        {
+            LocalEstoque local = cmbLocal.SelectedItem as LocalEstoque;
+            bool localPermitido = local != null && (!local.EhCentral || administrador);
+            btnConfigurarLimites.Enabled = (administrador || gerente) && localPermitido &&
+                dgvSaldos.SelectedRows.Count > 0;
+            btnConfigurarLimites.AccessibleDescription = "Define o estoque mínimo e ideal do produto selecionado neste local. " +
+                "O saldo é considerado baixo quando fica igual ou abaixo do mínimo.";
+        }
+
         private void Organizar()
         {
             int altura = Math.Max(740, ClientSize.Height);
@@ -335,12 +372,14 @@ namespace CASE
                 btnEntrada.SetBounds(24, 84, btnEntrada.Width, 40);
                 btnTransferir.SetBounds(216, 84, btnTransferir.Width, 40);
                 btnFornecedores.SetBounds(408, 84, btnFornecedores.Width, 40);
+                btnConfigurarLimites.SetBounds(450, 84, btnConfigurarLimites.Width, 40);
             }
             else
             {
                 btnEntrada.SetBounds(378, 40, btnEntrada.Width, 40);
                 btnTransferir.SetBounds(570, 40, btnTransferir.Width, 40);
                 btnFornecedores.SetBounds(762, 40, btnFornecedores.Width, 40);
+                btnConfigurarLimites.SetBounds(800, 40, btnConfigurarLimites.Width, 40);
             }
             panelAcoes.SetBounds(24 + deslocamentoX, 112 + deslocamentoY, largura - 48, alturaAcoes);
             // As ações e o local selecionado permanecem visíveis nas duas abas.
@@ -402,37 +441,44 @@ namespace CASE
         {
             AtualizarAcaoTransferencia();
             Atualizar();
+            AtualizarAcaoLimites();
         }
 
         private void Atualizar()
         {
-
-            dgvSaldos.Rows.Clear();
-            dgvHistorico.Rows.Clear();
-            produtosPorId.Clear();
+            AtualizarAcaoLimites();
 
             LocalEstoque local = cmbLocal.SelectedItem as LocalEstoque;
 
             if (local == null || usuarioAutenticado == null)
             {
+                dgvSaldos.Rows.Clear();
+                dgvHistorico.Rows.Clear();
+                produtosPorId.Clear();
                 return;
             }
 
             try
             {
                 System.Data.DataTable produtos = new ConsultaOperacionalService().Estoques(usuarioAutenticado);
+                Dictionary<int, Produto> produtosCarregados = new Dictionary<int, Produto>();
                 foreach (System.Data.DataRow linhaProduto in produtos.Rows)
                 {
                     Produto produto = new Produto();
                     produto.IdProduto = Convert.ToInt32(linhaProduto["id_produto"]);
                     produto.Nome = Convert.ToString(linhaProduto["produto"]);
                     produto.UnidadeMedida = Convert.ToString(linhaProduto["unidade_medida"]);
-                    produtosPorId[produto.IdProduto] = produto;
+                    produtosCarregados[produto.IdProduto] = produto;
                 }
 
                 List<Estoque> saldos = estoqueService.ListarPorLocal(
                     usuarioAutenticado,
                     local.IdLocalEstoque);
+                System.Data.DataTable movimentos = new ConsultaOperacionalService().Movimentacoes(
+                    usuarioAutenticado, DateTime.Today.AddDays(-30), DateTime.Today);
+                List<object[]> linhasSaldo = new List<object[]>();
+                List<Estoque> saldosDasLinhas = new List<Estoque>();
+                List<object[]> linhasHistorico = new List<object[]>();
                 int produtosComSaldo = 0;
                 int estoquesBaixos = 0;
                 int semEstoque = 0;
@@ -443,7 +489,7 @@ namespace CASE
                     string nomeProduto = "Produto " + estoque.IdProduto;
                     string unidade = string.Empty;
 
-                    if (produtosPorId.TryGetValue(estoque.IdProduto, out produto))
+                    if (produtosCarregados.TryGetValue(estoque.IdProduto, out produto))
                     {
                         nomeProduto = produto.Nome;
                         unidade = produto.UnidadeMedida;
@@ -454,14 +500,10 @@ namespace CASE
                         : estoque.QuantidadeAtual <= estoque.QuantidadeMinima
                             ? "Estoque baixo"
                             : "Normal";
-                    int linha = dgvSaldos.Rows.Add(
-                        nomeProduto,
+                    linhasSaldo.Add(new object[] { nomeProduto,
                         estoque.QuantidadeAtual.ToString("N0", CultureInfo.GetCultureInfo("pt-BR")),
-                        estoque.QuantidadeMinima.ToString("N0", CultureInfo.GetCultureInfo("pt-BR")),
-                        situacao,
-                        unidade);
-
-                    dgvSaldos.Rows[linha].Tag = estoque;
+                        estoque.QuantidadeMinima.ToString("N0", CultureInfo.GetCultureInfo("pt-BR")), situacao, unidade });
+                    saldosDasLinhas.Add(estoque);
 
                     if (estoque.QuantidadeAtual > 0)
                     {
@@ -476,14 +518,8 @@ namespace CASE
                         semEstoque++;
                     }
 
-                    dgvSaldos.Rows[linha].Cells[3].Style.ForeColor = situacao == "Normal"
-                        ? System.Drawing.Color.FromArgb(5, 150, 105)
-                        : System.Drawing.Color.FromArgb(185, 28, 28);
                 }
 
-                dgvSaldos.ClearSelection();
-                System.Data.DataTable movimentos = new ConsultaOperacionalService().Movimentacoes(
-                    usuarioAutenticado, DateTime.Today.AddDays(-30), DateTime.Today);
                 foreach (System.Data.DataRow movimento in movimentos.Rows)
                 {
                     int origem = Convert.ToInt32(movimento["id_origem"]);
@@ -497,24 +533,41 @@ namespace CASE
                     {
                         quantidade = -quantidade;
                     }
-                    dgvHistorico.Rows.Add(movimento["data_hora"], movimento["produto"],
+                    linhasHistorico.Add(new object[] { movimento["data_hora"], movimento["produto"],
                         movimento["tipo"], quantidade,
-                        movimento["origem"] + " → " + movimento["destino"] + " / " + movimento["responsavel"]);
+                        movimento["origem"] + " → " + movimento["destino"] + " / " + movimento["responsavel"] });
                 }
+
+                dgvSaldos.Rows.Clear();
+                dgvHistorico.Rows.Clear();
+                produtosPorId.Clear();
+                foreach (KeyValuePair<int, Produto> par in produtosCarregados)
+                    produtosPorId[par.Key] = par.Value;
+                for (int i = 0; i < linhasSaldo.Count; i++)
+                {
+                    int linha = dgvSaldos.Rows.Add(linhasSaldo[i]);
+                    dgvSaldos.Rows[linha].Tag = saldosDasLinhas[i];
+                    string situacao = Convert.ToString(linhasSaldo[i][3]);
+                    dgvSaldos.Rows[linha].Cells[3].Style.ForeColor = situacao == "Normal"
+                        ? System.Drawing.Color.FromArgb(5, 150, 105)
+                        : System.Drawing.Color.FromArgb(185, 28, 28);
+                }
+                foreach (object[] linha in linhasHistorico)
+                    dgvHistorico.Rows.Add(linha);
+                dgvSaldos.ClearSelection();
                 VisualUtils.ExibirEstadoVazio(dgvHistorico, "Nenhuma movimentação neste local nos últimos 30 dias.");
                 lblResumo.Text = produtosComSaldo + " com saldo · " +
                     estoquesBaixos + " abaixo do mínimo · " + semEstoque + " sem estoque";
                 VisualUtils.FiltrarGrades(this, pesquisa.Text.Trim());
+                AtualizarAcaoLimites();
             }
             catch (UnauthorizedAccessException)
             {
                 lblMensagem.Text = "Sua conta não tem acesso a este local.";
-                dgvSaldos.Rows.Clear();
             }
             catch (Exception)
             {
                 lblMensagem.Text = "Não foi possível carregar os saldos deste local.";
-                dgvSaldos.Rows.Clear();
             }
         }
     }

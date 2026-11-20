@@ -17,11 +17,16 @@ namespace CASE.Utils
         {
             if (raiz is UserControl || raiz is Form)
                 raiz.BackColor = Fundo;
-            foreach (Control controle in raiz.Controls)
+            Control[] controles = new Control[raiz.Controls.Count];
+            raiz.Controls.CopyTo(controles, 0);
+            foreach (Control controle in controles)
             {
                 object aplicado;
                 if (Estilizados.TryGetValue(controle, out aplicado))
                 {
+                    TextBox campoExistente = controle as TextBox;
+                    if (campoExistente != null && !(campoExistente.Parent is NumericUpDown))
+                        VisualUtils.EstilizarCampo(campoExistente);
                     Aplicar(controle);
                     continue;
                 }
@@ -63,7 +68,7 @@ namespace CASE.Utils
                     grade.CellPainting += PintarCelula;
                 }
                 var campo = controle as TextBox;
-                if (campo != null)
+                if (campo != null && !(campo.Parent is NumericUpDown))
                 {
                     VisualUtils.EstilizarCampo(campo);
                 }

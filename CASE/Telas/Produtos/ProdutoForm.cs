@@ -213,11 +213,20 @@ namespace CASE
                     "Mínimo e ideal: limites por local em Estoque.\n" +
                     "Preço de venda: Equipes e setores → Produtos e preços."
             };
-            orientacao.SetBounds(txtNomeProduto.Left, 236, txtNomeProduto.Width, 86);
+            Control contornoNome = ControleVisual(txtNomeProduto);
+            orientacao.SetBounds(contornoNome.Left, 236, contornoNome.Width, 86);
             panelProduto.Controls.Add(orientacao);
             VisualUtils.Arredondar(orientacao, 8);
             lblDescricaoProduto.Top = 334;
-            txtDescricaoProduto.Top = 363;
+            ControleVisual(txtDescricaoProduto).Top = 363;
+        }
+
+        private static Control ControleVisual(TextBox campo)
+        {
+            Panel painel = campo == null ? null : campo.Parent as Panel;
+            return painel != null && painel.Controls.Count == 1 && painel.Controls[0] == campo
+                ? (Control)painel
+                : campo;
         }
 
         private void ConfigurarSelecaoDeImagem()

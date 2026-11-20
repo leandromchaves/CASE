@@ -302,6 +302,14 @@ panelSolicitacoesPendentes };
             if (existente != null)
                 return existente;
 
+            Panel painelCriadoPeloTema = campo.Parent as Panel;
+            if (painelCriadoPeloTema != null && painelCriadoPeloTema.Parent == contenedor &&
+                painelCriadoPeloTema.Controls.Count == 1 && painelCriadoPeloTema.Controls[0] == campo)
+            {
+                painelCriadoPeloTema.Name = nomePainel;
+                return painelCriadoPeloTema;
+            }
+
             System.Drawing.Rectangle limites = campo.Bounds;
             AnchorStyles ancora = campo.Anchor;
             int indice = contenedor.Controls.GetChildIndex(campo);
@@ -318,17 +326,34 @@ panelSolicitacoesPendentes };
             painelCampo.Controls.Add(campo);
             contenedor.Controls.Add(painelCampo);
             contenedor.Controls.SetChildIndex(painelCampo, Math.Min(indice, contenedor.Controls.Count - 1));
-            VisualUtils.EstilizarCampo(campo);
-            // Alguns campos do Designer já receberam o estilo padrão antes de serem
-            // envolvidos. Reaplica aqui o estilo interno do campo arredondado.
-            campo.BorderStyle = BorderStyle.None;
-            campo.BackColor = System.Drawing.Color.White;
             campo.AutoSize = false;
+            campo.BorderStyle = BorderStyle.None;
+            campo.BackColor = painelCampo.BackColor;
+            campo.ForeColor = VisualUtils.Texto;
+            campo.Cursor = Cursors.IBeam;
             campo.Dock = DockStyle.Fill;
             campo.Margin = Padding.Empty;
+            // Alguns campos do Designer já receberam o estilo padrão antes de serem
+            // envolvidos. Reaplica aqui o estilo interno do campo arredondado.
+            campo.BringToFront();
             painelCampo.MouseDown += (s, e) => campo.Focus();
             VisualUtils.Arredondar(painelCampo, 7);
             VisualUtils.AplicarBorda(painelCampo);
+            painelCampo.Paint += (s, e) =>
+            {
+                if (!campo.Focused || painelCampo.ClientSize.Width < 3 || painelCampo.ClientSize.Height < 3)
+                    return;
+                e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                using (System.Drawing.Drawing2D.GraphicsPath caminho = VisualUtils.CriarRetanguloArredondado(
+                    new System.Drawing.Rectangle(1, 1, painelCampo.ClientSize.Width - 2,
+                        painelCampo.ClientSize.Height - 2), 7))
+                using (System.Drawing.Pen caneta = new System.Drawing.Pen(VisualUtils.Azul, 1.5F))
+                {
+                    e.Graphics.DrawPath(caneta, caminho);
+                }
+            };
+            campo.Enter += (s, e) => painelCampo.Invalidate();
+            campo.Leave += (s, e) => painelCampo.Invalidate();
             painelCampo.SizeChanged += AjustarArredondamento;
             return painelCampo;
         }
@@ -548,11 +573,11 @@ panelSolicitacoesPendentes };
 
             try
             {
-                lista.Items.Clear();
                 lista.DisplayMember = "Nome";
                 CategoriaService categoriaService = new CategoriaService();
                 var categorias = categoriaService.Listar(usuarioAutenticado);
 
+                lista.Items.Clear();
                 foreach (Categoria categoria in categorias)
                 {
                     lista.Items.Add(categoria);
@@ -627,7 +652,6 @@ panelSolicitacoesPendentes };
             painel.Controls.Add(nome);
             painel.Controls.Add(novo);
             painel.Controls.Add(salvar);
-            FrontendTheme.Aplicar(painel);
             PrepararEditorCadastro(painel, lista, nome, novo, salvar, mensagem, () =>
             {
                 Categoria categoria = (Categoria)lista.SelectedItem;
@@ -635,6 +659,7 @@ panelSolicitacoesPendentes };
                     throw new InvalidOperationException("A categoria não foi encontrada. Atualize a lista.");
                 CarregarCategorias(lista);
             });
+            FrontendTheme.Aplicar(painel);
         }
 
         private Panel CriarCadastroTiposEvento(System.Drawing.Rectangle area)
@@ -662,8 +687,9 @@ panelSolicitacoesPendentes };
             TipoEventoService service = new TipoEventoService();
             EventHandler carregar = (s, e) =>
             {
+                var tipos = service.Listar(usuarioAutenticado);
                 lista.Items.Clear();
-                foreach (TipoEvento tipo in service.Listar(usuarioAutenticado))
+                foreach (TipoEvento tipo in tipos)
                 {
                     lista.Items.Add(tipo);
                 }
@@ -714,7 +740,6 @@ panelSolicitacoesPendentes };
             painel.Controls.Add(nome);
             painel.Controls.Add(novo);
             painel.Controls.Add(salvar);
-            FrontendTheme.Aplicar(painel);
             PrepararEditorCadastro(painel, lista, nome, novo, salvar, mensagem, () =>
             {
                 TipoEvento tipo = (TipoEvento)lista.SelectedItem;
@@ -722,6 +747,7 @@ panelSolicitacoesPendentes };
                     throw new InvalidOperationException("O tipo de evento não foi encontrado. Atualize a lista.");
                 carregar(this, EventArgs.Empty);
             });
+            FrontendTheme.Aplicar(painel);
             if (administrador)
             {
                 try
@@ -874,17 +900,19 @@ panelSolicitacoesPendentes };
             ConfiguracaoInstitucionalService service = new ConfiguracaoInstitucionalService();
             EventHandler carregar = (s, e) =>
             {
+                var turnos = ehTurno ? service.ListarTurnos(usuarioAutenticado) : null;
+                var funcoes = ehTurno ? null : service.ListarFuncoesEquipe(usuarioAutenticado);
                 lista.Items.Clear();
                 if (ehTurno)
                 {
-                    foreach (Turno item in service.ListarTurnos(usuarioAutenticado))
+                    foreach (Turno item in turnos)
                     {
                         lista.Items.Add(item);
                     }
                 }
                 else
                 {
-                    foreach (Perfil item in service.ListarFuncoesEquipe(usuarioAutenticado))
+                    foreach (Perfil item in funcoes)
                     {
                         lista.Items.Add(item);
                     }
@@ -938,7 +966,6 @@ panelSolicitacoesPendentes };
             painel.Controls.Add(nome);
             painel.Controls.Add(novo);
             painel.Controls.Add(salvar);
-            FrontendTheme.Aplicar(painel);
             PrepararEditorCadastro(painel, lista, nome, novo, salvar, mensagem, () =>
             {
                 bool excluiu = ehTurno
@@ -948,6 +975,7 @@ panelSolicitacoesPendentes };
                     throw new InvalidOperationException("O cadastro não foi encontrado. Atualize a lista.");
                 carregar(this, EventArgs.Empty);
             });
+            FrontendTheme.Aplicar(painel);
             if (administrador)
             {
                 try

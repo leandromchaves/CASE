@@ -1076,7 +1076,7 @@ CriarSnapshot(conexao, transacao, atual.IdTransferencia));
                 "AND ((origem.id_instituicao_central IS NOT NULL AND ps.nome='Administrador') OR " +
                 "origem.eh_geral_evento=1 OR EXISTS (" +
                 "SELECT 1 FROM estoquesetor es " +
-                "WHERE es.id_local_estoque=origem.id_local_estoque))) " +
+                "WHERE es.id_local_estoque=origem.id_local_estoque)) " +
                 "AND (destino.eh_geral_evento=1 OR EXISTS (" +
                 "SELECT 1 FROM estoquesetor es " +
                 "WHERE es.id_local_estoque=destino.id_local_estoque)) " +

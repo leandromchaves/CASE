@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Windows.Forms;
 using CASE.Utils;
 using CASE.Models;
@@ -126,9 +127,9 @@ namespace CASE
 
         private void AtualizarSaldos(object sender, EventArgs e)
         {
-            dgvEstoque.Rows.Clear();
             if (usuarioAutenticado == null)
             {
+                dgvEstoque.Rows.Clear();
                 lblListaEstoque.Text = "Autentique-se para consultar os saldos.";
                 btnAtualizarEstoque.Enabled = false;
                 return;
@@ -136,6 +137,7 @@ namespace CASE
             try
             {
                 DataTable saldos = new ConsultaOperacionalService().Estoques(usuarioAutenticado);
+                List<object[]> linhas = new List<object[]>();
                 foreach (DataRow saldo in saldos.Rows)
                 {
                     decimal atual = Convert.ToDecimal(saldo["quantidade_atual"]);
@@ -149,9 +151,12 @@ namespace CASE
                     {
                         situacao = "Estoque baixo";
                     }
-                    dgvEstoque.Rows.Add(saldo["id_produto"], saldo["produto"], saldo["local"],
-                        atual, minimo, saldo["quantidade_ideal"], situacao);
+                    linhas.Add(new object[] { saldo["id_produto"], saldo["produto"], saldo["local"],
+                        atual, minimo, saldo["quantidade_ideal"], situacao });
                 }
+                dgvEstoque.Rows.Clear();
+                foreach (object[] linha in linhas)
+                    dgvEstoque.Rows.Add(linha);
                 AplicarFiltros();
                 lblListaEstoque.Text = saldos.Rows.Count + " saldo(s) autorizado(s) por produto e local";
                 VisualUtils.ExibirEstadoVazio(dgvEstoque, "Nenhum saldo autorizado encontrado.");

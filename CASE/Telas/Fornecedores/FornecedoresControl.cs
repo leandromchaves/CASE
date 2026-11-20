@@ -259,22 +259,33 @@ namespace CASE
 
         private void PrepararCampoFormulario(TextBox campo, Rectangle limites)
         {
-            panelEdicao.Controls.Remove(campo);
-            Panel painel = new Panel
+            Panel painel = campo.Parent as Panel;
+            bool reutilizarPainel = painel != null && painel.Parent == panelEdicao;
+
+            if (!reutilizarPainel)
             {
-                Name = "painel" + campo.Name,
-                Bounds = limites,
-                BackColor = Color.White,
-                Padding = new Padding(12, 2, 12, 2),
-                Cursor = Cursors.IBeam
-            };
+                Control paiAnterior = campo.Parent;
+                if (paiAnterior != null)
+                    paiAnterior.Controls.Remove(campo);
+
+                painel = new Panel
+                {
+                    Name = "painel" + campo.Name,
+                    BackColor = Color.White,
+                    Cursor = Cursors.IBeam
+                };
+                painel.Controls.Add(campo);
+                panelEdicao.Controls.Add(painel);
+            }
+
+            painel.Bounds = limites;
+            painel.Padding = new Padding(12, 2, 12, 2);
             campo.Dock = DockStyle.Fill;
             campo.Margin = Padding.Empty;
             campo.Font = new Font("Segoe UI", 10F);
-            painel.Controls.Add(campo);
-            panelEdicao.Controls.Add(painel);
             VisualUtils.Arredondar(painel, 7);
             VisualUtils.AplicarBorda(painel);
+            VisualUtils.EstilizarCampo(campo);
         }
 
         private void ConfigurarExclusao()
@@ -372,16 +383,12 @@ namespace CASE
             }
             catch (UnauthorizedAccessException)
             {
-                fornecedores = new List<Fornecedor>();
-                dgvFornecedores.Rows.Clear();
                 btnNovo.Enabled = false;
                 btnSalvar.Enabled = false;
                 lblMensagem.Text = "Seu perfil não pode consultar fornecedores.";
             }
             catch (Exception)
             {
-                fornecedores = new List<Fornecedor>();
-                dgvFornecedores.Rows.Clear();
                 lblMensagem.Text = "Não foi possível carregar os fornecedores.";
             }
         }

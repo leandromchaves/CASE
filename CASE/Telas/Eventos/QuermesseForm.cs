@@ -55,7 +55,7 @@ namespace CASE.Quermesse
 
 
             lblObservacao.Top = 438;
-            txtObservacaoQuermesse.Top = 464;
+            ControleVisual(txtObservacaoQuermesse).Top = 464;
             labelAvisoFormulario.Top = 499;
 
             txtNomeQuermesse.TabIndex = 0;
@@ -123,9 +123,9 @@ namespace CASE.Quermesse
 
         private void AlinharCamposEvento()
         {
-            Control[] campos = { txtNomeQuermesse, cmbTipoEvento, txtLocalQuermesse,
-                dtpInicioQuermesse, dtpFimQuermesse, txtResponsavelQuermesse,
-                cmbSituacaoQuermesse, txtObservacaoQuermesse };
+            Control[] campos = { ControleVisual(txtNomeQuermesse), cmbTipoEvento, ControleVisual(txtLocalQuermesse),
+                dtpInicioQuermesse, dtpFimQuermesse, ControleVisual(txtResponsavelQuermesse),
+                cmbSituacaoQuermesse, ControleVisual(txtObservacaoQuermesse) };
             Label[] rotulos = { lblNomedoevento, lblTipoEvento, lblLocal, lblDatainicial,
                 lblDatafinal, lblResponsavel, lblSituacao, lblObservacao };
             for (int i = 0; i < campos.Length; i++)
@@ -143,15 +143,25 @@ namespace CASE.Quermesse
             }
         }
 
+        private static Control ControleVisual(TextBox campo)
+        {
+            Panel painel = campo == null ? null : campo.Parent as Panel;
+            return painel != null && painel.Controls.Count == 1 && painel.Controls[0] == campo
+                ? (Control)painel
+                : campo;
+        }
+
         private void ConfigurarGerenteResponsavel(int? idResponsavelAtual)
         {
             lblResponsavel.Text = "Gerente responsável";
+            Control contornoResponsavel = ControleVisual(txtResponsavelQuermesse);
             txtResponsavelQuermesse.Visible = false;
+            contornoResponsavel.Visible = false;
             gerenteResponsavel = new ComboBox
             {
                 Name = "cmbGerenteResponsavel",
-                Bounds = txtResponsavelQuermesse.Bounds,
-                Anchor = txtResponsavelQuermesse.Anchor,
+                Bounds = contornoResponsavel.Bounds,
+                Anchor = contornoResponsavel.Anchor,
                 Font = txtResponsavelQuermesse.Font,
                 DisplayMember = "Nome",
                 DropDownStyle = ComboBoxStyle.DropDownList,

@@ -54,10 +54,12 @@ namespace CASE.Quermesse
             lblContextoRegistro.Text = "Selecione uma escala de trabalho";
             panelNovoRegistro.Visible = false;
             lblObservacao.Width = 120;
-            txtObservacaoRegistro.Left = 150;
-            txtObservacaoRegistro.AutoSize = true;
-            txtObservacaoRegistro.BorderStyle = BorderStyle.FixedSingle;
-            txtObservacaoRegistro.BringToFront();
+            Panel painelObservacao = txtObservacaoRegistro.Parent as Panel;
+            if (painelObservacao != null && painelObservacao.Parent == panelNovoRegistro)
+            {
+                painelObservacao.Left = 150;
+                painelObservacao.BringToFront();
+            }
             VisualUtils.DefinirPlaceholder(txtObservacaoRegistro, "Detalhes ou justificativa da perda");
             lblSetor.Text = "Escala de trabalho";
             lblFuncionario.Visible = false;
@@ -275,44 +277,55 @@ namespace CASE.Quermesse
 
         private void AtualizarRegistros()
         {
-
-            DataTable dados = consultas.Registros(usuarioAutenticado, IdEvento(),
-                new DateTime(2000, 1, 1), DateTime.Today);
-            DataRowView escala = cmbSetorRegistro.SelectedItem as DataRowView;
-            HashSet<int> permitidos = new HashSet<int>();
-            if (escala != null)
-                foreach (Registro registro in new RegistroService().ListarPorEscala(usuarioAutenticado, Convert.ToInt32(escala["id_escala"])))
-                    permitidos.Add(registro.IdRegistro);
-            HashSet<int> lancamentos = new HashSet<int>();
-            decimal totalVendas = 0;
-            bool totalCompleto = true;
-            dgvRegistrosEquipe.Rows.Clear();
-            foreach (DataRow linha in dados.Rows)
+            try
             {
-                int id = Convert.ToInt32(linha["id_registro"]);
-                if (!permitidos.Contains(id))
-                    continue;
-                lancamentos.Add(id);
-                bool venda = Convert.ToString(linha["tipo"]) == "venda";
-                if (venda)
+                DataTable dados = consultas.Registros(usuarioAutenticado, IdEvento(),
+                    new DateTime(2000, 1, 1), DateTime.Today);
+                DataRowView escala = cmbSetorRegistro.SelectedItem as DataRowView;
+                HashSet<int> permitidos = new HashSet<int>();
+                if (escala != null)
+                    foreach (Registro registro in new RegistroService().ListarPorEscala(usuarioAutenticado, Convert.ToInt32(escala["id_escala"])))
+                        permitidos.Add(registro.IdRegistro);
+                HashSet<int> lancamentos = new HashSet<int>();
+                List<object[]> linhas = new List<object[]>();
+                decimal totalVendas = 0;
+                bool totalCompleto = true;
+                foreach (DataRow linha in dados.Rows)
                 {
-                    if (linha.IsNull("total"))
-                        totalCompleto = false;
-                    else
-                        totalVendas += Convert.ToDecimal(linha["total"]);
+                    int id = Convert.ToInt32(linha["id_registro"]);
+                    if (!permitidos.Contains(id))
+                        continue;
+                    lancamentos.Add(id);
+                    bool venda = Convert.ToString(linha["tipo"]) == "venda";
+                    if (venda)
+                    {
+                        if (linha.IsNull("total")) totalCompleto = false;
+                        else totalVendas += Convert.ToDecimal(linha["total"]);
+                    }
+                    string pagamento = Convert.ToString(linha["forma_pagamento"]);
+                    linhas.Add(new object[] { id, linha["data_hora"], linha["responsavel"], linha["setor"],
+                        linha["turno"], venda ? "Venda" : "Perda", linha["produto"], linha["quantidade"],
+                        linha["observacao"], venda ? linha["preco_unitario_praticado"] : DBNull.Value,
+                        !venda ? "—" : pagamento == "cartao" ? "Cartão" : pagamento == "pix" ? "Pix" : pagamento == "dinheiro" ? "Dinheiro" : "Não informado",
+                        venda ? linha["total"] : DBNull.Value });
                 }
-                string pagamento = Convert.ToString(linha["forma_pagamento"]);
-                int indice = dgvRegistrosEquipe.Rows.Add(linha["data_hora"], linha["responsavel"], linha["setor"],
-                    linha["turno"], venda ? "Venda" : "Perda", linha["produto"], linha["quantidade"],
-                    linha["observacao"], venda ? linha["preco_unitario_praticado"] : DBNull.Value,
-                    !venda ? "—" : pagamento == "cartao" ? "Cartão" : pagamento == "pix" ? "Pix" : pagamento == "dinheiro" ? "Dinheiro" : "Não informado",
-                    id, venda ? linha["total"] : DBNull.Value);
-                dgvRegistrosEquipe.Rows[indice].Tag = id;
+                dgvRegistrosEquipe.Rows.Clear();
+                foreach (object[] linha in linhas)
+                {
+                    int indice = dgvRegistrosEquipe.Rows.Add(linha[1], linha[2], linha[3], linha[4], linha[5],
+                        linha[6], linha[7], linha[8], linha[9], linha[10], linha[0], linha[11]);
+                    dgvRegistrosEquipe.Rows[indice].Tag = linha[0];
+                }
+                resumoRegistros.Text = "Na escala: " + lancamentos.Count + " lançamento(s) • " + dgvRegistrosEquipe.Rows.Count +
+                    " item(ns) • Vendas: " + (totalCompleto ? totalVendas.ToString("C2") : "preços incompletos");
+                VisualUtils.ExibirEstadoVazio(dgvRegistrosEquipe, escala == null ? "Selecione uma escala para consultar os lançamentos." : "Nenhuma venda ou perda registrada nesta escala.");
+                VisualUtils.FiltrarGrades(panelListaRegistros, pesquisa.Text.Trim());
             }
-            resumoRegistros.Text = "Na escala: " + lancamentos.Count + " lançamento(s) • " + dgvRegistrosEquipe.Rows.Count +
-                " item(ns) • Vendas: " + (totalCompleto ? totalVendas.ToString("C2") : "preços incompletos");
-            VisualUtils.ExibirEstadoVazio(dgvRegistrosEquipe, escala == null ? "Selecione uma escala para consultar os lançamentos." : "Nenhuma venda ou perda registrada nesta escala.");
-            VisualUtils.FiltrarGrades(panelListaRegistros, pesquisa.Text.Trim());
+            catch (Exception erro)
+            {
+                labelAviso.Text = "Não foi possível atualizar os lançamentos. Seus registros continuam salvos.";
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, labelAviso.Text, labelAviso);
+            }
         }
 
         private void CorrigirRegistro(object sender, EventArgs e)
@@ -435,7 +448,15 @@ namespace CASE.Quermesse
                 legendaPreco.Width = compacto ? 130 : 200;
                 btnRegistrar.Width = compacto ? 185 : 220;
                 btnRegistrar.Left = compacto ? panelNovoRegistro.ClientSize.Width - btnRegistrar.Width - 18 : 748;
-                txtObservacaoRegistro.Width = compacto ? Math.Max(140, btnRegistrar.Left - txtObservacaoRegistro.Left - 16) : 560;
+                Panel painelObservacao = txtObservacaoRegistro.Parent as Panel;
+                int observacaoEsquerda = painelObservacao == null ? txtObservacaoRegistro.Left : painelObservacao.Left;
+                int observacaoLargura = compacto
+                    ? Math.Max(140, btnRegistrar.Left - observacaoEsquerda - 16)
+                    : 560;
+                if (painelObservacao != null && painelObservacao.Parent == panelNovoRegistro)
+                    painelObservacao.Width = observacaoLargura;
+                else
+                    txtObservacaoRegistro.Width = observacaoLargura;
             }
             finally
             {

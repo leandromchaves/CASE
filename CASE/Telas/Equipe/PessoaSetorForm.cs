@@ -43,20 +43,23 @@ namespace CASE.Quermesse
             cmbSetorFuncionario.Visible = lblSetorbarraca.Visible = false;
             cmbTurnoFuncionario.Visible = lblTurno.Visible = false;
             lblUsuario.Top = 140;
-            txtLoginFuncionario.Top = 164;
             lblUsuario.Text = "Usuário (preenchido automaticamente)";
-            var painelUsuario = new Panel
-            {
-                Name = "panelUsuarioFuncionario", BackColor = VisualUtils.Fundo
-            };
+            Panel painelUsuario = txtLoginFuncionario.Parent as Panel;
+            if (painelUsuario == null || painelUsuario.Controls.Count != 1)
+                painelUsuario = new Panel();
+            painelUsuario.Name = "panelUsuarioFuncionario";
+            painelUsuario.BackColor = VisualUtils.Fundo;
             painelUsuario.SetBounds(28, 164, 550, 38);
-            panelFormulario.Controls.Remove(txtLoginFuncionario);
+            if (painelUsuario.Parent != null)
+                painelUsuario.Parent.Controls.Remove(painelUsuario);
+            painelUsuario.Controls.Remove(txtLoginFuncionario);
             painelUsuario.Controls.Add(txtLoginFuncionario);
             panelFormulario.Controls.Add(painelUsuario);
             txtLoginFuncionario.BorderStyle = BorderStyle.None;
             txtLoginFuncionario.BackColor = painelUsuario.BackColor;
             txtLoginFuncionario.SetBounds(12, 8, 526, 23);
             txtLoginFuncionario.TabStop = false;
+            VisualUtils.EstilizarCampo(txtLoginFuncionario);
             VisualUtils.Arredondar(painelUsuario, 8);
             VisualUtils.AplicarBorda(painelUsuario);
             lblPerfildeacesso.Top = 210;

@@ -1,6 +1,7 @@
 using System;
 
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 
@@ -20,6 +21,9 @@ namespace CASE
         private bool ajustandoMenu;
         private Button buttonFornecedores;
         private Button buttonAcessos;
+        private readonly ComboBox cmbEventoContexto = new ComboBox();
+        private readonly Label lblEventoContexto = new Label();
+        private bool sincronizandoContextoEvento;
         private readonly ToolTip dicaNotificacoes = new ToolTip();
         private readonly ToolTip dicaNomeUsuario = new ToolTip();
         private readonly Label indicadorNotificacoes = new Label();
@@ -65,6 +69,7 @@ namespace CASE
             ConfigurarFotoPerfil();
             ConfigurarNovosCadastros();
             InicializarEventoSelecionado();
+            ConfigurarSeletorEventoContexto();
             navegacao.Layout += (s, e) => AjustarLarguraMenu();
             navegacao.ClientSizeChanged += (s, e) => AjustarLarguraMenu();
             AjustarLarguraMenu();
@@ -139,7 +144,107 @@ namespace CASE
 
         private void AtualizarEventoSelecionado(Evento evento)
         {
+            int? idAnterior = eventoSelecionado == null ? (int?)null : eventoSelecionado.IdEvento;
             eventoSelecionado = evento;
+            int? idNovo = evento == null ? (int?)null : evento.IdEvento;
+            if (idAnterior == idNovo)
+                return;
+            SincronizarSeletorEventoContexto();
+        }
+
+        private void ConfigurarSeletorEventoContexto()
+        {
+            lblEventoContexto.Name = "lblEventoContexto";
+            lblEventoContexto.Text = "Evento em consulta";
+            lblEventoContexto.SetBounds(18, 5, 280, 18);
+            lblEventoContexto.Font = new Font("Segoe UI", 8.5F);
+            lblEventoContexto.ForeColor = VisualUtils.TextoSuave;
+            cmbEventoContexto.Name = "cmbEventoContexto";
+            cmbEventoContexto.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbEventoContexto.DisplayMember = "Nome";
+            cmbEventoContexto.SetBounds(16, 25, 360, 34);
+            cmbEventoContexto.Font = new Font("Segoe UI", 9.5F);
+            cmbEventoContexto.Anchor = AnchorStyles.Top | AnchorStyles.Left;
+            VisualUtils.EstilizarSelecao(cmbEventoContexto);
+            cmbEventoContexto.SelectedIndexChanged += cmbEventoContexto_SelectedIndexChanged;
+            panelCabecalho.Controls.Add(cmbEventoContexto);
+            panelCabecalho.Controls.Add(lblEventoContexto);
+            SincronizarSeletorEventoContexto();
+            cmbEventoContexto.Visible = false;
+            lblEventoContexto.Visible = false;
+        }
+
+        private void SincronizarSeletorEventoContexto()
+        {
+            sincronizandoContextoEvento = true;
+            try
+            {
+                List<Evento> eventos = new CASE.Services.EventoService().Listar(usuarioAutenticado);
+                cmbEventoContexto.BeginUpdate();
+                cmbEventoContexto.Items.Clear();
+                foreach (Evento evento in eventos)
+                    cmbEventoContexto.Items.Add(evento);
+
+                int indice = -1;
+                for (int i = 0; i < cmbEventoContexto.Items.Count; i++)
+                {
+                    Evento item = cmbEventoContexto.Items[i] as Evento;
+                    if (item != null && eventoSelecionado != null && item.IdEvento == eventoSelecionado.IdEvento)
+                    {
+                        indice = i;
+                        break;
+                    }
+                }
+                if (indice < 0 && cmbEventoContexto.Items.Count > 0)
+                    indice = 0;
+                cmbEventoContexto.SelectedIndex = indice;
+                if (eventoSelecionado == null && indice >= 0)
+                    eventoSelecionado = cmbEventoContexto.Items[indice] as Evento;
+                cmbEventoContexto.Enabled = cmbEventoContexto.Items.Count > 1;
+                cmbEventoContexto.EndUpdate();
+            }
+            catch (Exception erro)
+            {
+                cmbEventoContexto.Enabled = false;
+                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " ao atualizar o evento em consulta.");
+            }
+            finally
+            {
+                sincronizandoContextoEvento = false;
+            }
+        }
+
+        private bool TelaDependeDeEvento(Button menu)
+        {
+            return menu == buttonEquipeSetores || menu == buttonFinanceiro || menu == buttonEscala ||
+                menu == buttonSolicitacoes || menu == buttonMovimentacoes;
+        }
+
+        private void cmbEventoContexto_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (sincronizandoContextoEvento)
+                return;
+            Evento selecionado = cmbEventoContexto.SelectedItem as Evento;
+            if (selecionado == null || (eventoSelecionado != null && selecionado.IdEvento == eventoSelecionado.IdEvento))
+                return;
+
+            eventoSelecionado = selecionado;
+            if (TelaDependeDeEvento(menuAtual))
+                ReabrirTelaDependenteDeEvento(menuAtual);
+        }
+
+        private void ReabrirTelaDependenteDeEvento(Button menu)
+        {
+            if (menu == buttonEquipeSetores)
+                AbrirTela(menu, () => new EquipeSetoresControl(usuarioAutenticado, eventoSelecionado));
+            else if (menu == buttonFinanceiro)
+                AbrirTela(menu, () => new FinanceiroControl(usuarioAutenticado, eventoSelecionado));
+            else if (menu == buttonEscala)
+                AbrirTela(menu, () => new EscalaControl(usuarioAutenticado, eventoSelecionado));
+            else if (menu == buttonSolicitacoes)
+                AbrirTela(menu, CriarSolicitacoes);
+            else if (menu == buttonMovimentacoes)
+                AbrirTela(menu, () => new RegistrosControl(usuarioAutenticado, eventoSelecionado));
         }
 
         private void InicializarEventoSelecionado()
@@ -567,6 +672,7 @@ namespace CASE
                 dialogo.Controls.Add(campo);
                 dialogo.Controls.Add(rejeitar);
                 dialogo.Controls.Add(cancelar);
+                FrontendTheme.Aplicar(dialogo);
                 dialogo.AcceptButton = rejeitar;
                 dialogo.CancelButton = cancelar;
 
@@ -635,6 +741,7 @@ namespace CASE
 
             pictureUsuario.ContextMenuStrip = menuFotoPerfil;
             pictureUsuario.Cursor = Cursors.Hand;
+            pictureUsuario.BackColor = Color.Transparent;
             pictureUsuario.Click += pictureUsuario_Click;
             pictureUsuario.Paint += PictureUsuario_Paint;
             FormClosed += PrincipalForm_FormClosed;
@@ -668,11 +775,12 @@ namespace CASE
                 return;
             }
 
-            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
             using (var contorno = new Pen(Color.FromArgb(203, 213, 225), 1.5F))
             {
                 Rectangle area = pictureUsuario.ClientRectangle;
-                area.Inflate(-1, -1);
+                area.Inflate(-2, -2);
                 e.Graphics.DrawEllipse(contorno, area);
             }
         }
@@ -783,12 +891,50 @@ namespace CASE
             using (MemoryStream fluxoImagem = new MemoryStream(dadosFoto))
             using (Image imagemCarregada = Image.FromStream(fluxoImagem, true, true))
             {
-                Image copiaImagem = new Bitmap(imagemCarregada);
+                Image copiaImagem = CriarFotoCircular(imagemCarregada);
                 LiberarFotoPersonalizada();
                 fotoPerfilPersonalizada = copiaImagem;
                 pictureUsuario.Image = fotoPerfilPersonalizada;
                 pictureUsuario.Invalidate();
             }
+        }
+
+        private static Bitmap CriarFotoCircular(Image imagem)
+        {
+            const int tamanho = 256;
+            const int margem = 10;
+            var circular = new Bitmap(
+                tamanho,
+                tamanho,
+                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            using (Graphics grafico = Graphics.FromImage(circular))
+            using (var recorte = new GraphicsPath())
+            {
+                grafico.Clear(Color.Transparent);
+                grafico.SmoothingMode = SmoothingMode.AntiAlias;
+                grafico.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                grafico.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                var circulo = new Rectangle(
+                    margem,
+                    margem,
+                    tamanho - margem * 2,
+                    tamanho - margem * 2);
+                recorte.AddEllipse(circulo);
+                grafico.SetClip(recorte);
+
+                int ladoOrigem = Math.Min(imagem.Width, imagem.Height);
+                var origem = new Rectangle(
+                    (imagem.Width - ladoOrigem) / 2,
+                    (imagem.Height - ladoOrigem) / 2,
+                    ladoOrigem,
+                    ladoOrigem);
+                grafico.DrawImage(imagem, circulo, origem, GraphicsUnit.Pixel);
+                grafico.ResetClip();
+            }
+
+            return circular;
         }
 
         private void RestaurarFotoPadrao()
@@ -971,11 +1117,10 @@ namespace CASE
             try
             {
                 // Mantém a tela atual se a abertura da próxima falhar.
-                bool dependeDeEvento = menu == buttonEquipeSetores ||
-                    menu == buttonFinanceiro ||
-                    menu == buttonEscala ||
-                    menu == buttonSolicitacoes ||
-                    menu == buttonMovimentacoes;
+                bool dependeDeEvento = TelaDependeDeEvento(menu);
+                bool possuiEventosNoContexto = cmbEventoContexto.Items.Count > 0;
+                cmbEventoContexto.Visible = dependeDeEvento && possuiEventosNoContexto;
+                lblEventoContexto.Visible = dependeDeEvento && possuiEventosNoContexto;
 
                 if (dependeDeEvento && eventoSelecionado == null)
                 {
