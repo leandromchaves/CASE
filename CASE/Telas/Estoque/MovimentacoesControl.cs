@@ -172,7 +172,6 @@ namespace CASE
         private void CarregarMovimentacoes()
         {
 
-            dgvMovimentacoes.Rows.Clear();
             if (usuarioAutenticado == null)
             {
                 lblListaMovimentacoes.Text = "Autentique-se para consultar o histórico.";
@@ -183,6 +182,7 @@ namespace CASE
             {
                 DataTable movimentos = new ConsultaOperacionalService().Movimentacoes(
                     usuarioAutenticado, dtpDataInicial.Value, dtpDataFinal.Value);
+                dgvMovimentacoes.Rows.Clear();
                 foreach (DataRow movimento in movimentos.Rows)
                 {
                     int indice = dgvMovimentacoes.Rows.Add(

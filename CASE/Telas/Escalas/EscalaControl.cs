@@ -135,8 +135,6 @@ namespace CASE.Quermesse
 
         private void CarregarEscalas()
         {
-            dgvEscala.Rows.Clear();
-
             if (eventoSelecionado == null)
             {
                 if (usuarioEhMembro)
@@ -157,10 +155,7 @@ namespace CASE.Quermesse
                     usuarioAutenticado,
                     eventoSelecionado.IdEvento);
 
-                foreach (Escala escala in escalas)
-                {
-                    AdicionarLinha(escala);
-                }
+                SubstituirEscalas(escalas);
 
                 PreencherFiltros();
                 AplicarFiltros();
@@ -187,10 +182,7 @@ namespace CASE.Quermesse
             {
                 List<Escala> escalas = escalaService.ListarMinhas(usuarioAutenticado);
 
-                foreach (Escala escala in escalas)
-                {
-                    AdicionarLinha(escala);
-                }
+                SubstituirEscalas(escalas);
 
                 PreencherFiltros();
                 AplicarFiltros();
@@ -208,7 +200,20 @@ namespace CASE.Quermesse
             }
         }
 
-        private void AdicionarLinha(Escala escala)
+        private void SubstituirEscalas(List<Escala> escalas)
+        {
+            var linhas = new List<DataGridViewRow>();
+            foreach (Escala escala in escalas)
+            {
+                DataGridViewRow linha = CriarLinha(escala);
+                if (linha != null)
+                    linhas.Add(linha);
+            }
+            dgvEscala.Rows.Clear();
+            dgvEscala.Rows.AddRange(linhas.ToArray());
+        }
+
+        private DataGridViewRow CriarLinha(Escala escala)
         {
             EquipeEvento equipe = equipeService.BuscarPorId(
                 usuarioAutenticado,
@@ -219,7 +224,7 @@ namespace CASE.Quermesse
 
             if (equipe == null || jornada == null)
             {
-                return;
+                return null;
             }
 
             Pessoa pessoa = equipeService.BuscarPessoaVinculada(
@@ -250,7 +255,8 @@ namespace CASE.Quermesse
                 nomeTurno = turno.Nome;
             }
 
-            int indiceLinha = dgvEscala.Rows.Add(
+            var linha = new DataGridViewRow();
+            linha.CreateCells(dgvEscala,
                 nomePessoa,
                 nomeSetor,
                 jornada.Data.ToString("dd/MM/yyyy"),
@@ -258,7 +264,8 @@ namespace CASE.Quermesse
                 escala.EntradaPrevista.ToString(@"hh\:mm"),
                 escala.SaidaPrevista.ToString(@"hh\:mm"),
                 escala.Situacao);
-            dgvEscala.Rows[indiceLinha].Tag = escala;
+            linha.Tag = escala;
+            return linha;
         }
 
         private void PreencherFiltros()

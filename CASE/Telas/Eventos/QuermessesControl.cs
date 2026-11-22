@@ -384,7 +384,7 @@ namespace CASE.Quermesse
             }
         }
 
-        private void SelecionarEvento(int idEvento)
+        public void SelecionarEvento(int idEvento)
         {
             foreach (DataGridViewRow linha in dgvQuermesses.Rows)
             {

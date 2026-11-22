@@ -111,8 +111,11 @@ namespace CASE.Quermesse
             decimal totalDespesas = 0;
             decimal totalVendas = 0;
             bool precosPendentes = false;
+            var despesasDoEvento = despesas.ListarPorEvento(usuarioAutenticado, evento.IdEvento);
+            DataTable vendas = new ConsultaOperacionalService().Registros(usuarioAutenticado,
+                evento.IdEvento, dtpFinanceiro.Value, dtpFinanceiro.Value);
             dgvCustos.Rows.Clear();
-            foreach (Despesa despesa in despesas.ListarPorEvento(usuarioAutenticado, evento.IdEvento))
+            foreach (Despesa despesa in despesasDoEvento)
             {
                 if (despesa.Data.Date != dtpFinanceiro.Value.Date)
                 {
@@ -122,8 +125,6 @@ namespace CASE.Quermesse
                 dgvCustos.Rows.Add(despesa.Data.ToString("dd/MM/yyyy"), despesa.Descricao,
                     evento.Nome, despesa.Valor.ToString("C2"), despesa.IdUsuarioResponsavel);
             }
-            DataTable vendas = new ConsultaOperacionalService().Registros(usuarioAutenticado,
-                evento.IdEvento, dtpFinanceiro.Value, dtpFinanceiro.Value);
             foreach (DataRow venda in vendas.Rows)
             {
                 if (Convert.ToString(venda["tipo"]) == "venda")

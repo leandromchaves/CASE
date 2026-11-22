@@ -134,7 +134,13 @@ namespace CASE
         private UserControl CriarTelaEventos()
         {
             QuermessesControl tela = new QuermessesControl(usuarioAutenticado);
-            tela.EventoSelecionado += AtualizarEventoSelecionado;
+            if (eventoSelecionado != null)
+                tela.SelecionarEvento(eventoSelecionado.IdEvento);
+            tela.EventoSelecionado += evento =>
+            {
+                if (!tela.Disposing && !tela.IsDisposed && tela.Parent == panelConteudo)
+                    AtualizarEventoSelecionado(evento);
+            };
             AtualizarEventoSelecionado(tela.ObterEventoSelecionado());
             return tela;
         }
@@ -161,6 +167,8 @@ namespace CASE
 
         private void AtualizarEventoSelecionado(Evento evento)
         {
+            if (evento == null)
+                return;
             int? idAnterior = eventoSelecionado == null ? (int?)null : eventoSelecionado.IdEvento;
             eventoSelecionado = evento;
             int? idNovo = evento == null ? (int?)null : evento.IdEvento;
@@ -219,10 +227,8 @@ namespace CASE
                 if (indice < 0 && cmbEventoContexto.Items.Count > 0)
                     indice = 0;
                 cmbEventoContexto.SelectedIndex = indice;
-                if (eventoSelecionado == null && indice >= 0)
-                    eventoSelecionado = cmbEventoContexto.Items[indice] as Evento;
+                eventoSelecionado = indice >= 0 ? cmbEventoContexto.Items[indice] as Evento : null;
                 cmbEventoContexto.Enabled = cmbEventoContexto.Items.Count > 0;
-                cmbEventoContexto.EndUpdate();
             }
             catch (Exception erro)
             {
@@ -231,6 +237,7 @@ namespace CASE
             }
             finally
             {
+                cmbEventoContexto.EndUpdate();
                 sincronizandoContextoEvento = false;
             }
         }
@@ -1157,6 +1164,8 @@ namespace CASE
                 }
                 panelConteudo.Controls.Add(tela);
                 AjustarAreaDaTela();
+                tela.PerformLayout();
+                tela.Invalidate(true);
                 menuAtual = menu;
                 SelecionarMenu(menu);
             }

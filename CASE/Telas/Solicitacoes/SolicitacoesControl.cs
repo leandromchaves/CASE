@@ -533,6 +533,8 @@ namespace CASE.Quermesse
             {
                 SolicitacaoEstoqueCentralService service = new SolicitacaoEstoqueCentralService();
                 List<SolicitacaoEstoqueCentral> pedidos = service.ListarParaAdministrador(usuarioAutenticado);
+                if (eventoSelecionado != null)
+                    pedidos = pedidos.FindAll(pedido => pedido.IdEvento == eventoSelecionado.IdEvento);
 
                 Dictionary<int, string> solicitantes = new Dictionary<int, string>();
                 foreach (Usuario usuario in new UsuarioService().ListarUsuariosAdministrativos(usuarioAutenticado))
@@ -695,7 +697,7 @@ namespace CASE.Quermesse
 
         private List<Solicitacao> ObterSolicitacoesPermitidas()
         {
-            if (administrador)
+            if (administrador && eventoSelecionado == null)
             {
                 List<Solicitacao> solicitacoes = new List<Solicitacao>();
                 foreach (Evento evento in new EventoService().Listar(usuarioAutenticado))
