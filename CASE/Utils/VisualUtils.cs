@@ -22,6 +22,21 @@ namespace CASE.Utils
         private const int EcLeftMargin = 0x0001;
         private const int EcRightMargin = 0x0002;
 
+        [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
+        private static extern int SetWindowTheme(IntPtr janela, string tema, string lista);
+
+        public static void EstilizarRolagem(Control controle)
+        {
+            controle.HandleCreated += (s, e) => SetWindowTheme(controle.Handle, "DarkMode_Explorer", null);
+            controle.VisibleChanged += (s, e) =>
+            {
+                if (controle.Visible && controle.IsHandleCreated)
+                    SetWindowTheme(controle.Handle, "DarkMode_Explorer", null);
+            };
+            if (controle.IsHandleCreated)
+                SetWindowTheme(controle.Handle, "DarkMode_Explorer", null);
+        }
+
         private static readonly ConditionalWeakTable<TextBox, EstadoVisualCampo> EstadosCampos =
             new ConditionalWeakTable<TextBox, EstadoVisualCampo>();
         private static readonly ConditionalWeakTable<DataGridView, EstadoVazioGrade> EstadosVaziosGrade =
@@ -168,8 +183,6 @@ namespace CASE.Utils
                 }
                 else
                 {
-                    // O TextBox nativo desenha uma linha no topo, mesmo quando fica mais alto.
-                    // Centralizamos o controle inteiro para alinhar texto, caret e placeholder.
                     campo.Dock = DockStyle.None;
                     campo.AutoSize = true;
                     campo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
@@ -219,8 +232,6 @@ namespace CASE.Utils
             }
             else
             {
-                // Cada entrada recebe um único contorno arredondado próprio. O TextBox nativo
-                // fica sem borda dentro dele, evitando o efeito de duas caixas sobrepostas.
                 Panel novoPainelCampo = EnvolverCampoEmPainel(campo);
                 if (novoPainelCampo != null)
                 {
@@ -312,8 +323,14 @@ namespace CASE.Utils
             tela.Controls.Add(campo);
             Panel painel = EstilizarPesquisa(campo, placeholder);
             painel.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-            Action posicionar = () => painel.Left = Math.Max(30,
-                tela.ClientSize.Width - margemDireita - painel.Width);
+            int larguraPreferida = painel.Width;
+            Action posicionar = () =>
+            {
+                int larguraDisponivel = Math.Max(180, tela.ClientSize.Width - margemDireita - 60);
+                painel.Width = Math.Min(larguraPreferida, larguraDisponivel);
+                painel.Left = Math.Max(30, tela.ClientSize.Width - margemDireita - painel.Width);
+                painel.BringToFront();
+            };
             tela.ClientSizeChanged += (s, e) => posicionar();
             posicionar();
             campo.TextChanged += (s, e) => pesquisar(campo.Text.Trim());
@@ -331,6 +348,27 @@ namespace CASE.Utils
             if (estado.PesquisaAplicada)
             {
                 return (Panel)campo.Parent;
+            }
+
+            Panel anterior = campo.Parent as Panel;
+            if (anterior != null && anterior.Name == "panelCampo" + campo.Name && anterior.Parent != null)
+            {
+                Control destino = anterior.Parent;
+                int ordem = destino.Controls.GetChildIndex(anterior);
+                Rectangle limites = anterior.Bounds;
+                AnchorStyles ancora = anterior.Anchor;
+                DockStyle encaixe = anterior.Dock;
+                destino.SuspendLayout();
+                anterior.Controls.Remove(campo);
+                destino.Controls.Remove(anterior);
+                destino.Controls.Add(campo);
+                campo.Dock = encaixe;
+                campo.Anchor = ancora;
+                campo.AutoSize = false;
+                campo.Bounds = limites;
+                destino.Controls.SetChildIndex(campo, ordem);
+                anterior.Dispose();
+                destino.ResumeLayout(true);
             }
 
             Control origem = campo.Parent;
@@ -362,6 +400,7 @@ namespace CASE.Utils
             painel.Controls.Add(campo);
             painel.Controls.Add(icone);
             origem.Controls.SetChildIndex(painel, indice);
+            painel.BringToFront();
             estado.PesquisaAplicada = true;
             estado.EstiloAplicado = true;
             estado.ParentEstilo = painel;
@@ -397,8 +436,6 @@ namespace CASE.Utils
 
         private static void CentralizarLinhaNoPainel(TextBox campo, Panel painel)
         {
-            // Campos podem ser movidos por formulários que montam layouts próprios.
-            // Eventos do painel anterior não devem reposicionar o campo no novo pai.
             if (campo == null || painel == null || !ReferenceEquals(campo.Parent, painel) || campo.Multiline)
             {
                 return;

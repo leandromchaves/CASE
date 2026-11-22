@@ -17,6 +17,13 @@ namespace CASE.Utils
         {
             if (raiz is UserControl || raiz is Form)
                 raiz.BackColor = Fundo;
+            var areaRolagem = raiz as ScrollableControl;
+            object estiloRaiz;
+            if (areaRolagem != null && areaRolagem.AutoScroll && !Estilizados.TryGetValue(raiz, out estiloRaiz))
+            {
+                Estilizados.Add(raiz, new object());
+                VisualUtils.EstilizarRolagem(raiz);
+            }
             Control[] controles = new Control[raiz.Controls.Count];
             raiz.Controls.CopyTo(controles, 0);
             foreach (Control controle in controles)

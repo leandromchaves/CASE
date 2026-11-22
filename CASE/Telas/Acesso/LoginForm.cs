@@ -18,11 +18,12 @@ namespace CASE
         public LoginForm()
         {
             InitializeComponent();
+            DoubleBuffered = true;
+            SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
             IconoAplicacao.Aplicar(this);
 
             VisualUtils.Arredondar(panelLogin, 15);
             btnEntrar.Click += BtnEntrar_Click;
-            // Os campos são validados no login, sem cancelar o clique durante a troca de foco.
             btnEntrar.CausesValidation = false;
             AcceptButton = btnEntrar;
             VisualUtils.Arredondar(btnEntrar, 7);
@@ -39,6 +40,10 @@ namespace CASE
             textSenha.AccessibleName = "Senha";
             textUsuario.TabIndex = 0;
             textSenha.TabIndex = 1;
+            panelUsuario.TabIndex = 0;
+            panelSenha.TabIndex = 1;
+            btnEntrar.TabIndex = 2;
+            linkLabel1.TabIndex = 3;
             lblMensagem.SetBounds(60, 354, 300, 52);
             linkLabel1.Top = 418;
             Shown += (s, e) => textUsuario.Focus();

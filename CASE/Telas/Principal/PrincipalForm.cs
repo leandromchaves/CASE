@@ -87,8 +87,12 @@ namespace CASE
 
             panelPesquisa.Visible = false;
             textPesquisa.TabStop = false;
+            panelConteudo.AutoScroll = true;
+            VisualUtils.EstilizarRolagem(panelConteudo);
+            VisualUtils.EstilizarRolagem(navegacao);
+            panelConteudo.ClientSizeChanged += (s, e) => AjustarAreaDaTela();
             Rectangle areaDisponivel = Screen.FromControl(this).WorkingArea;
-            MinimumSize = new Size(Math.Min(1100, areaDisponivel.Width), Math.Min(680, areaDisponivel.Height));
+            MinimumSize = new Size(Math.Min(760, areaDisponivel.Width), Math.Min(480, areaDisponivel.Height));
             Size = new Size(Math.Min(1320, areaDisponivel.Width), Math.Min(850, areaDisponivel.Height));
             buttonDashboard.Click += (s, e) => AbrirTela(buttonDashboard, () => new DashboardControl(usuarioAutenticado));
             buttonProdutos.Click += (s, e) => AbrirTela(buttonProdutos, () => new ProdutosControl(usuarioAutenticado));
@@ -142,6 +146,19 @@ namespace CASE
             return tela;
         }
 
+        private void AjustarAreaDaTela()
+        {
+            if (panelConteudo.Controls.Count == 0)
+                return;
+
+            Control tela = panelConteudo.Controls[0];
+            float escala = tela.DeviceDpi / 96F;
+            Size minimo = new Size((int)(1000 * escala), (int)(650 * escala));
+            panelConteudo.AutoScrollMinSize = minimo;
+            tela.Size = new Size(Math.Max(minimo.Width, panelConteudo.ClientSize.Width),
+                Math.Max(minimo.Height, panelConteudo.ClientSize.Height));
+        }
+
         private void AtualizarEventoSelecionado(Evento evento)
         {
             int? idAnterior = eventoSelecionado == null ? (int?)null : eventoSelecionado.IdEvento;
@@ -169,6 +186,10 @@ namespace CASE
             cmbEventoContexto.SelectedIndexChanged += cmbEventoContexto_SelectedIndexChanged;
             panelCabecalho.Controls.Add(cmbEventoContexto);
             panelCabecalho.Controls.Add(lblEventoContexto);
+            cmbEventoContexto.BringToFront();
+            lblEventoContexto.BringToFront();
+            panelCabecalho.Layout += (s, e) =>
+                cmbEventoContexto.Width = Math.Max(100, Math.Min(360, panelPerfil.Left - 32));
             SincronizarSeletorEventoContexto();
             cmbEventoContexto.Visible = false;
             lblEventoContexto.Visible = false;
@@ -200,7 +221,7 @@ namespace CASE
                 cmbEventoContexto.SelectedIndex = indice;
                 if (eventoSelecionado == null && indice >= 0)
                     eventoSelecionado = cmbEventoContexto.Items[indice] as Evento;
-                cmbEventoContexto.Enabled = cmbEventoContexto.Items.Count > 1;
+                cmbEventoContexto.Enabled = cmbEventoContexto.Items.Count > 0;
                 cmbEventoContexto.EndUpdate();
             }
             catch (Exception erro)
@@ -1128,13 +1149,14 @@ namespace CASE
                 }
 
                 tela = criar();
-                tela.Dock = DockStyle.Fill;
+                tela.Dock = DockStyle.None;
                 panelConteudo.SuspendLayout();
                 while (panelConteudo.Controls.Count > 0)
                 {
                     panelConteudo.Controls[0].Dispose();
                 }
                 panelConteudo.Controls.Add(tela);
+                AjustarAreaDaTela();
                 menuAtual = menu;
                 SelecionarMenu(menu);
             }
