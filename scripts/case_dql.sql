@@ -325,31 +325,26 @@ SET @pessoa = (
 
 SELECT e.id_escala,
     eq.id_pessoa,
+    p.nome AS pessoa_nome,
+    ev.id_evento,
+    ev.nome AS evento_nome,
     eq.ativo,
     e.situacao,
     j.id_jornada,
     j.data AS data_jornada,
     s.id_setor,
+    ev.situacao AS situacao_evento,
+    CONCAT(s.nome, ' · ', DATE_FORMAT(j.data, '%d/%m/%Y'), ' · ', t.nome, ' · ', TIME_FORMAT(e.entrada_prevista, '%H:%i'), ' – ', TIME_FORMAT(e.saida_prevista, '%H:%i')) AS descricao_curta,
     CONCAT(ev.nome, ' / ', s.nome, ' / ', DATE_FORMAT(j.data, '%d/%m/%Y'), ' / ', p.nome, ' / ', e.entrada_prevista, ' - ', e.saida_prevista) AS descricao,
     CONCAT(s.nome, ' / ', DATE_FORMAT(j.data, '%d/%m/%Y'), ' / ', t.nome) AS descricao_jornada
 FROM escala e
-JOIN equipeevento eq ON eq.id_equipe = e.id_equipe
-JOIN pessoa p ON p.id_pessoa = eq.id_pessoa
-JOIN jornadasetor j ON j.id_jornada = e.id_jornada
-JOIN turno t ON t.id_turno = j.id_turno
-JOIN setor s ON s.id_setor = j.id_setor
-JOIN evento ev ON ev.id_evento = s.id_evento
-WHERE eq.id_evento = ev.id_evento
-    AND (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND ev.id_responsavel = @pessoa)
-        OR (@perfil = 'Membro'
-            AND eq.id_pessoa = @pessoa
-            AND eq.ativo = 1))
-    AND (@perfil <> 'Membro'
-        OR LOWER(e.situacao) <> 'cancelada')
-    AND (@evento = 0
-        OR ev.id_evento = @evento)
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+JOIN pessoa p ON p.id_pessoa=eq.id_pessoa
+JOIN jornadasetor j ON j.id_jornada=e.id_jornada
+JOIN turno t ON t.id_turno=j.id_turno
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+WHERE eq.id_evento=ev.id_evento AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND eq.id_pessoa=@pessoa AND eq.ativo=1)) AND (@perfil<>'Membro' OR LOWER(e.situacao)<>'cancelada') AND (@evento=0 OR ev.id_evento=@evento)
 ORDER BY j.data, s.nome, p.nome;
 
 -- 29. EquipeEventoRepository.ListarPorEvento
@@ -716,30 +711,19 @@ SELECT l.id_local_estoque,
     es.quantidade_minima,
     es.quantidade_ideal
 FROM estoque es
-JOIN vw_localestoque l ON l.id_local_estoque = es.id_local_estoque
-JOIN produto p ON p.id_produto = es.id_produto
-LEFT JOIN evento ev ON ev.id_evento = l.id_evento
-WHERE (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND (ev.id_responsavel = @pessoa
-                OR (l.eh_central = 1
-                    AND EXISTS (
-                    SELECT 1
-                    FROM evento ce
-                    WHERE ce.id_responsavel = @pessoa
-                        AND ce.id_instituicao = l.id_instituicao))))
-        OR (@perfil = 'Membro'
-            AND EXISTS (
-            SELECT 1
-            FROM estoquesetor xs
-            JOIN jornadasetor j ON j.id_setor = xs.id_setor
-            JOIN escala e ON e.id_jornada = j.id_jornada
-            JOIN equipeevento eq ON eq.id_equipe = e.id_equipe
-            WHERE xs.id_local_estoque = l.id_local_estoque
-                AND eq.id_evento = xs.id_evento
-                AND eq.ativo = 1
-                AND eq.id_pessoa = @pessoa
-                AND LOWER(e.situacao) <> 'cancelada')))
+JOIN vw_localestoque l ON l.id_local_estoque=es.id_local_estoque
+JOIN produto p ON p.id_produto=es.id_produto
+LEFT JOIN evento ev ON ev.id_evento=l.id_evento
+WHERE (@perfil='Administrador' OR (@perfil='Gerente' AND (ev.id_responsavel=@pessoa OR (l.eh_central=1 AND EXISTS (SELECT 1
+FROM evento ce
+WHERE ce.id_responsavel=@pessoa AND ce.id_instituicao=l.id_instituicao)))) OR (@perfil='Membro' AND ((l.ativo=1 AND l.eh_geral_evento=1 AND EXISTS (SELECT 1
+FROM equipeevento eqg
+WHERE eqg.id_evento=ev.id_evento AND eqg.id_pessoa=@pessoa AND eqg.ativo=1)) OR (l.ativo=1 AND EXISTS (SELECT 1
+FROM estoquesetor xs
+JOIN jornadasetor j ON j.id_setor=xs.id_setor
+JOIN escala e ON e.id_jornada=j.id_jornada
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+WHERE xs.id_local_estoque=l.id_local_estoque AND eq.id_evento=xs.id_evento AND eq.ativo=1 AND eq.id_pessoa=@pessoa AND LOWER(e.situacao)<>'cancelada')))) )
 ORDER BY l.nome, p.nome;
 
 -- 48. EstoqueRepository.ListarPorLocal
@@ -1236,87 +1220,36 @@ SELECT m.data_hora,
     m.id_destino,
     m.id_operacao,
     m.entidade
-FROM(
-    SELECT en.data_hora,
-        'entrada' AS tipo,
-        p.nome AS produto,
-        i.quantidade,
-        '' AS origem,
-        l.nome AS destino,
-        u.login AS responsavel,
-        NULL AS evento,
-        0 AS id_origem,
-        l.id_local_estoque AS id_destino,
-        en.id_entrada AS id_operacao,
-        'entradamercadoria' AS entidade
-    FROM entradamercadoria en
-    JOIN entradaitem i ON i.id_entrada = en.id_entrada
-    JOIN produto p ON p.id_produto = i.id_produto
-    JOIN vw_localestoque l ON l.id_local_estoque = en.id_local_destino
-    JOIN usuario u ON u.id_usuario = en.id_usuario_responsavel
-    WHERE @perfil = 'Administrador'
-    UNION ALL
-    SELECT tr.data_hora,
-        'transferencia',
-        p.nome,
-        i.quantidade,
-        o.nome,
-        d.nome,
-        u.login,
-        COALESCE(o.id_evento, d.id_evento),
-        o.id_local_estoque,
-        d.id_local_estoque,
-        tr.id_transferencia,
-        'transferenciaestoque'
-    FROM transferenciaestoque tr
-    JOIN transferenciaitem i ON i.id_transferencia = tr.id_transferencia
-    JOIN produto p ON p.id_produto = i.id_produto
-    JOIN vw_localestoque o ON o.id_local_estoque = tr.id_local_origem
-    JOIN vw_localestoque d ON d.id_local_estoque = tr.id_local_destino
-    JOIN usuario u ON u.id_usuario = tr.id_usuario_responsavel
-    WHERE @perfil <> 'Membro'
-    UNION ALL
-    SELECT r.data_hora,
-        r.tipo,
-        p.nome,
-        i.quantidade,
-        s.nome,
-        '',
-        u.login,
-        ev.id_evento,
-        es.id_local_estoque,
-        0,
-        r.id_registro,
-        'registro'
-    FROM registro r
-    JOIN registroitem i ON i.id_registro = r.id_registro
-    JOIN produtosetor ps ON ps.id_produto_setor = i.id_produto_setor
-    JOIN produto p ON p.id_produto = ps.id_produto
-    JOIN escala e ON e.id_escala = r.id_escala
-    JOIN equipeevento eq ON eq.id_equipe = e.id_equipe
-    JOIN jornadasetor j ON j.id_jornada = e.id_jornada
-    JOIN setor s ON s.id_setor = j.id_setor
-    JOIN evento ev ON ev.id_evento = s.id_evento
-    JOIN estoquesetor es ON es.id_setor = s.id_setor
-    JOIN usuario u ON u.id_usuario = r.id_usuario_responsavel
-    WHERE eq.id_evento = ev.id_evento
-        AND ps.id_setor = s.id_setor
-        AND (@perfil = 'Administrador'
-            OR (@perfil = 'Gerente'
-                AND ev.id_responsavel = @pessoa)
-            OR (@perfil = 'Membro'
-                AND eq.id_pessoa = @pessoa
-                AND eq.ativo = 1))
-        AND (@perfil <> 'Membro'
-            OR u.id_pessoa = @pessoa)) m
-LEFT JOIN evento ev ON ev.id_evento = m.evento
-WHERE m.data_hora >= @inicio
-    AND m.data_hora < @fim
-    AND (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND ev.id_responsavel = @pessoa)
-        OR (@perfil = 'Membro'
-            AND m.tipo IN ('venda', 'perda')))
+FROM (SELECT en.data_hora, 'entrada' AS tipo, p.nome AS produto, i.quantidade, '' AS origem, l.nome AS destino, u.login AS responsavel, NULL AS evento, 0 AS id_origem, l.id_local_estoque AS id_destino, en.id_entrada AS id_operacao, 'entradamercadoria' AS entidade
+FROM entradamercadoria en
+JOIN entradaitem i ON i.id_entrada=en.id_entrada
+JOIN produto p ON p.id_produto=i.id_produto
+JOIN vw_localestoque l ON l.id_local_estoque=en.id_local_destino
+JOIN usuario u ON u.id_usuario=en.id_usuario_responsavel
+WHERE @perfil='Administrador'
+UNION ALL SELECT tr.data_hora, 'transferencia', p.nome, i.quantidade, o.nome, d.nome, u.login, COALESCE(o.id_evento, d.id_evento), o.id_local_estoque, d.id_local_estoque, tr.id_transferencia, 'transferenciaestoque'
+FROM transferenciaestoque tr
+JOIN transferenciaitem i ON i.id_transferencia=tr.id_transferencia
+JOIN produto p ON p.id_produto=i.id_produto
+JOIN vw_localestoque o ON o.id_local_estoque=tr.id_local_origem
+JOIN vw_localestoque d ON d.id_local_estoque=tr.id_local_destino
+JOIN usuario u ON u.id_usuario=tr.id_usuario_responsavel
+WHERE @perfil<>'Membro'
+UNION ALL SELECT r.data_hora, r.tipo, p.nome, i.quantidade, s.nome, '', u.login, ev.id_evento, es.id_local_estoque, 0, r.id_registro, 'registro'
+FROM registro r
+JOIN registroitem i ON i.id_registro=r.id_registro
+JOIN produtosetor ps ON ps.id_produto_setor=i.id_produto_setor
+JOIN produto p ON p.id_produto=ps.id_produto
+JOIN escala e ON e.id_escala=r.id_escala
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+JOIN jornadasetor j ON j.id_jornada=e.id_jornada
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+JOIN estoquesetor es ON es.id_setor=s.id_setor
+JOIN usuario u ON u.id_usuario=r.id_usuario_responsavel
+WHERE eq.id_evento=ev.id_evento AND ps.id_setor=s.id_setor AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND eq.id_pessoa=@pessoa AND eq.ativo=1)) AND (@perfil<>'Membro' OR u.id_pessoa=@pessoa)) m
+LEFT JOIN evento ev ON ev.id_evento=m.evento
+WHERE m.data_hora>=@inicio AND m.data_hora<@fim AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND m.tipo IN ('venda', 'perda')))
 ORDER BY m.data_hora DESC;
 
 -- 74. ConsultaOperacionalRepository.ItensParaCorrecao
@@ -1497,33 +1430,20 @@ SELECT r.id_registro,
     ri.preco_unitario_praticado,
     r.forma_pagamento,
     r.observacao,
-    ri.quantidade * ri.preco_unitario_praticado AS total
+    ri.quantidade*ri.preco_unitario_praticado AS total
 FROM registro r
-JOIN escala e ON e.id_escala = r.id_escala
-JOIN equipeevento eq ON eq.id_equipe = e.id_equipe
-JOIN usuario u ON u.id_usuario = r.id_usuario_responsavel
-JOIN pessoa p ON p.id_pessoa = u.id_pessoa
-JOIN jornadasetor j ON j.id_jornada = e.id_jornada
-JOIN turno t ON t.id_turno = j.id_turno
-JOIN setor s ON s.id_setor = j.id_setor
-JOIN evento ev ON ev.id_evento = s.id_evento
-JOIN registroitem ri ON ri.id_registro = r.id_registro
-JOIN produtosetor ps ON ps.id_produto_setor = ri.id_produto_setor
-JOIN produto pr ON pr.id_produto = ps.id_produto
-WHERE eq.id_evento = ev.id_evento
-    AND ps.id_setor = s.id_setor
-    AND (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND ev.id_responsavel = @pessoa)
-        OR (@perfil = 'Membro'
-            AND eq.id_pessoa = @pessoa
-            AND eq.ativo = 1))
-    AND (@perfil <> 'Membro'
-        OR u.id_pessoa = @pessoa)
-    AND (@evento = 0
-        OR ev.id_evento = @evento)
-    AND r.data_hora >= @inicio
-    AND r.data_hora < @fim
+JOIN escala e ON e.id_escala=r.id_escala
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+JOIN usuario u ON u.id_usuario=r.id_usuario_responsavel
+JOIN pessoa p ON p.id_pessoa=u.id_pessoa
+JOIN jornadasetor j ON j.id_jornada=e.id_jornada
+JOIN turno t ON t.id_turno=j.id_turno
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+JOIN registroitem ri ON ri.id_registro=r.id_registro
+JOIN produtosetor ps ON ps.id_produto_setor=ri.id_produto_setor
+JOIN produto pr ON pr.id_produto=ps.id_produto
+WHERE eq.id_evento=ev.id_evento AND ps.id_setor=s.id_setor AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND eq.id_pessoa=@pessoa AND eq.ativo=1)) AND (@perfil<>'Membro' OR u.id_pessoa=@pessoa) AND (@evento=0 OR ev.id_evento=@evento) AND r.data_hora>=@inicio AND r.data_hora<@fim
 ORDER BY r.data_hora DESC, r.id_registro DESC;
 
 -- 83. RegistroItemRepository.ListarPorRegistro
@@ -1719,12 +1639,8 @@ SELECT ev.nome,
     ev.situacao,
     p.nome AS responsavel
 FROM evento ev
-JOIN pessoa p ON p.id_pessoa = ev.id_responsavel
-WHERE (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND ev.id_responsavel = @pessoa))
-    AND ev.data_inicio < @fim
-    AND ev.data_fim >= @inicio
+JOIN pessoa p ON p.id_pessoa=ev.id_responsavel
+WHERE (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa)) AND ev.data_inicio<@fim AND ev.data_fim>=@inicio
 ORDER BY ev.data_inicio, ev.nome;
 
 -- 93. ConsultaOperacionalRepository.Relatorio
@@ -1744,7 +1660,7 @@ SELECT so.id_solicitacao,
     so.data_hora,
     ev.nome AS evento,
     s.nome AS setor,
-    p.nome AS solicitante,
+    COALESCE(NULLIF(u.login, ''), 'Usuário indisponível') AS solicitante,
     so.situacao,
     pr.nome AS produto,
     si.quantidade,
@@ -1752,26 +1668,18 @@ SELECT so.id_solicitacao,
     so.decidida_em,
     so.justificativa_rejeicao
 FROM solicitacao so
-JOIN escala e ON e.id_escala = so.id_escala
-JOIN equipeevento eq ON eq.id_equipe = e.id_equipe
-JOIN pessoa p ON p.id_pessoa = eq.id_pessoa
-JOIN jornadasetor j ON j.id_jornada = e.id_jornada
-JOIN setor s ON s.id_setor = j.id_setor
-JOIN evento ev ON ev.id_evento = s.id_evento
-JOIN solicitacaoitem si ON si.id_solicitacao = so.id_solicitacao
-JOIN produtosetor ps ON ps.id_produto_setor = si.id_produto_setor
-JOIN produto pr ON pr.id_produto = ps.id_produto
-LEFT JOIN usuario d ON d.id_usuario = so.id_usuario_decisor
-WHERE eq.id_evento = ev.id_evento
-    AND ps.id_setor = s.id_setor
-    AND (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND ev.id_responsavel = @pessoa)
-        OR (@perfil = 'Membro'
-            AND eq.id_pessoa = @pessoa
-            AND eq.ativo = 1))
-    AND so.data_hora >= @inicio
-    AND so.data_hora < @fim
+JOIN escala e ON e.id_escala=so.id_escala
+LEFT JOIN usuario u ON u.id_usuario=so.id_usuario_solicitante
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+JOIN pessoa p ON p.id_pessoa=eq.id_pessoa
+JOIN jornadasetor j ON j.id_jornada=e.id_jornada
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+JOIN solicitacaoitem si ON si.id_solicitacao=so.id_solicitacao
+JOIN produtosetor ps ON ps.id_produto_setor=si.id_produto_setor
+JOIN produto pr ON pr.id_produto=ps.id_produto
+LEFT JOIN usuario d ON d.id_usuario=so.id_usuario_decisor
+WHERE eq.id_evento=ev.id_evento AND ps.id_setor=s.id_setor AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND eq.id_pessoa=@pessoa AND eq.ativo=1)) AND so.data_hora>=@inicio AND so.data_hora<@fim
 ORDER BY so.data_hora DESC;
 
 -- 94. ConsultaOperacionalRepository.Relatorio
@@ -1800,18 +1708,13 @@ SELECT so.id_solicitacao_estoque_central,
     so.justificativa_rejeicao,
     tr.id_transferencia
 FROM vw_solicitacaoestoquecentral so
-JOIN evento ev ON ev.id_evento = so.id_evento
-JOIN usuario u ON u.id_usuario = so.id_usuario_solicitante
-JOIN solicitacaoestoquecentralitem si ON si.id_solicitacao_estoque_central = so.id_solicitacao_estoque_central
-JOIN produto p ON p.id_produto = si.id_produto
-LEFT JOIN usuario d ON d.id_usuario = so.id_usuario_decisor
-LEFT JOIN transferenciaestoque tr ON tr.id_solicitacao_estoque_central = so.id_solicitacao_estoque_central
-WHERE (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND ev.id_responsavel = @pessoa
-            AND u.id_pessoa = @pessoa))
-    AND so.data_hora >= @inicio
-    AND so.data_hora < @fim
+JOIN evento ev ON ev.id_evento=so.id_evento
+JOIN usuario u ON u.id_usuario=so.id_usuario_solicitante
+JOIN solicitacaoestoquecentralitem si ON si.id_solicitacao_estoque_central=so.id_solicitacao_estoque_central
+JOIN produto p ON p.id_produto=si.id_produto
+LEFT JOIN usuario d ON d.id_usuario=so.id_usuario_decisor
+LEFT JOIN transferenciaestoque tr ON tr.id_solicitacao_estoque_central=so.id_solicitacao_estoque_central
+WHERE (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa AND u.id_pessoa=@pessoa)) AND so.data_hora>=@inicio AND so.data_hora<@fim
 ORDER BY so.data_hora DESC;
 
 -- 95. ConsultaOperacionalRepository.Relatorio
@@ -1835,14 +1738,10 @@ SELECT de.id_despesa,
     f.nome AS fornecedor,
     u.login AS responsavel
 FROM despesa de
-JOIN evento ev ON ev.id_evento = de.id_evento
-LEFT JOIN fornecedor f ON f.id_fornecedor = de.id_fornecedor
-JOIN usuario u ON u.id_usuario = de.id_usuario_responsavel
-WHERE (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND ev.id_responsavel = @pessoa))
-    AND de.data >= @inicio
-    AND de.data < @fim
+JOIN evento ev ON ev.id_evento=de.id_evento
+LEFT JOIN fornecedor f ON f.id_fornecedor=de.id_fornecedor
+JOIN usuario u ON u.id_usuario=de.id_usuario_responsavel
+WHERE (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa)) AND de.data>=@inicio AND de.data<@fim
 ORDER BY de.data DESC;
 
 -- 96. ConsultaOperacionalRepository.Relatorio
@@ -1870,36 +1769,24 @@ SELECT a.id_apuracao,
     a.valor_cartao,
     u.login AS responsavel,
     a.observacao,
-    CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE COALESCE(v.total, 0) END AS esperado_atual,
-    CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_informado - COALESCE(v.total, 0) END AS diferenca_atual,
-    CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_dinheiro - COALESCE(v.dinheiro, 0) END AS diferenca_dinheiro_atual,
-    CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_pix - COALESCE(v.pix, 0) END AS diferenca_pix_atual,
-    CASE WHEN COALESCE(v.pendentes, 0) > 0 THEN NULL ELSE a.valor_cartao - COALESCE(v.cartao, 0) END AS diferenca_cartao_atual
+    CASE WHEN COALESCE(v.pendentes, 0)>0 THEN NULL ELSE COALESCE(v.total, 0) END AS esperado_atual,
+    CASE WHEN COALESCE(v.pendentes, 0)>0 THEN NULL ELSE a.valor_informado-COALESCE(v.total, 0) END AS diferenca_atual,
+    CASE WHEN COALESCE(v.pendentes, 0)>0 THEN NULL ELSE a.valor_dinheiro-COALESCE(v.dinheiro, 0) END AS diferenca_dinheiro_atual,
+    CASE WHEN COALESCE(v.pendentes, 0)>0 THEN NULL ELSE a.valor_pix-COALESCE(v.pix, 0) END AS diferenca_pix_atual,
+    CASE WHEN COALESCE(v.pendentes, 0)>0 THEN NULL ELSE a.valor_cartao-COALESCE(v.cartao, 0) END AS diferenca_cartao_atual
 FROM vw_apuracao a
-JOIN jornadasetor j ON j.id_jornada = a.id_jornada
-JOIN turno t ON t.id_turno = j.id_turno
-JOIN setor s ON s.id_setor = j.id_setor
-JOIN evento ev ON ev.id_evento = s.id_evento
-JOIN usuario u ON u.id_usuario = a.id_usuario_responsavel
-LEFT JOIN(
-    SELECT e.id_jornada,
-        SUM(ri.quantidade * ri.preco_unitario_praticado) AS total,
-        SUM(CASE WHEN r.forma_pagamento = 'dinheiro' THEN ri.quantidade * ri.preco_unitario_praticado ELSE 0 END) AS dinheiro,
-        SUM(CASE WHEN r.forma_pagamento = 'pix' THEN ri.quantidade * ri.preco_unitario_praticado ELSE 0 END) AS pix,
-        SUM(CASE WHEN r.forma_pagamento = 'cartao' THEN ri.quantidade * ri.preco_unitario_praticado ELSE 0 END) AS cartao,
-        SUM(ri.preco_unitario_praticado IS NULL
-            OR r.forma_pagamento IS NULL
-            OR r.forma_pagamento NOT IN ('dinheiro', 'pix', 'cartao')) AS pendentes
-    FROM registro r
-    JOIN escala e ON e.id_escala = r.id_escala
-    JOIN registroitem ri ON ri.id_registro = r.id_registro
-    WHERE r.tipo = 'venda'
-    GROUP BY e.id_jornada) v ON v.id_jornada = a.id_jornada
-WHERE (@perfil = 'Administrador'
-        OR (@perfil = 'Gerente'
-            AND ev.id_responsavel = @pessoa))
-    AND j.data >= @inicio
-    AND j.data < @fim
+JOIN jornadasetor j ON j.id_jornada=a.id_jornada
+JOIN turno t ON t.id_turno=j.id_turno
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+JOIN usuario u ON u.id_usuario=a.id_usuario_responsavel
+LEFT JOIN (SELECT e.id_jornada, SUM(ri.quantidade*ri.preco_unitario_praticado) AS total, SUM(CASE WHEN r.forma_pagamento='dinheiro' THEN ri.quantidade*ri.preco_unitario_praticado ELSE 0 END) AS dinheiro, SUM(CASE WHEN r.forma_pagamento='pix' THEN ri.quantidade*ri.preco_unitario_praticado ELSE 0 END) AS pix, SUM(CASE WHEN r.forma_pagamento='cartao' THEN ri.quantidade*ri.preco_unitario_praticado ELSE 0 END) AS cartao, SUM(ri.preco_unitario_praticado IS NULL OR r.forma_pagamento IS NULL OR r.forma_pagamento NOT IN ('dinheiro', 'pix', 'cartao')) AS pendentes
+FROM registro r
+JOIN escala e ON e.id_escala=r.id_escala
+JOIN registroitem ri ON ri.id_registro=r.id_registro
+WHERE r.tipo='venda'
+GROUP BY e.id_jornada) v ON v.id_jornada=a.id_jornada
+WHERE (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa)) AND j.data>=@inicio AND j.data<@fim
 ORDER BY j.data DESC, a.data_hora DESC;
 
 -- 97. ConsultaOperacionalRepository.InstituicoesDoRelatorio
@@ -1952,3 +1839,306 @@ SELECT id_produto_setor,
     preco_venda
 FROM produtosetor
 WHERE id_produto_setor = @id;
+
+-- 12 — Filtros das telas e indicadores
+-- 100. LocalEstoqueService.ListarOperacionais
+-- Lista os locais ativos de eventos em aberto que a conta pode consultar.
+SET @perfil = 'Administrador';
+SET @pessoa = (SELECT id_pessoa FROM usuario WHERE login='rafael.cayres');
+SET @evento = (SELECT MIN(id_evento) FROM evento);
+SELECT DISTINCT l.id_local_estoque,
+    l.nome,
+    ev.nome AS evento,
+    l.eh_central,
+    l.eh_geral_evento
+FROM vw_localestoque l
+LEFT JOIN evento ev ON ev.id_evento=l.id_evento
+WHERE l.ativo=1 AND (l.eh_central=1 OR ev.situacao IN ('planejado', 'em_andamento'))
+AND (@perfil='Administrador'
+ OR (@perfil='Gerente' AND (ev.id_responsavel=@pessoa OR (l.eh_central=1 AND EXISTS
+ (SELECT 1
+FROM evento ce
+WHERE ce.id_instituicao=l.id_instituicao AND ce.id_responsavel=@pessoa))))
+ OR (@perfil='Membro' AND l.eh_central=0 AND EXISTS
+ (SELECT 1
+FROM equipeevento eq
+WHERE eq.id_evento=l.id_evento AND eq.id_pessoa=@pessoa AND eq.ativo=1)
+ AND (l.eh_geral_evento=1 OR EXISTS
+ (SELECT 1
+FROM estoquesetor xs
+JOIN jornadasetor j ON j.id_setor=xs.id_setor
+JOIN escala e ON e.id_jornada=j.id_jornada
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+WHERE xs.id_local_estoque=l.id_local_estoque AND eq.id_pessoa=@pessoa AND eq.ativo=1
+ AND eq.id_evento=l.id_evento AND e.situacao<>'cancelada'))))
+ORDER BY l.eh_central DESC, ev.nome, l.nome;
+
+-- 101. EstoqueRepository.ListarPorLocal
+-- Mostra somente saldos positivos do local, na ordem da primeira chegada.
+SET @id=(SELECT id_local_estoque FROM vw_localestoque WHERE eh_geral_evento=1 ORDER BY id_local_estoque LIMIT 1);
+SELECT e.*
+FROM estoque e
+LEFT JOIN (SELECT id_produto, MIN(ordem) AS primeira_chegada
+FROM (SELECT i.id_produto, CONCAT(DATE_FORMAT(en.data_hora, '%Y%m%d%H%i%s'), LPAD(i.id_entrada_item, 20, '0')) AS ordem
+FROM entradamercadoria en
+JOIN entradaitem i ON i.id_entrada=en.id_entrada
+WHERE en.id_local_destino=@id
+UNION ALL SELECT i.id_produto, CONCAT(DATE_FORMAT(tr.data_hora, '%Y%m%d%H%i%s'), LPAD(i.id_transferencia_item, 20, '0'))
+FROM transferenciaestoque tr
+JOIN transferenciaitem i ON i.id_transferencia=tr.id_transferencia
+WHERE tr.id_local_destino=@id) recebimentos
+GROUP BY id_produto) r ON r.id_produto=e.id_produto
+WHERE e.id_local_estoque=@id AND e.quantidade_atual>0
+ORDER BY r.primeira_chegada IS NULL, r.primeira_chegada, e.id_estoque;
+
+-- 102. MovimentacoesControl.FiltrarProduto
+-- Aplica ao histórico o evento, o local, o produto e o tipo selecionados.
+SET @perfil = 'Administrador';
+SET @pessoa = (SELECT id_pessoa FROM usuario WHERE login='rafael.cayres');
+SET @evento = (SELECT MIN(id_evento) FROM evento);
+SET @local=(SELECT id_local_estoque FROM vw_localestoque WHERE id_evento=@evento AND eh_geral_evento=1);
+SET @produto='';
+SET @tipo='';
+SET @inicio=DATE_SUB(CURDATE(),INTERVAL 31 DAY);
+SET @fim=DATE_ADD(CURDATE(),INTERVAL 1 DAY);
+SELECT m.*
+FROM (SELECT m.data_hora, m.tipo, m.produto, m.quantidade, m.origem, m.destino, m.responsavel, m.id_origem, m.id_destino, m.id_operacao, m.entidade, m.evento AS id_evento
+FROM (SELECT en.data_hora, 'entrada' AS tipo, p.nome AS produto, i.quantidade, '' AS origem, l.nome AS destino, u.login AS responsavel, NULL AS evento, 0 AS id_origem, l.id_local_estoque AS id_destino, en.id_entrada AS id_operacao, 'entradamercadoria' AS entidade
+FROM entradamercadoria en
+JOIN entradaitem i ON i.id_entrada=en.id_entrada
+JOIN produto p ON p.id_produto=i.id_produto
+JOIN vw_localestoque l ON l.id_local_estoque=en.id_local_destino
+JOIN usuario u ON u.id_usuario=en.id_usuario_responsavel
+WHERE @perfil='Administrador'
+UNION ALL SELECT tr.data_hora, 'transferencia', p.nome, i.quantidade, o.nome, d.nome, u.login, COALESCE(o.id_evento, d.id_evento), o.id_local_estoque, d.id_local_estoque, tr.id_transferencia, 'transferenciaestoque'
+FROM transferenciaestoque tr
+JOIN transferenciaitem i ON i.id_transferencia=tr.id_transferencia
+JOIN produto p ON p.id_produto=i.id_produto
+JOIN vw_localestoque o ON o.id_local_estoque=tr.id_local_origem
+JOIN vw_localestoque d ON d.id_local_estoque=tr.id_local_destino
+JOIN usuario u ON u.id_usuario=tr.id_usuario_responsavel
+WHERE @perfil<>'Membro'
+UNION ALL SELECT r.data_hora, r.tipo, p.nome, i.quantidade, s.nome, '', u.login, ev.id_evento, es.id_local_estoque, 0, r.id_registro, 'registro'
+FROM registro r
+JOIN registroitem i ON i.id_registro=r.id_registro
+JOIN produtosetor ps ON ps.id_produto_setor=i.id_produto_setor
+JOIN produto p ON p.id_produto=ps.id_produto
+JOIN escala e ON e.id_escala=r.id_escala
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+JOIN jornadasetor j ON j.id_jornada=e.id_jornada
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+JOIN estoquesetor es ON es.id_setor=s.id_setor
+JOIN usuario u ON u.id_usuario=r.id_usuario_responsavel
+WHERE eq.id_evento=ev.id_evento AND ps.id_setor=s.id_setor AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND eq.id_pessoa=@pessoa AND eq.ativo=1)) AND (@perfil<>'Membro' OR u.id_pessoa=@pessoa)) m
+LEFT JOIN evento ev ON ev.id_evento=m.evento
+WHERE m.data_hora>=@inicio AND m.data_hora<@fim AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND m.tipo IN ('venda', 'perda')))) m
+WHERE (@evento=0 OR m.id_evento=@evento)
+AND (@local=0 OR m.id_origem=@local OR m.id_destino=@local)
+AND (@produto='' OR m.produto LIKE CONCAT('%', @produto, '%'))
+AND (@tipo='' OR m.tipo=@tipo)
+AND (m.id_origem=0 OR EXISTS(SELECT 1
+FROM vw_localestoque l
+LEFT JOIN evento ev ON ev.id_evento=l.id_evento
+WHERE l.id_local_estoque=m.id_origem AND l.ativo=1 AND (l.eh_central=1 OR ev.situacao IN('planejado', 'em_andamento'))))
+AND (m.id_destino=0 OR EXISTS(SELECT 1
+FROM vw_localestoque l
+LEFT JOIN evento ev ON ev.id_evento=l.id_evento
+WHERE l.id_local_estoque=m.id_destino AND l.ativo=1 AND (l.eh_central=1 OR ev.situacao IN('planejado', 'em_andamento'))))
+ORDER BY m.data_hora DESC, m.id_operacao DESC;
+
+-- 103. DashboardControl.CarregarMovimentosReais / ConsultaOperacionalService.MovimentacoesDoDashboard
+-- Soma entradas, vendas e perdas do mês; transferências não são novas entradas e eventos cancelados ficam de fora.
+SET @perfil = 'Administrador';
+SET @pessoa = (SELECT id_pessoa FROM usuario WHERE login='rafael.cayres');
+SET @evento = (SELECT MIN(id_evento) FROM evento);
+SET @inicio=DATE_SUB(CURDATE(),INTERVAL DAYOFMONTH(CURDATE())-1 DAY);
+SET @fim=DATE_ADD(CURDATE(),INTERVAL 1 DAY);
+SELECT COALESCE(SUM(CASE WHEN m.tipo='entrada' THEN m.quantidade ELSE 0 END), 0) AS unidades_recebidas,
+    COALESCE(SUM(CASE WHEN m.tipo IN ('venda', 'perda') THEN m.quantidade ELSE 0 END), 0) AS unidades_saida
+FROM (SELECT m.data_hora, m.tipo, m.produto, m.quantidade, m.origem, m.destino, m.responsavel, m.id_origem, m.id_destino, m.id_operacao, m.entidade, m.evento AS id_evento
+FROM (SELECT en.data_hora, 'entrada' AS tipo, p.nome AS produto, i.quantidade, '' AS origem, l.nome AS destino, u.login AS responsavel, NULL AS evento, 0 AS id_origem, l.id_local_estoque AS id_destino, en.id_entrada AS id_operacao, 'entradamercadoria' AS entidade
+FROM entradamercadoria en
+JOIN entradaitem i ON i.id_entrada=en.id_entrada
+JOIN produto p ON p.id_produto=i.id_produto
+JOIN vw_localestoque l ON l.id_local_estoque=en.id_local_destino
+JOIN usuario u ON u.id_usuario=en.id_usuario_responsavel
+WHERE @perfil='Administrador'
+UNION ALL SELECT tr.data_hora, 'transferencia', p.nome, i.quantidade, o.nome, d.nome, u.login, COALESCE(o.id_evento, d.id_evento), o.id_local_estoque, d.id_local_estoque, tr.id_transferencia, 'transferenciaestoque'
+FROM transferenciaestoque tr
+JOIN transferenciaitem i ON i.id_transferencia=tr.id_transferencia
+JOIN produto p ON p.id_produto=i.id_produto
+JOIN vw_localestoque o ON o.id_local_estoque=tr.id_local_origem
+JOIN vw_localestoque d ON d.id_local_estoque=tr.id_local_destino
+JOIN usuario u ON u.id_usuario=tr.id_usuario_responsavel
+WHERE @perfil<>'Membro'
+UNION ALL SELECT r.data_hora, r.tipo, p.nome, i.quantidade, s.nome, '', u.login, ev.id_evento, es.id_local_estoque, 0, r.id_registro, 'registro'
+FROM registro r
+JOIN registroitem i ON i.id_registro=r.id_registro
+JOIN produtosetor ps ON ps.id_produto_setor=i.id_produto_setor
+JOIN produto p ON p.id_produto=ps.id_produto
+JOIN escala e ON e.id_escala=r.id_escala
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+JOIN jornadasetor j ON j.id_jornada=e.id_jornada
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+JOIN estoquesetor es ON es.id_setor=s.id_setor
+JOIN usuario u ON u.id_usuario=r.id_usuario_responsavel
+WHERE eq.id_evento=ev.id_evento AND ps.id_setor=s.id_setor AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND eq.id_pessoa=@pessoa AND eq.ativo=1)) AND (@perfil<>'Membro' OR u.id_pessoa=@pessoa)) m
+LEFT JOIN evento ev ON ev.id_evento=m.evento
+WHERE m.data_hora>=@inicio AND m.data_hora<@fim AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND m.tipo IN ('venda', 'perda')))) m
+WHERE m.id_evento IS NULL OR EXISTS(SELECT 1
+FROM evento ev
+WHERE ev.id_evento=m.id_evento
+AND ev.situacao<>'cancelado' AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa)
+OR (@perfil='Membro' AND EXISTS(SELECT 1
+FROM equipeevento eq
+WHERE eq.id_evento=ev.id_evento AND eq.id_pessoa=@pessoa AND eq.ativo=1))));
+
+-- 104. DashboardControl.AbrirEstoquesBaixos
+-- Detalha os saldos no mínimo ou abaixo dele, incluindo os zerados, somente em locais ativos de eventos em aberto.
+SET @perfil = 'Administrador';
+SET @pessoa = (SELECT id_pessoa FROM usuario WHERE login='rafael.cayres');
+SET @evento = (SELECT MIN(id_evento) FROM evento);
+SELECT e.*,
+    ev.nome AS evento,
+    CASE WHEN e.quantidade_atual<=0 THEN 'Sem estoque' ELSE 'Estoque baixo' END AS situacao
+FROM (SELECT l.id_local_estoque, l.nome AS local, p.id_produto, p.nome AS produto, p.unidade_medida, es.quantidade_atual, es.quantidade_minima, es.quantidade_ideal
+FROM estoque es
+JOIN vw_localestoque l ON l.id_local_estoque=es.id_local_estoque
+JOIN produto p ON p.id_produto=es.id_produto
+LEFT JOIN evento ev ON ev.id_evento=l.id_evento
+WHERE (@perfil='Administrador' OR (@perfil='Gerente' AND (ev.id_responsavel=@pessoa OR (l.eh_central=1 AND EXISTS (SELECT 1
+FROM evento ce
+WHERE ce.id_responsavel=@pessoa AND ce.id_instituicao=l.id_instituicao)))) OR (@perfil='Membro' AND ((l.ativo=1 AND l.eh_geral_evento=1 AND EXISTS (SELECT 1
+FROM equipeevento eqg
+WHERE eqg.id_evento=ev.id_evento AND eqg.id_pessoa=@pessoa AND eqg.ativo=1)) OR (l.ativo=1 AND EXISTS (SELECT 1
+FROM estoquesetor xs
+JOIN jornadasetor j ON j.id_setor=xs.id_setor
+JOIN escala e ON e.id_jornada=j.id_jornada
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+WHERE xs.id_local_estoque=l.id_local_estoque AND eq.id_evento=xs.id_evento AND eq.ativo=1 AND eq.id_pessoa=@pessoa AND LOWER(e.situacao)<>'cancelada')))) )) e
+JOIN vw_localestoque l ON l.id_local_estoque=e.id_local_estoque
+LEFT JOIN evento ev ON ev.id_evento=l.id_evento
+WHERE (e.quantidade_atual<=0 OR e.quantidade_atual<=e.quantidade_minima)
+AND l.ativo=1 AND (l.eh_central=1 OR ev.situacao IN ('planejado', 'em_andamento'))
+ORDER BY e.quantidade_atual, e.produto;
+
+-- 105. ConsultaOperacionalService.EstoqueCritico
+-- Lista os produtos abaixo do mínimo ou sem estoque e calcula o que falta para atingir o mínimo.
+SET @perfil = 'Administrador';
+SET @pessoa = (SELECT id_pessoa FROM usuario WHERE login='rafael.cayres');
+SET @evento = (SELECT MIN(id_evento) FROM evento);
+SELECT e.*,
+    CASE WHEN e.quantidade_atual<=0 THEN 'Sem estoque' ELSE 'Abaixo do mínimo' END AS situacao,
+    GREATEST(0, e.quantidade_minima-e.quantidade_atual) AS reposicao_minima
+FROM (SELECT l.id_local_estoque, l.nome AS local, p.id_produto, p.nome AS produto, p.unidade_medida, es.quantidade_atual, es.quantidade_minima, es.quantidade_ideal
+FROM estoque es
+JOIN vw_localestoque l ON l.id_local_estoque=es.id_local_estoque
+JOIN produto p ON p.id_produto=es.id_produto
+LEFT JOIN evento ev ON ev.id_evento=l.id_evento
+WHERE (@perfil='Administrador' OR (@perfil='Gerente' AND (ev.id_responsavel=@pessoa OR (l.eh_central=1 AND EXISTS (SELECT 1
+FROM evento ce
+WHERE ce.id_responsavel=@pessoa AND ce.id_instituicao=l.id_instituicao)))) OR (@perfil='Membro' AND ((l.ativo=1 AND l.eh_geral_evento=1 AND EXISTS (SELECT 1
+FROM equipeevento eqg
+WHERE eqg.id_evento=ev.id_evento AND eqg.id_pessoa=@pessoa AND eqg.ativo=1)) OR (l.ativo=1 AND EXISTS (SELECT 1
+FROM estoquesetor xs
+JOIN jornadasetor j ON j.id_setor=xs.id_setor
+JOIN escala e ON e.id_jornada=j.id_jornada
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+WHERE xs.id_local_estoque=l.id_local_estoque AND eq.id_evento=xs.id_evento AND eq.ativo=1 AND eq.id_pessoa=@pessoa AND LOWER(e.situacao)<>'cancelada')))) )) e
+WHERE (e.quantidade_atual<=0 OR e.quantidade_atual<e.quantidade_minima)
+AND (@evento=0 OR EXISTS(SELECT 1
+FROM vw_localestoque l
+WHERE l.id_local_estoque=e.id_local_estoque AND l.id_evento=@evento))
+ORDER BY e.local, e.produto;
+
+-- 106. RegistrosControl.PreencherEscalasFiltradas
+-- Filtra as escalas por pessoa e evento; membros consultam suas próprias escalas.
+SET @perfil = 'Administrador';
+SET @pessoa = (SELECT id_pessoa FROM usuario WHERE login='rafael.cayres');
+SET @evento = (SELECT MIN(id_evento) FROM evento);
+SET @pessoa_escalada=(SELECT id_pessoa FROM usuario WHERE login='pedro.almeida');
+SELECT e.*
+FROM (SELECT e.id_escala, eq.id_pessoa, p.nome AS pessoa_nome, ev.id_evento, ev.nome AS evento_nome, eq.ativo, e.situacao, j.id_jornada, j.data AS data_jornada, s.id_setor, ev.situacao AS situacao_evento, CONCAT(s.nome, ' · ', DATE_FORMAT(j.data, '%d/%m/%Y'), ' · ', t.nome, ' · ', TIME_FORMAT(e.entrada_prevista, '%H:%i'), ' – ', TIME_FORMAT(e.saida_prevista, '%H:%i')) AS descricao_curta, CONCAT(ev.nome, ' / ', s.nome, ' / ', DATE_FORMAT(j.data, '%d/%m/%Y'), ' / ', p.nome, ' / ', e.entrada_prevista, ' - ', e.saida_prevista) AS descricao, CONCAT(s.nome, ' / ', DATE_FORMAT(j.data, '%d/%m/%Y'), ' / ', t.nome) AS descricao_jornada
+FROM escala e
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+JOIN pessoa p ON p.id_pessoa=eq.id_pessoa
+JOIN jornadasetor j ON j.id_jornada=e.id_jornada
+JOIN turno t ON t.id_turno=j.id_turno
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+WHERE eq.id_evento=ev.id_evento AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa) OR (@perfil='Membro' AND eq.id_pessoa=@pessoa AND eq.ativo=1)) AND (@perfil<>'Membro' OR LOWER(e.situacao)<>'cancelada') AND (@evento=0 OR ev.id_evento=@evento)) e
+WHERE (@pessoa_escalada=0 OR e.id_pessoa=@pessoa_escalada)
+ORDER BY e.data_jornada, e.pessoa_nome, e.descricao_curta;
+
+-- 107. FinanceiroControl.AtualizarDados
+-- Calcula as vendas, despesas e o resultado parcial da data, sem tratar conferência como nova receita.
+SET @perfil = 'Administrador';
+SET @pessoa = (SELECT id_pessoa FROM usuario WHERE login='rafael.cayres');
+SET @evento = (SELECT MIN(id_evento) FROM evento);
+SET @data=CURDATE();
+SELECT f.*,
+    f.vendas-f.despesas AS resultado_parcial
+FROM (SELECT ev.nome AS evento, @data AS data_consulta, COALESCE((SELECT SUM(ri.quantidade*ri.preco_unitario_praticado)
+FROM registro r
+
+JOIN registroitem ri ON ri.id_registro=r.id_registro
+JOIN escala e ON e.id_escala=r.id_escala
+
+JOIN jornadasetor j ON j.id_jornada=e.id_jornada
+JOIN setor s ON s.id_setor=j.id_setor
+
+WHERE s.id_evento=ev.id_evento AND r.tipo='venda' AND r.data_hora>=@data AND r.data_hora<DATE_ADD(@data, INTERVAL 1 DAY)), 0) AS vendas, COALESCE((SELECT SUM(d.valor)
+FROM despesa d
+WHERE d.id_evento=ev.id_evento AND d.data=@data), 0) AS despesas
+
+FROM evento ev
+WHERE ev.id_evento=@evento
+AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa))) f;
+
+-- 108. FinanceiroControl.AtualizarConferencias
+-- Compara a última conferência de cada setor e turno com as vendas atuais, inclusive quando ainda não foi conferido.
+SET @perfil = 'Administrador';
+SET @pessoa = (SELECT id_pessoa FROM usuario WHERE login='rafael.cayres');
+SET @evento = (SELECT MIN(id_evento) FROM evento);
+SET @data=CURDATE();
+SELECT ev.nome AS evento,
+    s.nome AS setor,
+    t.nome AS turno,
+    j.data,
+    CASE WHEN COALESCE(v.pendentes, 0)>0 THEN NULL ELSE COALESCE(v.total, 0) END AS vendas,
+    a.valor_informado AS recebido,
+    CASE WHEN COALESCE(v.pendentes, 0)>0 THEN NULL ELSE a.valor_informado-COALESCE(v.total, 0) END AS diferenca,
+    CASE WHEN COALESCE(v.pendentes, 0)>0 THEN 'Vendas incompletas'
+WHEN a.id_apuracao IS NULL THEN 'Pendente'
+WHEN a.valor_dinheiro IS NULL OR a.valor_pix IS NULL OR a.valor_cartao IS NULL THEN 'Histórico sem modalidades'
+WHEN a.valor_dinheiro=COALESCE(v.dinheiro, 0) AND a.valor_pix=COALESCE(v.pix, 0) AND a.valor_cartao=COALESCE(v.cartao, 0)
+THEN 'Valores conferem' ELSE 'Com divergência' END AS situacao, a.data_hora AS conferido_em
+FROM jornadasetor j
+JOIN setor s ON s.id_setor=j.id_setor
+JOIN evento ev ON ev.id_evento=s.id_evento
+JOIN turno t ON t.id_turno=j.id_turno
+LEFT JOIN vw_apuracao a ON a.id_jornada=j.id_jornada AND a.id_apuracao=(SELECT MAX(a2.id_apuracao)
+FROM vw_apuracao a2
+WHERE a2.id_jornada=j.id_jornada)
+LEFT JOIN (SELECT e.id_jornada, SUM(ri.quantidade*ri.preco_unitario_praticado) AS total, SUM(CASE WHEN r.forma_pagamento='dinheiro' THEN ri.quantidade*ri.preco_unitario_praticado ELSE 0 END) AS dinheiro, SUM(CASE WHEN r.forma_pagamento='pix' THEN ri.quantidade*ri.preco_unitario_praticado ELSE 0 END) AS pix, SUM(CASE WHEN r.forma_pagamento='cartao' THEN ri.quantidade*ri.preco_unitario_praticado ELSE 0 END) AS cartao, SUM(ri.preco_unitario_praticado IS NULL OR r.forma_pagamento IS NULL OR r.forma_pagamento NOT IN('dinheiro', 'pix', 'cartao')) AS pendentes
+FROM registro r
+JOIN registroitem ri ON ri.id_registro=r.id_registro
+JOIN escala e ON e.id_escala=r.id_escala
+WHERE r.tipo='venda'
+GROUP BY e.id_jornada) v ON v.id_jornada=j.id_jornada
+WHERE j.data=@data AND ev.id_evento=@evento AND EXISTS(SELECT 1
+FROM escala e
+WHERE e.id_jornada=j.id_jornada)
+AND (@perfil='Administrador' OR (@perfil='Gerente' AND ev.id_responsavel=@pessoa))
+ORDER BY s.nome, t.nome;
+
+-- 109. EventoRepository.PossuiVendasOuPerdas
+-- Verifica se o evento tem lançamentos antes do aviso de cancelamento ou finalização.
+SET @evento=(SELECT MIN(id_evento) FROM evento);
+SELECT EXISTS(SELECT 1
+FROM registro r
+JOIN escala e ON e.id_escala=r.id_escala
+JOIN equipeevento eq ON eq.id_equipe=e.id_equipe
+WHERE eq.id_evento=@evento AND r.tipo IN('venda', 'perda')) AS possui_vendas_ou_perdas;
