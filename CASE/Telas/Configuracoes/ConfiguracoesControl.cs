@@ -788,10 +788,44 @@ panelSolicitacoesPendentes };
             Button central = new Button();
             central.Text = "Inicializar estoque central";
             central.SetBounds(240, 292, 270, 36);
+            central.Visible = false;
+            var situacaoCentral = new Label
+            {
+                Name = "lblSituacaoEstoqueCentral",
+                Bounds = new System.Drawing.Rectangle(240, 292, 320, 36),
+                TextAlign = System.Drawing.ContentAlignment.MiddleCenter,
+                Font = new System.Drawing.Font("Segoe UI", 9, System.Drawing.FontStyle.Bold),
+                ForeColor = System.Drawing.Color.FromArgb(29, 125, 96),
+                BackColor = System.Drawing.Color.FromArgb(233, 247, 241),
+                Visible = false
+            };
             Label mensagem = FrontendTheme.Legenda("Salve a instituição e inicialize seu estoque central uma única vez.",
                 new System.Drawing.Rectangle(24, 334, 650, 23));
             Instituicao atual = null;
             ConfiguracaoInstitucionalService service = new ConfiguracaoInstitucionalService();
+            Action atualizarCentral = () =>
+            {
+                central.Visible = false;
+                situacaoCentral.Visible = false;
+                if (!administrador) return;
+                try
+                {
+                    bool configurado = service.EstoqueCentralConfigurado(usuarioAutenticado);
+                    situacaoCentral.Text = "Estoque central configurado ✓";
+                    situacaoCentral.Visible = configurado;
+                    central.Visible = !configurado;
+                    central.Enabled = !configurado && atual != null;
+                    mensagem.Text = configurado
+                        ? "Para adicionar produtos e quantidades, acesse Estoque > Registrar entrada."
+                        : atual == null ? "Salve a instituição para habilitar a criação do estoque central."
+                            : "Crie o estoque central uma única vez. Depois, registre as entradas em Estoque.";
+                }
+                catch (Exception erro)
+                {
+                    mensagem.Text = "Não foi possível confirmar a configuração do estoque central. Abra esta aba novamente para tentar.";
+                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " ao consultar a configuração do estoque central.");
+                }
+            };
             if (administrador)
             {
                 try
@@ -827,7 +861,8 @@ panelSolicitacoesPendentes };
                     item.Email = campos[3].Text;
                     item.IdInstituicao = service.SalvarInstituicao(usuarioAutenticado, item);
                     atual = item;
-                    mensagem.Text = "Instituição salva. Você já pode inicializar o estoque central.";
+                    atualizarCentral();
+                    FeedbackUsuario.Exibir(this, "Dados da instituição salvos.", TipoFeedback.Sucesso);
                 }
                 catch (Exception erro)
                 {
@@ -839,7 +874,8 @@ panelSolicitacoesPendentes };
                 try
                 {
                     service.InicializarCentral(usuarioAutenticado);
-                    mensagem.Text = "Estoque central disponível. Repetir esta ação não cria outro local.";
+                    atualizarCentral();
+                    FeedbackUsuario.Exibir(this, "Estoque central configurado. Você já pode registrar entradas em Estoque.", TipoFeedback.Sucesso);
                 }
                 catch (Exception erro)
                 {
@@ -848,7 +884,10 @@ panelSolicitacoesPendentes };
             };
             painel.Controls.Add(salvar);
             painel.Controls.Add(central);
+            painel.Controls.Add(situacaoCentral);
             painel.Controls.Add(mensagem);
+            VisualUtils.Arredondar(situacaoCentral, 8);
+            atualizarCentral();
             painel.SizeChanged += (s, e) =>
             {
                 int largura = painel.ClientSize.Width - 48;

@@ -241,11 +241,18 @@ namespace CASE
             }
         }
 
+        internal void AtualizarConsulta()
+        {
+            CarregarLocais();
+        }
+
         private void CarregarLocais()
         {
             try
             {
                 List<LocalEstoque> locais = localEstoqueService.ListarOperacionais(usuarioAutenticado);
+                LocalEstoque anterior = cmbLocal.SelectedItem as LocalEstoque;
+                int indiceSelecionado = -1;
                 cmbLocal.Items.Clear();
 
                 foreach (LocalEstoque local in locais)
@@ -256,12 +263,14 @@ namespace CASE
                     {
                         continue;
                     }
-                    cmbLocal.Items.Add(local);
+                    int indice = cmbLocal.Items.Add(local);
+                    if (anterior != null && anterior.IdLocalEstoque == local.IdLocalEstoque)
+                        indiceSelecionado = indice;
                 }
 
                 if (cmbLocal.Items.Count > 0)
                 {
-                    cmbLocal.SelectedIndex = 0;
+                    cmbLocal.SelectedIndex = indiceSelecionado >= 0 ? indiceSelecionado : 0;
                     lblMensagem.Text = string.Empty;
                 }
                 else

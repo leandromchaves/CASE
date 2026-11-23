@@ -50,11 +50,12 @@ namespace CASE.Quermesse
 
             ConfigurarComboProdutos();
             cmbTipoSolicitacao.Items.Clear();
-            cmbTipoSolicitacao.Items.Add("reposicao");
+            cmbTipoSolicitacao.Items.Add("Reposição");
             cmbTipoSolicitacao.SelectedIndex = 0;
             cmbStatusSolicitacao.Visible = false;
             cmbStatusSolicitacao.Items.Clear();
             lblSituacao.Visible = false;
+            if (!idSolicitacaoDetalhe.HasValue) OrganizarNovaSolicitacao();
 
             if (usuarioAutenticado == null)
             {
@@ -80,23 +81,76 @@ namespace CASE.Quermesse
             comboProdutos.Name = "cmbProdutoSolicitacao";
             comboProdutos.BackColor = txtProdutoSolicitacao.BackColor;
             comboProdutos.ForeColor = txtProdutoSolicitacao.ForeColor;
-            comboProdutos.Bounds = txtProdutoSolicitacao.Bounds;
+            Control areaProduto = txtProdutoSolicitacao.Parent != panelFormulario
+                ? txtProdutoSolicitacao.Parent : (Control)txtProdutoSolicitacao;
+            comboProdutos.Bounds = areaProduto.Bounds;
+            comboProdutos.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             comboProdutos.DisplayMember = "Nome";
             comboProdutos.Visible = false;
             comboProdutos.SelectedIndexChanged += comboProdutos_SelectedIndexChanged;
             panelFormulario.Controls.Add(comboProdutos);
             comboProdutos.BringToFront();
             txtProdutoSolicitacao.Visible = false;
+            if (areaProduto != txtProdutoSolicitacao) areaProduto.Visible = false;
+            VisualUtils.EstilizarSelecao(comboProdutos);
             lblProduto.Text = "Produto disponível no setor";
             lblSetor.Text = "Evento, setor e escala";
             cmbSetorSolicitacao.Items.Clear();
             cmbSetorSolicitacao.SelectedIndexChanged += cmbSetorSolicitacao_SelectedIndexChanged;
         }
 
+        private void OrganizarNovaSolicitacao()
+        {
+            Text = lblTitulo.Text = "Solicitar reposição";
+            ClientSize = new System.Drawing.Size(640, 650);
+            panelFormulario.Height = 618;
+            cmbTipoSolicitacao.Visible = lblTipo.Visible = false;
+            var orientacao = new Label
+            {
+                Text = "Peça produtos do estoque geral para abastecer seu setor.",
+                ForeColor = VisualUtils.TextoSuave,
+                Font = new System.Drawing.Font("Segoe UI", 10),
+                Bounds = new System.Drawing.Rectangle(28, 70, 550, 30)
+            };
+            panelFormulario.Controls.Add(orientacao);
+            lblSetor.Text = "Evento, setor e escala *";
+            lblSetor.Top = 108;
+            cmbSetorSolicitacao.SetBounds(28, 132, 550, 30);
+            lblSolicitante.Text = "Solicitante · preenchido automaticamente";
+            lblSolicitante.Top = 177;
+            PosicionarCampo(txtSolicitante, 201, 38);
+            lblProduto.Text = "Produto para reposição *";
+            lblProduto.Top = 251;
+            comboProdutos.SetBounds(28, 275, 550, 30);
+            lblQuantidade.Text = "Quantidade solicitada *";
+            lblQuantidade.Top = 317;
+            PosicionarCampo(txtQuantidadeSolicitacao, 341, 38);
+            lblObservacao.Text = "Observação (opcional)";
+            lblObservacao.Top = 391;
+            PosicionarCampo(txtObservacaoSolicitacao, 415, 38);
+            VisualUtils.DefinirPlaceholder(txtQuantidadeSolicitacao, "Ex.: 10");
+            VisualUtils.DefinirPlaceholder(txtObservacaoSolicitacao, "Informe algum detalhe que ajude a avaliar o pedido");
+            labelAvisoFormulario.SetBounds(28, 477, 550, 58);
+            btnCancelar.Top = btnSalvarVisual.Top = 558;
+            btnSalvarVisual.Text = "Enviar pedido";
+            comboProdutos.TabIndex = 3;
+            txtQuantidadeSolicitacao.TabIndex = 4;
+            txtObservacaoSolicitacao.TabIndex = 5;
+        }
+
+        private void PosicionarCampo(TextBox campo, int topo, int altura)
+        {
+            Control contorno = campo.Parent != panelFormulario ? campo.Parent : (Control)campo;
+            contorno.SetBounds(28, topo, 550, altura);
+            VisualUtils.EstilizarCampo(campo);
+        }
+
         private void PrepararNovaSolicitacao()
         {
             txtSolicitante.ReadOnly = true;
-            txtSolicitante.Text = "Conta autenticada #" + usuarioAutenticado.IdUsuario;
+            txtSolicitante.Text = usuarioAutenticado.Login;
+            txtSolicitante.TabStop = false;
+            txtSolicitante.AccessibleDescription = "Usuário conectado que está criando a solicitação. Preenchido automaticamente e não editável.";
             cmbStatusSolicitacao.Visible = false;
             lblSituacao.Visible = false;
             txtObservacaoSolicitacao.Text = string.Empty;
@@ -104,6 +158,9 @@ namespace CASE.Quermesse
 
             try
             {
+                string perfil;
+                Usuario contaAtual = new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
+                txtSolicitante.Text = contaAtual.Login;
                 List<Escala> escalas = escalaService.ListarDisponiveisParaSolicitacao(usuarioAutenticado);
 
                 foreach (Escala escala in escalas)
@@ -165,7 +222,7 @@ namespace CASE.Quermesse
 
                 cmbSetorSolicitacao.SelectedIndex = 0;
                 CarregarProdutosDaEscalaSelecionada();
-                Text = lblTitulo.Text = "Nova solicitação de reposição";
+                Text = lblTitulo.Text = "Solicitar reposição";
             }
             catch (UnauthorizedAccessException)
             {
@@ -285,6 +342,7 @@ namespace CASE.Quermesse
                 txtSolicitante.ReadOnly = true;
                 txtProdutoSolicitacao.Text = resumo.Produtos;
                 txtProdutoSolicitacao.Visible = true;
+                if (txtProdutoSolicitacao.Parent != panelFormulario) txtProdutoSolicitacao.Parent.Visible = true;
                 comboProdutos.Visible = false;
                 txtProdutoSolicitacao.ReadOnly = true;
                 txtQuantidadeSolicitacao.Text = string.Empty;
@@ -305,7 +363,7 @@ namespace CASE.Quermesse
                 cmbStatusSolicitacao.Visible = true;
                 lblSituacao.Visible = true;
                 btnSalvarVisual.Visible = false;
-                labelAvisoFormulario.Text = "A decisão e o histórico são registrados pelo Service.";
+                labelAvisoFormulario.Text = "Consulta da solicitação. A situação e os itens refletem o pedido registrado.";
             }
             catch (UnauthorizedAccessException)
             {

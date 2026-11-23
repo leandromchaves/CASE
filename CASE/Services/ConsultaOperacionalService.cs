@@ -89,11 +89,33 @@ namespace CASE.Services
             ExportarRelatorio(usuario, estoqueAtual ? "Estoque" : "Movimentações", inicio, fim, caminho, "pdf");
         }
 
+        public static string[] PerfisPermitidosNoRelatorio(string tipo)
+        {
+            switch (tipo)
+            {
+                case "Movimentações":
+                case "Estoque":
+                case "Estoque crítico":
+                case "Vendas e perdas":
+                case "Solicitações de reposição":
+                    return new[] { "Membro", "Gerente", "Administrador" };
+                case "Eventos":
+                case "Solicitações ao central":
+                case "Despesas":
+                case "Apurações":
+                    return new[] { "Gerente", "Administrador" };
+                default:
+                    throw new ArgumentException("Selecione um tipo de relatório válido.");
+            }
+        }
+
         public DataTable Relatorio(Usuario usuario, string tipo, DateTime inicio, DateTime fim)
         {
             ValidarPeriodo(inicio, fim);
             string perfil;
             Usuario atual = autorizacao.ValidarUsuarioEObterPerfil(usuario, out perfil);
+            if (Array.IndexOf(PerfisPermitidosNoRelatorio(tipo), perfil) < 0)
+                throw new UnauthorizedAccessException("Seu perfil não pode consultar este relatório.");
             switch (tipo)
             {
                 case "Movimentações":

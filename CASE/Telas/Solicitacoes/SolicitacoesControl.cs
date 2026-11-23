@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
@@ -364,15 +364,15 @@ namespace CASE.Quermesse
                     return;
                 }
 
-                DialogResult resposta = MessageBox.Show(
-                    "A solicitação foi aprovada. Deseja transferir todos os itens do estoque geral para a barraca?",
-                    "Atender solicitação",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-
-                if (resposta == DialogResult.Yes)
+                try
                 {
-                    AtenderSolicitacao(solicitacao);
+                    using (var formulario = new DetalhesReposicaoForm(usuarioAutenticado, solicitacao.IdSolicitacao, true))
+                        if (formulario.ShowDialog(this) == DialogResult.Yes)
+                            AtenderSolicitacao(solicitacao);
+                }
+                catch (Exception erro)
+                {
+                    FeedbackUsuario.ExibirErro(this, erro, "Não foi possível abrir os detalhes da reposição.", labelAviso);
                 }
 
                 return;
@@ -402,14 +402,11 @@ namespace CASE.Quermesse
 
         private void DecidirSolicitacao(Solicitacao solicitacao)
         {
-            DialogResult resposta = MessageBox.Show(
-                "Sim: aprovar o pedido completo. Não: rejeitar com justificativa. Cancelar: voltar.",
-                "Decidir solicitação",
-                MessageBoxButtons.YesNoCancel,
-                MessageBoxIcon.Question);
-
             try
             {
+                DialogResult resposta;
+                using (var formulario = new DetalhesReposicaoForm(usuarioAutenticado, solicitacao.IdSolicitacao, true))
+                    resposta = formulario.ShowDialog(this);
                 if (resposta == DialogResult.Yes)
                 {
                     solicitacaoService.Aprovar(
@@ -418,6 +415,7 @@ namespace CASE.Quermesse
                         null);
                     CarregarSolicitacoes();
                     labelAviso.Text = "Solicitação aprovada. O estoque não foi movimentado.";
+                    FeedbackUsuario.Exibir(this, "Solicitação aprovada. Abra o pedido para efetivar a transferência ao setor.", TipoFeedback.Sucesso);
                 }
                 else if (resposta == DialogResult.No)
                 {
@@ -434,6 +432,7 @@ namespace CASE.Quermesse
                         justificativa);
                     CarregarSolicitacoes();
                     labelAviso.Text = "Solicitação rejeitada.";
+                    FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
                 }
             }
             catch (UnauthorizedAccessException)
@@ -516,6 +515,7 @@ namespace CASE.Quermesse
                     solicitacao.IdSolicitacao);
                 CarregarSolicitacoes();
                 labelAviso.Text = "Solicitação atendida integralmente por transferência.";
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
             }
             catch (UnauthorizedAccessException)
             {
@@ -533,11 +533,14 @@ namespace CASE.Quermesse
 
         private void MostrarDetalhes(int idSolicitacao)
         {
-            using (SolicitacaoForm formulario = new SolicitacaoForm(
-                usuarioAutenticado,
-                idSolicitacao))
+            try
             {
-                formulario.ShowDialog(this);
+                using (var formulario = new DetalhesReposicaoForm(usuarioAutenticado, idSolicitacao, false))
+                    formulario.ShowDialog(this);
+            }
+            catch (Exception erro)
+            {
+                FeedbackUsuario.ExibirErro(this, erro, "Não foi possível abrir os detalhes da reposição.", labelAviso);
             }
         }
 
@@ -546,9 +549,19 @@ namespace CASE.Quermesse
             AplicarFiltros();
         }
 
+        internal void AtualizarConsulta()
+        {
+            string setor = cmbFiltroSolicitacoes.Text;
+            string situacao = cmbStatusListaSolicitacoes.Text;
+            CarregarSolicitacoes();
+            int indiceSetor = cmbFiltroSolicitacoes.FindStringExact(setor);
+            int indiceSituacao = cmbStatusListaSolicitacoes.FindStringExact(situacao);
+            if (indiceSetor >= 0) cmbFiltroSolicitacoes.SelectedIndex = indiceSetor;
+            if (indiceSituacao >= 0) cmbStatusListaSolicitacoes.SelectedIndex = indiceSituacao;
+        }
+
         private void CarregarSolicitacoes()
         {
-            dgvSolicitacoesQuermesse.Rows.Clear();
             btnNovaSolicitacao.Enabled = false;
 
             if (administrador && !mostrandoReposicoesAdministrativas)
@@ -576,6 +589,7 @@ namespace CASE.Quermesse
                 btnDetalhesSolicitacao.Text = "Detalhes / analisar";
                 lblSubtitulo.Text = "Acompanhe as reposições dos setores e peça produtos ao estoque central.";
                 labelAviso.Text = "Selecione um evento para ver as reposições dos setores. O botão ao lado permite pedir produtos ao estoque central.";
+                dgvSolicitacoesQuermesse.Rows.Clear();
                 return;
             }
 
@@ -591,13 +605,15 @@ namespace CASE.Quermesse
                 colSolicitacoesQuermesseSetor.HeaderText = "Evento / setor";
                 colSolicitacoesQuermesseQtd.Visible = false;
                 List<Solicitacao> solicitacoes = ObterSolicitacoesPermitidas();
+                var linhasCarregadas = new List<DataGridViewRow>();
 
                 foreach (Solicitacao solicitacao in solicitacoes)
                 {
                     SolicitacaoService.ResumoSolicitacao resumo = solicitacaoService.ObterResumo(
                         usuarioAutenticado,
                         solicitacao.IdSolicitacao);
-                    int indice = dgvSolicitacoesQuermesse.Rows.Add(
+                    var linhaCarregada = new DataGridViewRow();
+                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse,
                         solicitacao.DataHora.ToString("dd/MM/yyyy HH:mm"),
                         resumo.Solicitante,
                         resumo.Evento + " · " + resumo.Setor,
@@ -605,10 +621,13 @@ namespace CASE.Quermesse
                         resumo.Produtos,
                         string.Empty,
                         CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Situacao));
-                    dgvSolicitacoesQuermesse.Rows[indice].Tag = solicitacao;
+                    linhaCarregada.Tag = solicitacao;
+                    linhasCarregadas.Add(linhaCarregada);
                 }
 
                 bool membroComEscala = PodeSolicitarComoMembro();
+                dgvSolicitacoesQuermesse.Rows.Clear();
+                dgvSolicitacoesQuermesse.Rows.AddRange(linhasCarregadas.ToArray());
                 btnNovaSolicitacao.Enabled = administrador || gerenteAutorizado || membroComEscala;
 
                 if (gerenteAutorizado)
@@ -670,24 +689,29 @@ namespace CASE.Quermesse
                     eventos[evento.IdEvento] = evento.Nome;
                 }
 
+                var linhasCarregadas = new List<DataGridViewRow>();
                 foreach (SolicitacaoEstoqueCentral pedido in pedidos)
                 {
                     string solicitante;
                     string evento;
                     solicitantes.TryGetValue(pedido.IdUsuarioSolicitante, out solicitante);
                     eventos.TryGetValue(pedido.IdEvento, out evento);
-                    int indice = dgvSolicitacoesQuermesse.Rows.Add(
+                    var linhaCarregada = new DataGridViewRow();
+                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse,
                         pedido.DataHora.ToString("dd/MM/yyyy HH:mm"),
-                        solicitante ?? "Usuário " + pedido.IdUsuarioSolicitante,
+                        string.IsNullOrWhiteSpace(solicitante) ? "Usuário indisponível" : solicitante,
                         evento ?? "Evento " + pedido.IdEvento,
                         CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Tipo),
                         MontarResumoItensCentrais(pedido),
                         service.BuscarIdTransferenciaAtendimento(usuarioAutenticado,
                             pedido.IdSolicitacaoEstoqueCentral).HasValue ? "Concluído" : "—",
                         CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Situacao));
-                    dgvSolicitacoesQuermesse.Rows[indice].Tag = pedido;
+                    linhaCarregada.Tag = pedido;
+                    linhasCarregadas.Add(linhaCarregada);
                 }
 
+                dgvSolicitacoesQuermesse.Rows.Clear();
+                dgvSolicitacoesQuermesse.Rows.AddRange(linhasCarregadas.ToArray());
                 ConfigurarFiltros();
                 cmbFiltroSolicitacoes.Items[0] = "Todos os eventos";
                 AplicarFiltros();
@@ -703,7 +727,6 @@ namespace CASE.Quermesse
             }
             catch (Exception)
             {
-                dgvSolicitacoesQuermesse.Rows.Clear();
                 labelAviso.Text = "Não foi possível carregar os pedidos ao estoque central. Tente atualizar novamente.";
             }
         }
@@ -728,6 +751,7 @@ namespace CASE.Quermesse
                         pedido.IdEvento == eventoSelecionado.IdEvento);
                 }
 
+                var linhasCarregadas = new List<DataGridViewRow>();
                 foreach (SolicitacaoEstoqueCentral pedido in pedidos)
                 {
                     string resumo = MontarResumoItensCentrais(pedido);
@@ -736,17 +760,21 @@ namespace CASE.Quermesse
                     {
                         nomeEvento = "Evento " + pedido.IdEvento;
                     }
-                    int indice = dgvSolicitacoesQuermesse.Rows.Add(
+                    var linhaCarregada = new DataGridViewRow();
+                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse,
                         pedido.DataHora.ToString("dd/MM/yyyy HH:mm"),
-                        "Você",
+                        new SolicitacaoEstoqueCentralService().ConsultarLoginSolicitante(usuarioAutenticado, pedido.IdSolicitacaoEstoqueCentral),
                         nomeEvento,
                         CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Tipo),
                         resumo,
                         string.Empty,
                         CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Situacao));
-                    dgvSolicitacoesQuermesse.Rows[indice].Tag = pedido;
+                    linhaCarregada.Tag = pedido;
+                    linhasCarregadas.Add(linhaCarregada);
                 }
 
+                dgvSolicitacoesQuermesse.Rows.Clear();
+                dgvSolicitacoesQuermesse.Rows.AddRange(linhasCarregadas.ToArray());
                 exibindoPedidosCentrais = true;
                 btnNovaSolicitacao.Text = "+ Solicitar ao central";
                 btnNovaSolicitacao.Enabled = true;
@@ -803,44 +831,14 @@ namespace CASE.Quermesse
         {
             try
             {
-                SolicitacaoEstoqueCentralService service =
-                    new SolicitacaoEstoqueCentralService();
-                SolicitacaoEstoqueCentral pedido = service.BuscarPorId(
-                    usuarioAutenticado,
-                    idSolicitacao);
-                string detalhes = "Pedido " + CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Tipo) + " · " +
-                    CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Situacao) +
-                    " · evento " + pedido.IdEvento + Environment.NewLine +
-                    MontarResumoItensCentrais(pedido);
-
-                if (!string.IsNullOrWhiteSpace(pedido.JustificativaRejeicao))
-                {
-                    detalhes += Environment.NewLine + "Motivo: " +
-                        pedido.JustificativaRejeicao;
-                }
-
-                int? idTransferencia = service.BuscarIdTransferenciaAtendimento(
-                    usuarioAutenticado,
-                    idSolicitacao);
-
-                if (idTransferencia.HasValue)
-                {
-                    detalhes += Environment.NewLine + "Transferência: " +
-                        idTransferencia.Value;
-                }
-
-                MessageBox.Show(
-                    detalhes,
-                    "Detalhes do pedido ao central",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                using (var formulario = new DetalhesPedidoCentralForm(usuarioAutenticado, idSolicitacao, false))
+                    formulario.ShowDialog(this);
             }
-            catch (Exception)
+            catch (Exception erro)
             {
-                labelAviso.Text = "Não foi possível consultar os detalhes do pedido.";
+                FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar os detalhes do pedido.", labelAviso);
             }
         }
-
         private List<Solicitacao> ObterSolicitacoesPermitidas()
         {
             if (administrador && eventoSelecionado == null)

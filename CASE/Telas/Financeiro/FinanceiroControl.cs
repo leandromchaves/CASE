@@ -14,6 +14,12 @@ namespace CASE.Quermesse
         private bool carregando = true;
         private readonly DataGridView conferencias = new DataGridView();
         private readonly TabControl abasFinanceiro = new TabControl();
+        private readonly Panel guiaFinanceiro = new Panel();
+        private readonly Label resumoConferencias = new Label();
+        private bool podeRegistrarDespesa;
+        private bool ajudaExpandida;
+        private readonly Label ajudaFinanceiro = new Label();
+        private readonly Button botaoAjuda = new Button();
 
         public FinanceiroControl() : this(null, null)
         {
@@ -24,7 +30,9 @@ namespace CASE.Quermesse
             InitializeComponent();
             usuarioAutenticado = usuario;
             FrontendTheme.Aplicar(this);
-            dtpFinanceiro.Value = DateTime.Today;
+            dtpFinanceiro.Value = evento == null ? DateTime.Today :
+                DateTime.Today < evento.DataInicio.Date ? evento.DataInicio.Date :
+                DateTime.Today > evento.DataFim.Date ? evento.DataFim.Date : DateTime.Today;
             cmbFiltroFinanceiro.Items.Clear();
             cmbSetorCusto.Items.Clear();
             cmbFiltroFinanceiro.DisplayMember = "Nome";
@@ -32,10 +40,10 @@ namespace CASE.Quermesse
             lblSetor.Text = "Evento";
             lblSetor2.Text = "Evento";
             cmbSetorCusto.Enabled = false;
-            lblSubtitulo.Text = "Acompanhe as vendas, registre despesas e confira os recebimentos de cada jornada.";
+            lblSubtitulo.Text = "Veja quanto foi vendido e gasto. Depois, confira se os valores recebidos correspondem às vendas.";
             lblReceitas.Text = "Vendas registradas no dia";
             lblCustos.Text = "Despesas registradas no dia";
-            lblResultadoparcial.Text = "Vendas − despesas";
+            lblResultadoparcial.Text = "Resultado parcial do dia";
             lblDescricaodocusto.Text = "Descrição da despesa *";
             btnAdicionarCusto.Text = "+ Registrar despesa";
             colCustosSetor.HeaderText = "Evento";
@@ -48,6 +56,10 @@ namespace CASE.Quermesse
                 : txtDescricaoCusto;
             contornoDescricao.Width = 510;
             PrepararAbasFinanceiro();
+            PrepararOrientacao();
+            txtDescricaoCusto.TextChanged += (s, e) => AtualizarBotaoDespesa();
+            numValorCusto.ValueChanged += (s, e) => AtualizarBotaoDespesa();
+            VisualUtils.DefinirPlaceholder(txtDescricaoCusto, "Ex.: compra de gelo ou aluguel de mesas");
             lblValorFinanceiroResumo0.Text = "—";
             lblValorFinanceiroResumo1.Text = "—";
             lblValorFinanceiroResumo2.Text = "—";
@@ -57,7 +69,7 @@ namespace CASE.Quermesse
             txtDescricaoCusto.MaxLength = 255;
             Button apurar = new Button();
             apurar.Name = "btnAbrirApuracao";
-            apurar.Text = "Conferir recebimentos";
+            apurar.Text = "Conferir valores recebidos";
             apurar.BackColor = VisualUtils.Azul;
             apurar.ForeColor = System.Drawing.Color.White;
             apurar.SetBounds(700, 32, 240, 36);
@@ -73,6 +85,8 @@ namespace CASE.Quermesse
             {
                 foreach (Evento permitido in new EventoService().Listar(usuario))
                 {
+                    if (evento != null && permitido.IdEvento != evento.IdEvento)
+                        continue;
                     cmbFiltroFinanceiro.Items.Add(permitido);
                     cmbSetorCusto.Items.Add(permitido);
                     if (evento != null && permitido.IdEvento == evento.IdEvento)
@@ -96,6 +110,19 @@ namespace CASE.Quermesse
             finally
             {
                 carregando = false;
+            }
+            if (evento != null)
+            {
+                cmbFiltroFinanceiro.Visible = false;
+                lblSetor.Visible = false;
+                var contexto = new Label
+                {
+                    Text = "Evento em consulta\n" + evento.Nome,
+                    ForeColor = VisualUtils.Marinho, AutoEllipsis = true,
+                    Font = new System.Drawing.Font("Segoe UI", 10),
+                    Bounds = new System.Drawing.Rectangle(18, 12, 280, 56)
+                };
+                panelFiltrosFinanceiro.Controls.Add(contexto);
             }
             AjustarIndicadores();
         }
@@ -148,7 +175,8 @@ namespace CASE.Quermesse
                 lblValorFinanceiroResumo2.Text = "Indisponível";
                 labelAviso.Text = "Há vendas antigas sem preço praticado. Não é possível informar uma receita completa.";
             }
-            btnAdicionarCusto.Enabled = true;
+            podeRegistrarDespesa = !string.Equals(evento.Situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase);
+            AtualizarBotaoDespesa();
             VisualUtils.ExibirEstadoVazio(dgvCustos, "Nenhuma despesa registrada nesta data.");
             AtualizarConferencias(evento);
         }
@@ -157,9 +185,30 @@ namespace CASE.Quermesse
         {
             abasFinanceiro.Name = "abasFinanceiro";
             abasFinanceiro.Dock = DockStyle.Fill;
-            var abaDespesas = new TabPage("Despesas do dia");
+            var abaDespesas = new TabPage("Despesas") { BackColor = System.Drawing.Color.White, Padding = new Padding(12) };
             var abaConferencias = new TabPage("Conferências do dia");
             abaConferencias.Text = "Recebimentos por setor";
+            abaConferencias.BackColor = System.Drawing.Color.White;
+            abaConferencias.Padding = new Padding(12);
+            abasFinanceiro.Font = new System.Drawing.Font("Segoe UI", 10);
+            abasFinanceiro.Padding = new System.Drawing.Point(16, 10);
+            abasFinanceiro.DrawMode = TabDrawMode.OwnerDrawFixed;
+            abasFinanceiro.ItemSize = new System.Drawing.Size(220, 42);
+            abasFinanceiro.SizeMode = TabSizeMode.Fixed;
+            abasFinanceiro.DrawItem += (s, e) =>
+            {
+                bool selecionada = e.Index == abasFinanceiro.SelectedIndex;
+                using (var fundo = new System.Drawing.SolidBrush(selecionada
+                    ? System.Drawing.Color.FromArgb(234, 242, 254) : System.Drawing.Color.White))
+                    e.Graphics.FillRectangle(fundo, e.Bounds);
+                TextRenderer.DrawText(e.Graphics, abasFinanceiro.TabPages[e.Index].Text,
+                    abasFinanceiro.Font, e.Bounds, selecionada ? VisualUtils.Azul : VisualUtils.TextoSuave,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
+                if (selecionada)
+                    using (var linha = new System.Drawing.Pen(VisualUtils.Azul, 3))
+                        e.Graphics.DrawLine(linha, e.Bounds.Left + 12, e.Bounds.Bottom - 2, e.Bounds.Right - 12, e.Bounds.Bottom - 2);
+            };
+            abasFinanceiro.SelectedIndexChanged += (s, e) => abasFinanceiro.Invalidate();
             panelCustos.Controls.Remove(dgvCustos);
             dgvCustos.Dock = DockStyle.Fill;
             var layoutDespesas = new TableLayoutPanel { Dock = DockStyle.Fill, ColumnCount = 1, RowCount = 2 };
@@ -182,9 +231,27 @@ namespace CASE.Quermesse
             foreach (string coluna in new[] { "Setor / turno", "Vendas esperadas", "Último valor conferido", "Diferença atual", "Situação", "Conferido em" })
                 conferencias.Columns.Add(coluna, coluna);
             abaConferencias.Controls.Add(conferencias);
-            abasFinanceiro.TabPages.Add(abaDespesas);
+            resumoConferencias.Dock = DockStyle.Top;
+            resumoConferencias.Height = 62;
+            resumoConferencias.Padding = new Padding(14, 10, 14, 6);
+            resumoConferencias.ForeColor = VisualUtils.TextoSuave;
+            resumoConferencias.Font = new System.Drawing.Font("Segoe UI", 10);
+            resumoConferencias.BackColor = System.Drawing.Color.White;
+            abaConferencias.Controls.Add(resumoConferencias);
+            var acaoConferir = new DataGridViewButtonColumn
+            {
+                Name = "acaoConferir", HeaderText = "Ação", Text = "Conferir",
+                UseColumnTextForButtonValue = true, FillWeight = 85
+            };
+            conferencias.Columns.Add(acaoConferir);
+            conferencias.CellContentClick += (s, e) =>
+            {
+                if (e.RowIndex >= 0 && e.ColumnIndex == acaoConferir.Index)
+                    AbrirApuracaoDaJornada(Convert.ToInt32(conferencias.Rows[e.RowIndex].Tag));
+            };
             abasFinanceiro.TabPages.Add(abaConferencias);
-            abasFinanceiro.SelectedIndex = 1;
+            abasFinanceiro.TabPages.Add(abaDespesas);
+            abasFinanceiro.SelectedIndex = 0;
             panelCustos.Controls.Add(abasFinanceiro);
             FrontendTheme.Aplicar(panelCustos);
             conferencias.EnableHeadersVisualStyles = false;
@@ -195,14 +262,16 @@ namespace CASE.Quermesse
             conferencias.Columns[4].FillWeight = 120;
             conferencias.CellDoubleClick += (s, e) =>
             {
-                if (e.RowIndex >= 0)
+                if (e.RowIndex >= 0 && e.ColumnIndex != acaoConferir.Index)
                     AbrirApuracaoDaJornada(Convert.ToInt32(conferencias.Rows[e.RowIndex].Tag));
             };
         }
 
         private void AtualizarConferencias(Evento evento)
         {
-            conferencias.Rows.Clear();
+            var linhas = new System.Collections.Generic.List<DataGridViewRow>();
+            int pendentes = 0;
+            int divergencias = 0;
             var jornadas = new System.Collections.Generic.HashSet<int>();
             var service = new ApuracaoService();
             foreach (DataRow escala in new ConsultaOperacionalService().Escalas(usuarioAutenticado, evento.IdEvento).Rows)
@@ -236,13 +305,23 @@ namespace CASE.Quermesse
                     ultima.ValorCartao.Value == (modalidades.ContainsKey("cartao") ? modalidades["cartao"] : 0M);
                 string situacao = !completo ? "Vendas incompletas" : ultima == null ? "Pendente" :
                     !detalhada ? "Histórico sem modalidades" : confere ? "Valores conferem" : "Com divergência";
-                int linha = conferencias.Rows.Add(escala["descricao_jornada"], completo ? esperado.ToString("C2") : "Indisponível",
+                if (ultima == null) pendentes++;
+                else if (!confere) divergencias++;
+                var linha = new DataGridViewRow();
+                linha.CreateCells(conferencias, escala["descricao_jornada"], completo ? esperado.ToString("C2") : "Indisponível",
                     ultima == null ? "Não conferido" : ultima.ValorInformado.ToString("C2"),
                     ultima == null || !completo ? "—" : (ultima.ValorInformado - esperado).ToString("C2"), situacao,
-                    ultima == null ? "—" : ultima.DataHora.ToString("dd/MM/yyyy HH:mm"));
-                conferencias.Rows[linha].Cells[4].Style.ForeColor = confere ? System.Drawing.Color.SeaGreen : System.Drawing.Color.DarkOrange;
-                conferencias.Rows[linha].Tag = idJornada;
+                    ultima == null ? "—" : ultima.DataHora.ToString("dd/MM/yyyy HH:mm"), "Conferir");
+                linha.Cells[4].Style.ForeColor = confere ? System.Drawing.Color.SeaGreen : System.Drawing.Color.DarkOrange;
+                linha.Tag = idJornada;
+                linhas.Add(linha);
             }
+            conferencias.Rows.Clear();
+            conferencias.Rows.AddRange(linhas.ToArray());
+            resumoConferencias.Text = pendentes + " setor(es)/turno(s) sem conferência · " + divergencias + " com valores a revisar.\n" +
+                "Clique em Conferir na linha e informe quanto foi recebido em dinheiro, Pix e cartão.";
+            if (linhas.Count == 0)
+                resumoConferencias.Text = "Sem setores para conferir nesta data.\nSelecione um dia com escala de trabalho para consultar os recebimentos.";
             VisualUtils.ExibirEstadoVazio(conferencias, "Nenhuma jornada com escala nesta data. Escolha outra data para conferir os recebimentos.");
         }
 
@@ -286,8 +365,9 @@ namespace CASE.Quermesse
                 txtDescricaoCusto.Clear();
                 numValorCusto.Value = 0;
                 AtualizarDados();
-                abasFinanceiro.SelectedIndex = 0;
-                labelAviso.Text = "Despesa " + id + " registrada.";
+                abasFinanceiro.SelectedIndex = 1;
+                labelAviso.Text = "Despesa registrada. Os totais desta data foram atualizados.";
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
             }
             catch (Exception erro)
             {
@@ -295,13 +375,15 @@ namespace CASE.Quermesse
             }
             finally
             {
-                btnAdicionarCusto.Enabled = usuarioAutenticado != null;
+                AtualizarBotaoDespesa();
             }
         }
 
         private void AbrirApuracao(object sender, EventArgs e)
         {
-            AbrirApuracaoDaJornada(null);
+            int? jornada = abasFinanceiro.SelectedIndex == 0 && conferencias.SelectedRows.Count > 0
+                ? (int?)Convert.ToInt32(conferencias.SelectedRows[0].Tag) : null;
+            AbrirApuracaoDaJornada(jornada);
         }
 
         private void AbrirApuracaoDaJornada(int? idJornada)
@@ -332,7 +414,7 @@ namespace CASE.Quermesse
                     carregando = true;
                     dtpFinanceiro.Value = controle.DataConferida.Value;
                     carregando = false;
-                    abasFinanceiro.SelectedIndex = 1;
+                    abasFinanceiro.SelectedIndex = 0;
                 }
             }
             try
@@ -352,6 +434,50 @@ namespace CASE.Quermesse
             System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em FinanceiroControl: " + erro.StackTrace);
         }
 
+        private void AtualizarBotaoDespesa()
+        {
+            btnAdicionarCusto.Enabled = podeRegistrarDespesa &&
+                !string.IsNullOrWhiteSpace(txtDescricaoCusto.Text) && numValorCusto.Value > 0;
+            lblDatadocustohoje.Text = !podeRegistrarDespesa
+                ? "Escolha um evento disponível para registrar despesas. Eventos cancelados permitem apenas consulta."
+                : "Despesa em " + dtpFinanceiro.Value.ToString("dd/MM/yyyy") +
+                    " · Preencha a descrição e um valor maior que zero para salvar.";
+        }
+
+        private void PrepararOrientacao()
+        {
+            guiaFinanceiro.BackColor = VisualUtils.Fundo;
+            ajudaFinanceiro.Text = "As vendas são calculadas a partir de Vendas e perdas. Para conferir, informe quanto foi recebido em dinheiro, Pix e cartão por setor/turno.\nNa aba Despesas, registre os gastos do evento. O resultado parcial corresponde às vendas menos as despesas.";
+            ajudaFinanceiro.Font = new System.Drawing.Font("Segoe UI", 10);
+            ajudaFinanceiro.ForeColor = VisualUtils.TextoSuave;
+            ajudaFinanceiro.Visible = false;
+            botaoAjuda.Text = "Como funciona?";
+            botaoAjuda.BackColor = System.Drawing.Color.White;
+            botaoAjuda.ForeColor = VisualUtils.Azul;
+            botaoAjuda.SetBounds(0, 0, 165, 36);
+            VisualUtils.EstilizarBotao(botaoAjuda);
+            botaoAjuda.Click += (s, e) =>
+            {
+                ajudaExpandida = !ajudaExpandida;
+                ajudaFinanceiro.Visible = ajudaExpandida;
+                botaoAjuda.Text = ajudaExpandida ? "Ocultar explicação" : "Como funciona?";
+                AjustarIndicadores();
+            };
+            guiaFinanceiro.Controls.Add(botaoAjuda);
+            guiaFinanceiro.Controls.Add(ajudaFinanceiro);
+            panelCorpo.Controls.Add(guiaFinanceiro);
+            VisualUtils.Arredondar(guiaFinanceiro, 12);
+            guiaFinanceiro.SizeChanged += (s, e) => VisualUtils.Arredondar(guiaFinanceiro, 12);
+            lblData.Text = "Data da consulta";
+            lblValorR.Text = "Valor da despesa (R$) *";
+            btnAdicionarCusto.Text = "Salvar despesa";
+            colCustosDescricao.FillWeight = 180;
+            conferencias.Columns[1].HeaderText = "Vendas registradas";
+            conferencias.Columns[2].HeaderText = "Recebido informado";
+            conferencias.Columns[3].HeaderText = "Recebido − vendas";
+            lblDatadocustohoje.Width = 700;
+        }
+
         private void panelCorpo_SizeChanged(object sender, EventArgs e)
         {
             AjustarIndicadores();
@@ -359,7 +485,13 @@ namespace CASE.Quermesse
 
         private void AjustarIndicadores()
         {
-            panelCustos.SetBounds(0, 205, panelCorpo.Width, Math.Max(280, ClientSize.Height - panelCorpo.Top - 265));
+            int alturaAjuda = ajudaExpandida ? 112 : 38;
+            guiaFinanceiro.SetBounds(0, 0, panelCorpo.Width, alturaAjuda);
+            ajudaFinanceiro.SetBounds(0, 46, panelCorpo.Width - 16, 66);
+            panelFiltrosFinanceiro.SetBounds(0, alturaAjuda + 14, panelCorpo.Width, 82);
+            int topoIndicadores = panelFiltrosFinanceiro.Bottom + 16;
+            int topoTabela = topoIndicadores + 116;
+            panelCustos.SetBounds(0, topoTabela, panelCorpo.Width, Math.Max(300, ClientSize.Height - panelCorpo.Top - topoTabela - 60));
             panelCorpo.Height = panelCustos.Bottom;
             labelAviso.Top = panelCorpo.Bottom + 10;
             labelAviso.Width = panelCorpo.Width;
@@ -367,7 +499,7 @@ namespace CASE.Quermesse
             Panel[] indicadores = { panelFinanceiroResumo0, panelFinanceiroResumo1, panelFinanceiroResumo2 };
             for (int i = 0; i < indicadores.Length; i++)
             {
-                indicadores[i].SetBounds(i * (panelCorpo.Width + 15) / 3, 90, (panelCorpo.Width - 30) / 3, 100);
+                indicadores[i].SetBounds(i * (panelCorpo.Width + 15) / 3, topoIndicadores, (panelCorpo.Width - 30) / 3, 100);
             }
         }
     }

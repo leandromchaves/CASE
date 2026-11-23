@@ -22,6 +22,7 @@ namespace CASE
         private readonly ComboBox cmbGraficoRelatorio = new ComboBox();
         private readonly Panel opcoesGrafico = new Panel();
         private Chart graficoRelatorio;
+        private readonly FlowLayoutPanel perfisRelatorio = new FlowLayoutPanel();
 
         public RelatoriosControl() : this(null)
         {
@@ -114,6 +115,7 @@ namespace CASE
             cmbRelatorioCategoria.SelectedIndex = 0;
             cmbRelatorioCategoria.SelectedIndexChanged += (s, e) =>
             {
+                AtualizarPerfisRelatorio();
                 bool utilizaPeriodo = cmbRelatorioCategoria.Text != "Estoque" && cmbRelatorioCategoria.Text != "Estoque crítico";
                 dtpRelatorioInicio.Enabled = utilizaPeriodo;
                 dtpRelatorioFim.Enabled = utilizaPeriodo;
@@ -137,6 +139,13 @@ namespace CASE
                             : "Data final",
                     new System.Drawing.Rectangle(campo.Left, 6, campo.Width, 20)));
             }
+            perfisRelatorio.Name = "perfisRelatorio";
+            perfisRelatorio.SetBounds(20, 76, 680, 36);
+            perfisRelatorio.BackColor = Color.White;
+            perfisRelatorio.WrapContents = false;
+            panelAcoesRelatorios.Controls.Add(perfisRelatorio);
+            panelAcoesRelatorios.Height = 124;
+            AtualizarPerfisRelatorio();
             ConfigurarGraficoRelatorio();
             dtpRelatorioInicio.ValueChanged += InvalidarConsulta;
             dtpRelatorioFim.ValueChanged += InvalidarConsulta;
@@ -149,6 +158,36 @@ namespace CASE
                 resumoRelatorio.Text = "Autentique-se para consultar relatórios.";
                 btnExportarPdf.Enabled = false;
             }
+        }
+
+        private void AtualizarPerfisRelatorio()
+        {
+            perfisRelatorio.SuspendLayout();
+            while (perfisRelatorio.Controls.Count > 0)
+                perfisRelatorio.Controls[0].Dispose();
+            perfisRelatorio.Controls.Add(new Label
+            {
+                Text = "Disponível para", AutoSize = false, Size = new Size(105, 30),
+                TextAlign = ContentAlignment.MiddleLeft, ForeColor = VisualUtils.TextoSuave,
+                Font = new Font("Segoe UI", 9), Margin = new Padding(0, 0, 10, 0)
+            });
+            foreach (string perfil in ConsultaOperacionalService.PerfisPermitidosNoRelatorio(cmbRelatorioCategoria.Text))
+            {
+                Color cor = perfil == "Membro" ? Color.FromArgb(29, 125, 96) :
+                    perfil == "Gerente" ? VisualUtils.Azul : Color.FromArgb(113, 73, 181);
+                Color fundo = perfil == "Membro" ? Color.FromArgb(233, 247, 241) :
+                    perfil == "Gerente" ? Color.FromArgb(234, 242, 254) : Color.FromArgb(243, 238, 255);
+                var selo = new Label
+                {
+                    Text = perfil, AccessibleName = "Relatório disponível para " + perfil,
+                    Size = new Size(perfil == "Administrador" ? 130 : 92, 30),
+                    TextAlign = ContentAlignment.MiddleCenter, ForeColor = cor, BackColor = fundo,
+                    Font = new Font("Segoe UI", 9, FontStyle.Bold), Margin = new Padding(0, 0, 8, 0)
+                };
+                perfisRelatorio.Controls.Add(selo);
+                VisualUtils.Arredondar(selo, 8);
+            }
+            perfisRelatorio.ResumeLayout(true);
         }
 
         private void GerarRelatorio(object sender, EventArgs e)
@@ -431,13 +470,13 @@ namespace CASE
         private void AjustarLayoutRelatorio()
         {
             int largura = Math.Max(970, ClientSize.Width) - 60;
-            int altura = Math.Max(330, ClientSize.Height - 350);
-            opcoesGrafico.SetBounds(30, 190, largura, 44);
+            int altura = Math.Max(330, ClientSize.Height - 410);
+            opcoesGrafico.SetBounds(30, 250, largura, 44);
             bool incluir = chkIncluirGrafico.Checked;
             int esquerda = incluir ? (largura - 16) * 55 / 100 : largura;
-            panelGraficoEsquerdo.SetBounds(30, 248, esquerda, altura);
+            panelGraficoEsquerdo.SetBounds(30, 308, esquerda, altura);
             panelGraficoDireito.Visible = incluir;
-            panelGraficoDireito.SetBounds(30 + esquerda + 16, 248, Math.Max(1, largura - esquerda - 16), altura);
+            panelGraficoDireito.SetBounds(30 + esquerda + 16, 308, Math.Max(1, largura - esquerda - 16), altura);
             panelGraficoEsquerdoArea.SetBounds(16, 60, esquerda - 32, altura - 76);
             panelGraficoDireitoArea.SetBounds(16, 60, Math.Max(1, panelGraficoDireito.Width - 32), altura - 76);
             resumoRelatorio.SetBounds(30, panelGraficoEsquerdo.Bottom + 10, largura, 65);

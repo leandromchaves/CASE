@@ -20,7 +20,6 @@ namespace CASE.Services
         private readonly EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
         private readonly LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
         private readonly UsuarioRepository usuarioRepository = new UsuarioRepository();
-        private readonly PessoaRepository pessoaRepository = new PessoaRepository();
 
         public class ProdutoSolicitacaoOpcao
         {
@@ -37,6 +36,14 @@ namespace CASE.Services
             public string Evento { get; set; }
             public string Setor { get; set; }
             public string Produtos { get; set; }
+            public List<ItemResumoSolicitacao> Itens { get; } = new List<ItemResumoSolicitacao>();
+        }
+
+        public class ItemResumoSolicitacao
+        {
+            public string Produto { get; set; }
+            public string Unidade { get; set; }
+            public decimal Quantidade { get; set; }
         }
 
         public ResumoSolicitacao ObterResumo(Usuario usuario, int idSolicitacao)
@@ -49,7 +56,7 @@ namespace CASE.Services
             }
 
             ResumoSolicitacao resumo = new ResumoSolicitacao();
-            resumo.Solicitante = "Conta sem identificação";
+            resumo.Solicitante = "Usuário indisponível";
 
             if (solicitacao.IdUsuarioSolicitante.HasValue)
             {
@@ -58,12 +65,8 @@ namespace CASE.Services
 
                 if (solicitante != null)
                 {
-                    Pessoa pessoa = pessoaRepository.BuscarPorId(solicitante.IdPessoa);
-
-                    if (pessoa != null)
-                    {
-                        resumo.Solicitante = pessoa.Nome;
-                    }
+                    resumo.Solicitante = string.IsNullOrWhiteSpace(solicitante.Login)
+                        ? "Usuário indisponível" : solicitante.Login;
                 }
             }
 
@@ -83,6 +86,7 @@ namespace CASE.Services
                 ProdutoSetor produtoSetor = produtoSetorRepository.BuscarPorId(
                     item.IdProdutoSetor);
                 string nomeProduto = "Produto " + item.IdProdutoSetor;
+                string unidade = "—";
 
                 if (produtoSetor != null)
                 {
@@ -92,10 +96,12 @@ namespace CASE.Services
                     if (produto != null)
                     {
                         nomeProduto = produto.Nome;
+                        unidade = produto.UnidadeMedida;
                     }
                 }
 
                 linhasProdutos.Add(nomeProduto + " (" + item.Quantidade + ")");
+                resumo.Itens.Add(new ItemResumoSolicitacao { Produto = nomeProduto, Unidade = unidade, Quantidade = item.Quantidade });
             }
 
             resumo.Produtos = string.Join(", ", linhasProdutos);

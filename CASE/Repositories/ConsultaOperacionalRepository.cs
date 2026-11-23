@@ -14,7 +14,8 @@ namespace CASE.Repositories
 
         public DataTable Escalas(string perfil, int pessoa, int evento)
         {
-            string sql = "SELECT e.id_escala,eq.id_pessoa,eq.ativo,e.situacao,j.id_jornada,j.data AS data_jornada,s.id_setor,ev.situacao AS situacao_evento, " +
+            string sql = "SELECT e.id_escala,eq.id_pessoa,p.nome AS pessoa_nome,ev.id_evento,ev.nome AS evento_nome,eq.ativo,e.situacao,j.id_jornada,j.data AS data_jornada,s.id_setor,ev.situacao AS situacao_evento, " +
+                "CONCAT(s.nome,' · ',DATE_FORMAT(j.data,'%d/%m/%Y'),' · ',t.nome,' · ',TIME_FORMAT(e.entrada_prevista,'%H:%i'),' – ',TIME_FORMAT(e.saida_prevista,'%H:%i')) AS descricao_curta, " +
                 "CONCAT(ev.nome,' / ',s.nome,' / ',DATE_FORMAT(j.data,'%d/%m/%Y')," +
                 "' / ',p.nome,' / ',e.entrada_prevista,' - ',e.saida_prevista) AS descricao," +
                 "CONCAT(s.nome,' / ',DATE_FORMAT(j.data,'%d/%m/%Y'),' / ',t.nome) AS descricao_jornada " +
@@ -182,9 +183,10 @@ namespace CASE.Repositories
                     break;
                 case "Solicitações de reposição":
                     sql = "SELECT so.id_solicitacao,so.data_hora,ev.nome AS evento,s.nome AS setor," +
-                        "p.nome AS solicitante,so.situacao,pr.nome AS produto,si.quantidade," +
+                        "COALESCE(NULLIF(u.login,''),'Usuário indisponível') AS solicitante,so.situacao,pr.nome AS produto,si.quantidade," +
                         "d.login AS decisor,so.decidida_em,so.justificativa_rejeicao " +
                         "FROM solicitacao so JOIN escala e ON e.id_escala=so.id_escala " +
+                        "LEFT JOIN usuario u ON u.id_usuario=so.id_usuario_solicitante " +
                         "JOIN equipeevento eq ON eq.id_equipe=e.id_equipe " +
                         "JOIN pessoa p ON p.id_pessoa=eq.id_pessoa " +
                         "JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +

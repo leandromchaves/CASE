@@ -52,6 +52,16 @@ namespace CASE.Services
             return new LocalEstoqueRepository().GarantirCentral(instituicao.IdInstituicao);
         }
 
+        public bool EstoqueCentralConfigurado(Usuario usuario)
+        {
+            Instituicao instituicao = ObterInstituicao(usuario);
+            if (instituicao == null) return false;
+            List<LocalEstoque> centrais = new LocalEstoqueRepository().ListarCentrais(instituicao.IdInstituicao);
+            if (centrais.Count > 1 || (centrais.Count == 1 && !centrais[0].Ativo))
+                throw new InvalidOperationException("O estoque central está indisponível e precisa ser revisado antes do uso.");
+            return centrais.Count == 1;
+        }
+
         public List<Turno> ListarTurnos(Usuario usuario)
         {
             autorizacao.ExigirAdministrador(usuario);

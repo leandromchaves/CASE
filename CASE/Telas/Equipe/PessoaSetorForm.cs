@@ -84,6 +84,10 @@ namespace CASE.Quermesse
             }
 
             CarregarPerfis();
+            cmbPerfilFuncionario.SelectedIndexChanged += (s, e) =>
+                btnSalvarFuncionario.Enabled = cmbPerfilFuncionario.SelectedItem != null &&
+                    (vinculo != null || cmbMembroAprovado?.SelectedItem is Pessoa) &&
+                    !string.IsNullOrWhiteSpace(txtLoginFuncionario.Text);
 
             if (vinculo == null)
             {

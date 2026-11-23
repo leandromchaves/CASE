@@ -34,6 +34,7 @@ namespace CASE
         private readonly CASE.Services.FotoPerfilService fotoPerfilService =
             new CASE.Services.FotoPerfilService();
         private Image fotoPerfilPersonalizada;
+        private readonly Timer atualizacaoConsultas = new Timer { Interval = 30000 };
 
 
         public PrincipalForm() : this(null)
@@ -77,6 +78,10 @@ namespace CASE
             AjustarLarguraMenu();
             AplicarAcabamento();
             ConfigurarNotificacoes();
+            atualizacaoConsultas.Tick += (s, e) => AtualizarConsultaAberta();
+            Shown += (s, e) => atualizacaoConsultas.Start();
+            Activated += (s, e) => AtualizarConsultaAberta();
+            Disposed += (s, e) => atualizacaoConsultas.Dispose();
 
             VisualUtils.Arredondar(buttonDashboard, 8);
             VisualUtils.Arredondar(buttonEstoque, 8);
@@ -206,7 +211,8 @@ namespace CASE
             cmbEventoContexto.BringToFront();
             lblEventoContexto.BringToFront();
             panelCabecalho.Layout += (s, e) =>
-                cmbEventoContexto.Width = Math.Max(100, Math.Min(360, panelPerfil.Left - 32));
+                cmbEventoContexto.Width = Math.Max(180, Math.Min(360,
+                    panelCabecalho.ClientSize.Width - panelPerfil.Width - cmbEventoContexto.Left - 24));
             SincronizarSeletorEventoContexto();
             cmbEventoContexto.Visible = false;
             lblEventoContexto.Visible = false;
@@ -575,40 +581,16 @@ namespace CASE
                 CASE.Models.SolicitacaoEstoqueCentral solicitacao = service.BuscarPorId(
                     usuarioAutenticado,
                     idSolicitacao);
-                List<CASE.Models.SolicitacaoEstoqueCentralItem> itens = service.ListarItens(
-                    usuarioAutenticado,
-                    idSolicitacao);
-                System.Text.StringBuilder detalhes = new System.Text.StringBuilder();
-                detalhes.AppendLine("Pedido " + CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Tipo) +
-                    " do evento " + solicitacao.IdEvento);
-                detalhes.AppendLine();
-
-                foreach (CASE.Models.SolicitacaoEstoqueCentralItem solicitacaoItem in itens)
-                {
-                    CASE.Models.Produto produto = new CASE.Services.ProdutoService().BuscarPorId(
-                        usuarioAutenticado,
-                        solicitacaoItem.IdProduto);
-                    string nomeProduto = "Produto " + solicitacaoItem.IdProduto;
-
-                    if (produto != null)
-                    {
-                        nomeProduto = produto.Nome;
-                    }
-
-                    detalhes.AppendLine(nomeProduto + " — " + solicitacaoItem.Quantidade);
-                }
+                DialogResult respostaPedido;
+                using (var formulario = new DetalhesPedidoCentralForm(usuarioAutenticado, idSolicitacao, true))
+                    respostaPedido = formulario.ShowDialog(this);
 
                 if (string.Equals(
                     solicitacao.Situacao,
                     CASE.Services.SituacoesSolicitacao.Aprovada,
                     StringComparison.OrdinalIgnoreCase))
                 {
-                    DialogResult atender = MessageBox.Show(
-                        detalhes.ToString() +
-                        "\nO pedido já foi aprovado. Deseja efetivar a transferência agora?",
-                        "Atender pedido aprovado",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question);
+                    DialogResult atender = respostaPedido;
 
                     if (atender == DialogResult.Yes)
                     {
@@ -621,11 +603,7 @@ namespace CASE
                     return;
                 }
 
-                DialogResult decisao = MessageBox.Show(
-                    detalhes.ToString() + "\nSim: aprovar integralmente. Não: rejeitar. Cancelar: voltar.",
-                    "Solicitação ao estoque central",
-                    MessageBoxButtons.YesNoCancel,
-                    MessageBoxIcon.Question);
+                DialogResult decisao = respostaPedido;
 
                 if (decisao == DialogResult.Yes)
                 {
@@ -1170,6 +1148,47 @@ namespace CASE
             }
         }
 
+        private void AtualizarConsultaAberta()
+        {
+            if (Form.ActiveForm != this || panelConteudo.Controls.Count == 0 ||
+                WindowState == FormWindowState.Minimized)
+                return;
+
+            Control tela = panelConteudo.Controls[0];
+            if (ConsultaEmEdicao(tela))
+                return;
+
+            try
+            {
+                var escalas = tela as EscalaControl;
+                var estoque = tela as OperacoesEstoqueControl;
+                var solicitacoes = tela as SolicitacoesControl;
+                if (escalas != null) escalas.AtualizarConsulta();
+                else if (estoque != null) estoque.AtualizarConsulta();
+                else if (solicitacoes != null) solicitacoes.AtualizarConsulta();
+            }
+            catch (Exception erro)
+            {
+                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " ao atualizar a consulta aberta.");
+            }
+        }
+
+        private static bool ConsultaEmEdicao(Control raiz)
+        {
+            foreach (Control controle in raiz.Controls)
+            {
+                var selecao = controle as ComboBox;
+                if (selecao != null && (selecao.DroppedDown || selecao.ContainsFocus))
+                    return true;
+                if ((controle is TextBoxBase || controle is NumericUpDown || controle is DateTimePicker) &&
+                    controle.ContainsFocus)
+                    return true;
+                if (ConsultaEmEdicao(controle))
+                    return true;
+            }
+            return false;
+        }
+
         private void AbrirTela(Button menu, Func<UserControl> criar)
         {
             UserControl tela = null;
@@ -1187,21 +1206,14 @@ namespace CASE
                 cmbEventoContexto.Visible = dependeDeEvento && possuiEventosNoContexto;
                 lblEventoContexto.Visible = dependeDeEvento && possuiEventosNoContexto;
 
-                if (dependeDeEvento && eventoSelecionado == null)
+                if (dependeDeEvento && eventoSelecionado == null && !consultarTodosEventos)
                 {
                     InicializarEventoSelecionado();
                 }
 
                 if (dependeDeEvento && consultarTodosEventos && menu != buttonEstoque)
                 {
-                    var consulta = new TodosEventosControl(usuarioAutenticado, menu.Text, evento =>
-                    {
-                        if (menu == buttonEquipeSetores) return new EquipeSetoresControl(usuarioAutenticado, evento);
-                        if (menu == buttonEscala) return new EscalaControl(usuarioAutenticado, evento);
-                        if (menu == buttonFinanceiro) return new FinanceiroControl(usuarioAutenticado, evento);
-                        if (menu == buttonSolicitacoes) return new SolicitacoesControl(usuarioAutenticado, evento);
-                        return new RegistrosControl(usuarioAutenticado, evento);
-                    });
+                    var consulta = new TodosEventosControl(usuarioAutenticado, menu.Text);
                     consulta.EventoSolicitado += evento =>
                     {
                         consultarTodosEventos = false;

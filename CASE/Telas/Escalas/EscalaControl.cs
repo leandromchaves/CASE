@@ -241,6 +241,17 @@ namespace CASE.Quermesse
             AplicarFiltros();
         }
 
+        internal void AtualizarConsulta()
+        {
+            string setor = cmbFiltroEscala.Text;
+            string turno = cmbFiltroTurnoEscala.Text;
+            CarregarEscalas();
+            int indiceSetor = cmbFiltroEscala.FindStringExact(setor);
+            int indiceTurno = cmbFiltroTurnoEscala.FindStringExact(turno);
+            if (indiceSetor >= 0) cmbFiltroEscala.SelectedIndex = indiceSetor;
+            if (indiceTurno >= 0) cmbFiltroTurnoEscala.SelectedIndex = indiceTurno;
+        }
+
         private void CarregarEscalas()
         {
             if (eventoSelecionado == null)

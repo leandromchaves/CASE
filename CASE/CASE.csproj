@@ -408,6 +408,12 @@
     <EmbeddedResource Include="Telas\Solicitacoes\SolicitacaoForm.resx">
       <DependentUpon>SolicitacaoForm.cs</DependentUpon>
     </EmbeddedResource>
+    <Compile Include="Telas\Solicitacoes\DetalhesReposicaoForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Telas\Solicitacoes\DetalhesPedidoCentralForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="Telas\Solicitacoes\SolicitacaoForm.cs">
       <SubType>Form</SubType>
     </Compile>

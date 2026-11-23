@@ -259,6 +259,15 @@ namespace CASE.Services
             return solicitacao;
         }
 
+        public string ConsultarLoginSolicitante(Usuario usuario, int idSolicitacao)
+        {
+            SolicitacaoEstoqueCentral pedido = BuscarPorId(usuario, idSolicitacao);
+            if (pedido == null) throw new InvalidOperationException("A solicitação não foi encontrada.");
+            Usuario solicitante = new UsuarioRepository().BuscarPorId(pedido.IdUsuarioSolicitante);
+            return solicitante == null || string.IsNullOrWhiteSpace(solicitante.Login)
+                ? "Usuário indisponível" : solicitante.Login;
+        }
+
         public List<SolicitacaoEstoqueCentralItem> ListarItens(
             Usuario usuario,
             int idSolicitacao)

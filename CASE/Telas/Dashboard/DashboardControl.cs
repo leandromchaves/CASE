@@ -69,6 +69,22 @@ namespace CASE
             panelIconeSaidas.BackColor = Color.FromArgb(255, 229, 233);
             CarregarTotalDeProdutos();
             CarregarEstoqueBaixo();
+            ConfigurarDetalhesEstoqueBaixo(panelEstoqueBaixo);
+            var verEstoques = new Button
+            {
+                Text = "Ver itens →", BackColor = Color.White,
+                ForeColor = CASE.Utils.VisualUtils.Azul,
+                FlatStyle = FlatStyle.Flat, Cursor = Cursors.Hand,
+                AccessibleName = "Consultar produtos com estoque baixo"
+            };
+            verEstoques.FlatAppearance.BorderSize = 0;
+            verEstoques.SetBounds(panelEstoqueBaixo.Width - 110, 76, 100, 26);
+            verEstoques.Anchor = AnchorStyles.Right | AnchorStyles.Bottom;
+            verEstoques.Click += AbrirEstoquesBaixos;
+            panelEstoqueBaixo.Controls.Add(verEstoques);
+            ConfigurarConsultaCard(panelTotalProdutos, AbrirProdutos);
+            ConfigurarConsultaCard(panelEntradasMes, (s, e) => AbrirMovimentosDoMes(true));
+            ConfigurarConsultaCard(panelSaidasMes, (s, e) => AbrirMovimentosDoMes(false));
             lblEntradasMesValor.Text = "—";
             lblSaidasMesValor.Text = "—";
             lblTituloGrafico.Text = "Movimentações sem dados consolidados";
@@ -97,6 +113,249 @@ namespace CASE
             };
             SizeChanged += ajustar;
             ajustar(this, EventArgs.Empty);
+        }
+
+        private void ConfigurarDetalhesEstoqueBaixo(Control controle)
+        {
+            controle.Cursor = Cursors.Hand;
+            controle.Click += AbrirEstoquesBaixos;
+            foreach (Control filho in controle.Controls)
+                ConfigurarDetalhesEstoqueBaixo(filho);
+        }
+
+        private void ConfigurarConsultaCard(Panel card, EventHandler abrir)
+        {
+            Action<Control> associar = null;
+            associar = controle =>
+            {
+                controle.Cursor = Cursors.Hand;
+                controle.Click += abrir;
+                foreach (Control filho in controle.Controls) associar(filho);
+            };
+            associar(card);
+            var consultar = new Button
+            {
+                Text = "Ver itens →", BackColor = Color.White,
+                ForeColor = CASE.Utils.VisualUtils.Azul, FlatStyle = FlatStyle.Flat,
+                Cursor = Cursors.Hand, AccessibleName = "Consultar " + card.Name
+            };
+            consultar.FlatAppearance.BorderSize = 0;
+            consultar.SetBounds(card.Width - 110, 76, 100, 26);
+            consultar.Anchor = AnchorStyles.Right | AnchorStyles.Bottom;
+            consultar.Click += abrir;
+            card.Controls.Add(consultar);
+        }
+
+        private void AbrirProdutos(object sender, EventArgs e)
+        {
+            try
+            {
+                var dados = new DataTable();
+                dados.Columns.Add("Produto");
+                dados.Columns.Add("Unidade");
+                string perfil;
+                new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
+                if (perfil == "Membro")
+                {
+                    var incluidos = new HashSet<int>();
+                    foreach (DataRow saldo in new ConsultaOperacionalService().Estoques(usuarioAutenticado).Rows)
+                        if (incluidos.Add(Convert.ToInt32(saldo["id_produto"])))
+                            dados.Rows.Add(saldo["produto"], saldo["unidade_medida"]);
+                }
+                else
+                {
+                    dados.Columns.Add("Situação");
+                    foreach (Produto produto in new ProdutoService().Listar(usuarioAutenticado))
+                        dados.Rows.Add(produto.Nome, produto.UnidadeMedida, produto.Ativo ? "Ativo" : "Inativo");
+                }
+                lblTotalProdutosValor.Text = dados.Rows.Count.ToString();
+                ExibirConsultaIndicador("Produtos cadastrados",
+                    perfil == "Membro" ? "Produtos dos estoques disponíveis para sua conta, sem repetir o mesmo produto por local."
+                        : "Catálogo completo de produtos, incluindo os inativos.",
+                    dados.Rows.Count + " produto(s)", dados);
+            }
+            catch (Exception erro)
+            {
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar os produtos. Tente novamente.");
+            }
+        }
+
+        private void AbrirMovimentosDoMes(bool recebimentos)
+        {
+            try
+            {
+                DateTime hoje = DateTime.Today;
+                DateTime inicio = new DateTime(hoje.Year, hoje.Month, 1);
+                DataTable movimentos = new ConsultaOperacionalService().MovimentacoesDoDashboard(usuarioAutenticado, inicio, hoje);
+                var dados = new DataTable();
+                dados.Columns.Add("Data / hora", typeof(DateTime));
+                dados.Columns.Add("Tipo");
+                dados.Columns.Add("Produto");
+                dados.Columns.Add("Quantidade", typeof(decimal));
+                dados.Columns.Add("Local");
+                dados.Columns.Add("Responsável");
+                decimal total = 0;
+                foreach (DataRow movimento in movimentos.Rows)
+                {
+                    string tipo = Convert.ToString(movimento["tipo"]);
+                    if (recebimentos ? tipo != "entrada" : tipo != "venda" && tipo != "perda") continue;
+                    decimal quantidade = Convert.ToDecimal(movimento["quantidade"]);
+                    total += quantidade;
+                    dados.Rows.Add(movimento["data_hora"], CASE.Utils.TextoInterface.FormatarValorBanco(tipo),
+                        movimento["produto"], quantidade, movimento[recebimentos ? "destino" : "origem"], movimento["responsavel"]);
+                }
+                if (recebimentos) lblEntradasMesValor.Text = total.ToString("0.###");
+                else lblSaidasMesValor.Text = total.ToString("0.###");
+                ExibirConsultaIndicador(recebimentos ? "Unidades recebidas no mês" : "Vendas e perdas no mês",
+                    inicio.ToString("dd/MM/yyyy") + " a " + hoje.ToString("dd/MM/yyyy") + " · " +
+                    (recebimentos ? "Recebimentos no estoque central. Transferências não entram no total."
+                        : "Unidades que saíram por venda ou perda. Eventos cancelados não entram no total."),
+                    total.ToString("0.###") + " unidade(s) · " + dados.Rows.Count + " item(ns) de movimentação", dados);
+            }
+            catch (Exception erro)
+            {
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar as movimentações do mês. Tente novamente.");
+            }
+        }
+
+        private void ExibirConsultaIndicador(string titulo, string explicacao, string total, DataTable dados)
+        {
+            using (var janela = new Form
+            {
+                Text = titulo, StartPosition = FormStartPosition.CenterParent,
+                Size = new Size(980, 620), MinimumSize = new Size(740, 440),
+                ShowInTaskbar = false, MinimizeBox = false
+            })
+            {
+                CASE.Utils.IconoAplicacao.Aplicar(janela);
+                var layout = new TableLayoutPanel
+                {
+                    Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, RowCount = 6
+                };
+                foreach (int altura in new[] { 44, 56, 36, 50 })
+                    layout.RowStyles.Add(new RowStyle(SizeType.Absolute, altura));
+                layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+                layout.Controls.Add(new Label { Text = titulo, Dock = DockStyle.Fill,
+                    Font = new Font("Segoe UI", 20, FontStyle.Bold), ForeColor = CASE.Utils.VisualUtils.Marinho }, 0, 0);
+                layout.Controls.Add(new Label { Text = explicacao, Dock = DockStyle.Fill,
+                    Font = new Font("Segoe UI", 10), ForeColor = CASE.Utils.VisualUtils.TextoSuave }, 0, 1);
+                layout.Controls.Add(new Label { Text = total, Dock = DockStyle.Fill,
+                    Font = new Font("Segoe UI", 11, FontStyle.Bold), ForeColor = CASE.Utils.VisualUtils.Marinho }, 0, 2);
+                var pesquisa = new TextBox { Name = "txtPesquisaIndicador", Dock = DockStyle.Fill };
+                layout.Controls.Add(pesquisa, 0, 3);
+                var grade = new DataGridView
+                {
+                    Dock = DockStyle.Fill, DataSource = dados.DefaultView, ReadOnly = true,
+                    AllowUserToAddRows = false, AllowUserToDeleteRows = false,
+                    RowHeadersVisible = false, BackgroundColor = Color.White,
+                    AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                    SelectionMode = DataGridViewSelectionMode.FullRowSelect, MultiSelect = false
+                };
+                layout.Controls.Add(grade, 0, 4);
+                pesquisa.TextChanged += (s, e) =>
+                {
+                    string termo = pesquisa.Text.Trim();
+                    string literal = termo.Replace("'", "''").Replace("[", "[[]").Replace("%", "[%]").Replace("*", "[*]");
+                    dados.DefaultView.RowFilter = string.IsNullOrEmpty(termo) ? string.Empty :
+                        string.Join(" OR ", dados.Columns.Cast<DataColumn>().Where(coluna => coluna.DataType == typeof(string))
+                            .Select(coluna => "[" + coluna.ColumnName + "] LIKE '%" + literal + "%'").ToArray());
+                };
+                var fechar = new Button { Text = "Fechar", Dock = DockStyle.Right, Width = 110, DialogResult = DialogResult.Cancel };
+                layout.Controls.Add(fechar, 0, 5);
+                janela.CancelButton = fechar;
+                janela.Controls.Add(layout);
+                CASE.Utils.VisualUtils.EstilizarPesquisa(pesquisa, "Pesquisar nesta consulta");
+                CASE.Utils.FrontendTheme.Aplicar(janela);
+                foreach (DataGridViewColumn coluna in grade.Columns)
+                {
+                    if (coluna.ValueType == typeof(DateTime)) coluna.DefaultCellStyle.Format = "dd/MM/yyyy HH:mm";
+                    if (coluna.ValueType == typeof(decimal)) coluna.DefaultCellStyle.Format = "0.###";
+                }
+                CASE.Utils.VisualUtils.ExibirEstadoVazio(grade, "Nenhum item encontrado nesta consulta.");
+                janela.ShowDialog(this);
+            }
+        }
+
+        private void AbrirEstoquesBaixos(object sender, EventArgs e)
+        {
+            try
+            {
+                var locais = new LocalEstoqueService().ListarOperacionais(usuarioAutenticado);
+                var ids = new HashSet<int>(locais.Select(local => local.IdLocalEstoque));
+                DataTable saldos = new ConsultaOperacionalService().Estoques(usuarioAutenticado);
+                using (var janela = new Form
+                {
+                    Text = "Produtos que precisam de reposição", StartPosition = FormStartPosition.CenterParent,
+                    Size = new Size(920, 580), MinimumSize = new Size(720, 420),
+                    ShowInTaskbar = false, MinimizeBox = false
+                })
+                {
+                    CASE.Utils.IconoAplicacao.Aplicar(janela);
+                    var layout = new TableLayoutPanel
+                    {
+                        Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, RowCount = 5
+                    };
+                    layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+                    layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
+                    layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
+                    layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+                    layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
+                    layout.Controls.Add(new Label
+                    {
+                        Text = "Atenção ao estoque", Dock = DockStyle.Fill,
+                        Font = new Font("Segoe UI", 20, FontStyle.Bold), ForeColor = CASE.Utils.VisualUtils.Marinho
+                    }, 0, 0);
+                    layout.Controls.Add(new Label
+                    {
+                        Text = "Produtos no mínimo ou abaixo dele, incluindo os sem estoque. A lista considera os locais ativos disponíveis para sua conta.",
+                        Dock = DockStyle.Fill, ForeColor = CASE.Utils.VisualUtils.TextoSuave, Font = new Font("Segoe UI", 10)
+                    }, 0, 1);
+                    var resumo = new Label { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10, FontStyle.Bold), ForeColor = CASE.Utils.VisualUtils.Marinho };
+                    layout.Controls.Add(resumo, 0, 2);
+                    var grade = new DataGridView
+                    {
+                        Dock = DockStyle.Fill, ReadOnly = true, AllowUserToAddRows = false,
+                        AllowUserToDeleteRows = false, RowHeadersVisible = false,
+                        BackgroundColor = Color.White, AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill,
+                        SelectionMode = DataGridViewSelectionMode.FullRowSelect, MultiSelect = false
+                    };
+                    grade.Columns.Add("produto", "Produto");
+                    grade.Columns.Add("local", "Local / evento");
+                    grade.Columns.Add("saldo", "Disponível");
+                    grade.Columns.Add("minimo", "Mínimo");
+                    grade.Columns.Add("situacao", "Situação");
+                    grade.Columns[1].FillWeight = 160;
+                    int zerados = 0;
+                    foreach (DataRow saldo in saldos.Rows)
+                    {
+                        if (!ids.Contains(Convert.ToInt32(saldo["id_local_estoque"]))) continue;
+                        decimal atual = Convert.ToDecimal(saldo["quantidade_atual"]);
+                        decimal minimo = Convert.ToDecimal(saldo["quantidade_minima"]);
+                        if (atual > 0 && atual > minimo) continue;
+                        if (atual <= 0) zerados++;
+                        LocalEstoque local = locais.First(item => item.IdLocalEstoque == Convert.ToInt32(saldo["id_local_estoque"]));
+                        string unidade = Convert.ToString(saldo["unidade_medida"]);
+                        grade.Rows.Add(saldo["produto"], local.Descricao,
+                            atual.ToString("0.###") + " " + unidade, minimo.ToString("0.###") + " " + unidade,
+                            atual <= 0 ? "Sem estoque" : "Estoque baixo");
+                    }
+                    resumo.Text = grade.Rows.Count + " produto(s) por local precisam de atenção · " + zerados + " sem estoque";
+                    layout.Controls.Add(grade, 0, 3);
+                    var fechar = new Button { Text = "Fechar", Dock = DockStyle.Right, Width = 110, DialogResult = DialogResult.Cancel };
+                    layout.Controls.Add(fechar, 0, 4);
+                    janela.CancelButton = fechar;
+                    janela.Controls.Add(layout);
+                    CASE.Utils.FrontendTheme.Aplicar(janela);
+                    CASE.Utils.VisualUtils.ExibirEstadoVazio(grade, "Tudo em dia! Nenhum produto precisa de reposição nos locais consultados.");
+                    janela.ShowDialog(this);
+                }
+                CarregarEstoqueBaixo();
+            }
+            catch (Exception erro)
+            {
+                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar os produtos para reposição. Tente novamente.");
+            }
         }
 
         private void CarregarTotalDeProdutos()
@@ -145,7 +404,7 @@ namespace CASE
                     foreach (CASE.Models.Estoque estoque in saldos)
                     {
                         if (estoque.QuantidadeAtual <= 0 ||
-                            estoque.QuantidadeAtual < estoque.QuantidadeMinima)
+                            estoque.QuantidadeAtual <= estoque.QuantidadeMinima)
                         {
                             quantidadeEstoqueBaixo++;
                         }
@@ -312,8 +571,8 @@ namespace CASE
                     else if (tipo == "venda" || tipo == "perda")
                         saidas += quantidade;
                 }
-                lblEntradasMesValor.Text = entradas.ToString("N0");
-                lblSaidasMesValor.Text = saidas.ToString("N0");
+                lblEntradasMesValor.Text = entradas.ToString("#,##0.###");
+                lblSaidasMesValor.Text = saidas.ToString("#,##0.###");
                 lblSubtituloDashboard.Text = "Indicadores do mês. Os filtros abaixo alteram o gráfico e as movimentações recentes.";
                 lblTituloGrafico.Text = "Unidades movimentadas por dia";
                 lblTituloMovimentacoes.Text = "Movimentações recentes";

@@ -24,6 +24,15 @@ namespace CASE.Quermesse
         private bool eventoEmAndamentoAtual;
         private string chaveOperacao = Guid.NewGuid().ToString();
         private readonly Label resumoRegistros = new Label();
+        private readonly ComboBox filtroEvento = new ComboBox();
+        private readonly Label legendaEvento = new Label();
+        private DataTable escalasDisponiveis;
+        private sealed class OpcaoFiltro
+        {
+            public int Id;
+            public string Nome;
+            public override string ToString() { return Nome; }
+        }
 
         public RegistrosControl() : this(null, null)
         {
@@ -62,9 +71,25 @@ namespace CASE.Quermesse
                 painelObservacao.BringToFront();
             }
             VisualUtils.DefinirPlaceholder(txtObservacaoRegistro, "Detalhes ou justificativa da perda");
-            lblSetor.Text = "Escala de trabalho";
-            lblFuncionario.Visible = false;
-            cmbPessoaRegistro.Visible = false;
+            lblSetor.Text = "3. Escala de trabalho";
+            lblFuncionario.Text = "1. Pessoa escalada";
+            lblFuncionario.Visible = true;
+            cmbPessoaRegistro.Visible = true;
+            cmbPessoaRegistro.Items.Clear();
+            cmbPessoaRegistro.SelectedIndexChanged -= Filtros_SelectedIndexChanged;
+            cmbPessoaRegistro.SelectedIndexChanged += PessoaFiltroAlterada;
+            filtroEvento.Name = "cmbEventoRegistros";
+            filtroEvento.DropDownStyle = ComboBoxStyle.DropDownList;
+            filtroEvento.Font = cmbPessoaRegistro.Font;
+            legendaEvento.Text = "2. Evento";
+            legendaEvento.ForeColor = VisualUtils.TextoSuave;
+            panelFiltrosRegistros.Controls.Add(legendaEvento);
+            panelFiltrosRegistros.Controls.Add(filtroEvento);
+            VisualUtils.EstilizarSelecao(filtroEvento);
+            filtroEvento.SelectedIndexChanged += (s, e) =>
+            {
+                if (!carregando) PreencherEscalasFiltradas();
+            };
             cmbSetorRegistro.Width = 900;
             cmbSetorRegistro.Items.Clear();
             cmbProdutoRegistro.Items.Clear();
@@ -113,7 +138,18 @@ namespace CASE.Quermesse
             panelNovoRegistro.VisibleChanged += (s, e) => AjustarCamposAoEspaco();
             AjustarCamposAoEspaco();
             cmbProdutoRegistro.DisplayMember = "nome";
-            cmbSetorRegistro.DisplayMember = "descricao";
+            cmbSetorRegistro.DisplayMember = "descricao_curta";
+            cmbSetorRegistro.FormattingEnabled = true;
+            cmbSetorRegistro.Format += (s, e) =>
+            {
+                var escala = e.ListItem as DataRowView;
+                if (escala == null) return;
+                var pessoa = cmbPessoaRegistro.SelectedItem as OpcaoFiltro;
+                var eventoFiltro = filtroEvento.SelectedItem as OpcaoFiltro;
+                e.Value = (eventoFiltro != null && eventoFiltro.Id == 0 ? Convert.ToString(escala["evento_nome"]) + " · " : "") +
+                    (pessoa != null && pessoa.Id == 0 ? Convert.ToString(escala["pessoa_nome"]) + " · " : "") +
+                    Convert.ToString(escala["descricao_curta"]);
+            };
             cmbProdutoRegistro.SelectedIndexChanged += ProdutoAlterado;
             cmbTipoRegistro.SelectedIndexChanged += TipoAlterado;
             TipoAlterado(this, EventArgs.Empty);
@@ -166,22 +202,25 @@ namespace CASE.Quermesse
             }
             try
             {
-                DataTable escalas = consultas.Escalas(usuarioAutenticado, IdEvento());
-                foreach (DataRowView linha in escalas.DefaultView)
+                escalasDisponiveis = consultas.Escalas(usuarioAutenticado, IdEvento());
+                string perfil;
+                new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
+                bool membro = perfil == "Membro";
+                if (!membro)
+                    cmbPessoaRegistro.Items.Add(new OpcaoFiltro { Id = 0, Nome = "Todas as pessoas · consulta" });
+                var pessoas = new HashSet<int>();
+                foreach (DataRow linha in escalasDisponiveis.Rows)
                 {
-                    cmbSetorRegistro.Items.Add(linha);
+                    int id = Convert.ToInt32(linha["id_pessoa"]);
+                    if (pessoas.Add(id)) cmbPessoaRegistro.Items.Add(new OpcaoFiltro
+                    { Id = id, Nome = Convert.ToString(linha["pessoa_nome"]) });
                 }
+                if (membro && cmbPessoaRegistro.Items.Count == 0)
+                    cmbPessoaRegistro.Items.Add(new OpcaoFiltro { Id = usuario.IdPessoa, Nome = "Minha conta · sem escala" });
+                cmbPessoaRegistro.Enabled = !membro;
+                cmbPessoaRegistro.SelectedIndex = 0;
                 carregando = false;
-                if (cmbSetorRegistro.Items.Count > 0)
-                {
-                    cmbSetorRegistro.SelectedIndex = 0;
-                }
-                else
-                {
-                    labelAviso.Text = "Não há escalas autorizadas. Cadastre equipe, jornada e escala primeiro.";
-                }
-                if (cmbSetorRegistro.Items.Count == 0)
-                    AtualizarRegistros();
+                PessoaFiltroAlterada(this, EventArgs.Empty);
             }
             catch (Exception erro)
             {
@@ -191,6 +230,56 @@ namespace CASE.Quermesse
             {
                 carregando = false;
             }
+        }
+
+        private bool EscalaDaPessoa(DataRow linha)
+        {
+            var pessoa = cmbPessoaRegistro.SelectedItem as OpcaoFiltro;
+            return pessoa != null && (pessoa.Id == 0 || pessoa.Id == Convert.ToInt32(linha["id_pessoa"]));
+        }
+
+        private void PessoaFiltroAlterada(object sender, EventArgs e)
+        {
+            if (carregando || escalasDisponiveis == null) return;
+            carregando = true;
+            try
+            {
+                filtroEvento.Items.Clear();
+                if (eventoSelecionado == null)
+                    filtroEvento.Items.Add(new OpcaoFiltro { Id = 0, Nome = "Todos os eventos · consulta" });
+                var eventos = new HashSet<int>();
+                foreach (DataRow linha in escalasDisponiveis.Rows)
+                {
+                    int id = Convert.ToInt32(linha["id_evento"]);
+                    if (EscalaDaPessoa(linha) && eventos.Add(id))
+                        filtroEvento.Items.Add(new OpcaoFiltro { Id = id, Nome = Convert.ToString(linha["evento_nome"]) });
+                }
+                if (eventoSelecionado != null && filtroEvento.Items.Count == 0)
+                    filtroEvento.Items.Add(new OpcaoFiltro { Id = eventoSelecionado.IdEvento, Nome = eventoSelecionado.Nome });
+                if (filtroEvento.Items.Count > 0) filtroEvento.SelectedIndex = filtroEvento.Items.Count == 2 && eventoSelecionado == null ? 1 : 0;
+                filtroEvento.Enabled = eventoSelecionado == null && filtroEvento.Items.Count > 1;
+            }
+            finally { carregando = false; }
+            PreencherEscalasFiltradas();
+        }
+
+        private void PreencherEscalasFiltradas()
+        {
+            carregando = true;
+            try
+            {
+                cmbSetorRegistro.Items.Clear();
+                cmbSetorRegistro.Items.Add("Todas as escalas · somente consulta");
+                var evento = filtroEvento.SelectedItem as OpcaoFiltro;
+                foreach (DataRowView linha in escalasDisponiveis.DefaultView)
+                    if (EscalaDaPessoa(linha.Row) && evento != null &&
+                        (evento.Id == 0 || evento.Id == Convert.ToInt32(linha["id_evento"])))
+                        cmbSetorRegistro.Items.Add(linha);
+                cmbSetorRegistro.SelectedIndex = cmbSetorRegistro.Items.Count == 2 ? 1 : 0;
+                cmbSetorRegistro.Enabled = cmbSetorRegistro.Items.Count > 1;
+            }
+            finally { carregando = false; }
+            Filtros_SelectedIndexChanged(this, EventArgs.Empty);
         }
 
         private int IdEvento()
@@ -218,6 +307,9 @@ namespace CASE.Quermesse
                     panelNovoRegistro.Visible = false;
                     eventoEmAndamentoAtual = false;
                     btnRegistrar.Enabled = false;
+                    labelAviso.Text = cmbSetorRegistro.Items.Count <= 1
+                        ? "Nenhuma escala disponível para esta pessoa e evento. Defina a equipe e a escala de trabalho primeiro."
+                        : "Consulta de todas as escalas filtradas. Escolha uma escala específica para registrar uma venda ou perda.";
                     AtualizarRegistros();
                     AjustarCamposAoEspaco();
                     return;
@@ -240,7 +332,7 @@ namespace CASE.Quermesse
                 AtualizarEstadoLancamento(escala, podeRegistrar, produtos.Rows.Count);
                 lblTitulo.Text = podeRegistrar ? "Registrar vendas e perdas" : "Consulta de vendas e perdas";
                 lblSubtitulo.Text = podeRegistrar
-                    ? "Selecione uma escala. Vendas e perdas ficam disponíveis quando o evento estiver em andamento."
+                    ? "Confira a pessoa, o evento e a escala antes de lançar. O evento precisa estar em andamento."
                     : "Consulte os lançamentos da escala selecionada. Revisar lançamento permite corrigir erros com justificativa.";
                 if (!podeRegistrar)
                 {
@@ -262,7 +354,9 @@ namespace CASE.Quermesse
                 ? Convert.ToString(escala["situacao_evento"])
                 : string.Empty;
             eventoEmAndamentoAtual = string.Equals(situacaoEvento, SituacoesEvento.EmAndamento,
-                StringComparison.OrdinalIgnoreCase);
+                StringComparison.OrdinalIgnoreCase) && escala != null &&
+                Convert.ToBoolean(escala["ativo"]) &&
+                !string.Equals(Convert.ToString(escala["situacao"]), SituacoesEscala.Cancelada, StringComparison.OrdinalIgnoreCase);
 
             bool lancamentoPermitido = podeRegistrar && eventoEmAndamentoAtual && quantidadeProdutos > 0;
             btnRegistrar.Enabled = lancamentoPermitido && !registrando;
@@ -291,6 +385,13 @@ namespace CASE.Quermesse
                 labelAviso.Text = quantidadeProdutos > 0
                     ? "O lançamento atualiza o estoque do setor. Perdas precisam de justificativa; vendas informam preço e forma de pagamento."
                     : "Vincule produtos ao setor desta escala para habilitar os lançamentos.";
+            }
+            else if (string.Equals(situacaoEvento, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase))
+            {
+                lblContextoRegistro.Text = "Escala cancelada ou vínculo inativo — novos lançamentos estão bloqueados.";
+                lblContextoRegistro.BackColor = Color.FromArgb(255, 246, 222);
+                lblContextoRegistro.ForeColor = Color.FromArgb(143, 91, 0);
+                labelAviso.Text = "Escolha uma escala ativa. Os registros existentes continuam disponíveis para consulta.";
             }
             else if (string.Equals(situacaoEvento, SituacoesEvento.Planejado, StringComparison.OrdinalIgnoreCase))
             {
@@ -354,6 +455,16 @@ namespace CASE.Quermesse
                 if (escala != null)
                     foreach (Registro registro in new RegistroService().ListarPorEscala(usuarioAutenticado, Convert.ToInt32(escala["id_escala"])))
                         permitidos.Add(registro.IdRegistro);
+                else
+                    foreach (object item in cmbSetorRegistro.Items)
+                    {
+                        var escalaFiltrada = item as DataRowView;
+                        if (escalaFiltrada == null) continue;
+                        foreach (Registro registro in new RegistroService().ListarPorEscala(usuarioAutenticado, Convert.ToInt32(escalaFiltrada["id_escala"])))
+                            permitidos.Add(registro.IdRegistro);
+                    }
+                dgvRegistrosEquipe.Columns[1].Visible = escala == null;
+                dgvRegistrosEquipe.Columns[2].Visible = escala == null;
                 HashSet<int> lancamentos = new HashSet<int>();
                 List<object[]> linhas = new List<object[]>();
                 decimal totalVendas = 0;
@@ -384,9 +495,9 @@ namespace CASE.Quermesse
                         linha[6], linha[7], linha[8], linha[9], linha[10], linha[0], linha[11]);
                     dgvRegistrosEquipe.Rows[indice].Tag = linha[0];
                 }
-                resumoRegistros.Text = "Na escala: " + lancamentos.Count + " lançamento(s) • " + dgvRegistrosEquipe.Rows.Count +
+                resumoRegistros.Text = (escala == null ? "Nas escalas filtradas: " : "Na escala: ") + lancamentos.Count + " lançamento(s) • " + dgvRegistrosEquipe.Rows.Count +
                     " item(ns) • Vendas: " + (totalCompleto ? totalVendas.ToString("C2") : "preços incompletos");
-                VisualUtils.ExibirEstadoVazio(dgvRegistrosEquipe, escala == null ? "Selecione uma escala para consultar os lançamentos." : "Nenhuma venda ou perda registrada nesta escala.");
+                VisualUtils.ExibirEstadoVazio(dgvRegistrosEquipe, "Nenhuma venda ou perda encontrada para os filtros selecionados.");
                 VisualUtils.FiltrarGrades(panelListaRegistros, pesquisa.Text.Trim());
             }
             catch (Exception erro)
@@ -486,7 +597,16 @@ namespace CASE.Quermesse
             {
                 panelCorpo.Width = Math.Max(700, ClientSize.Width - 60);
                 panelFiltrosRegistros.Width = panelNovoRegistro.Width = panelListaRegistros.Width = panelCorpo.ClientSize.Width;
-                cmbSetorRegistro.Width = Math.Max(300, panelFiltrosRegistros.ClientSize.Width - 36);
+                panelFiltrosRegistros.Height = 104;
+                int colunaFiltro = (panelFiltrosRegistros.ClientSize.Width - 68) / 3;
+                lblFuncionario.SetBounds(18, 14, colunaFiltro, 22);
+                cmbPessoaRegistro.SetBounds(18, 44, colunaFiltro, 30);
+                legendaEvento.SetBounds(34 + colunaFiltro, 14, colunaFiltro, 22);
+                filtroEvento.SetBounds(34 + colunaFiltro, 44, colunaFiltro, 30);
+                lblSetor.SetBounds(50 + colunaFiltro * 2, 14, colunaFiltro, 22);
+                cmbSetorRegistro.SetBounds(50 + colunaFiltro * 2, 44, colunaFiltro, 30);
+                cmbSetorRegistro.DropDownWidth = Math.Max(540, colunaFiltro);
+                panelNovoRegistro.Top = panelFiltrosRegistros.Bottom + 16;
                 lblContextoRegistro.Width = Math.Max(300, panelNovoRegistro.ClientSize.Width - 36);
                 lblContextoRegistro.AutoEllipsis = true;
                 lblSubtitulo.Width = Math.Max(300, ClientSize.Width - lblSubtitulo.Left - 24);
@@ -496,7 +616,7 @@ namespace CASE.Quermesse
                 if (corrigir != null)
                     corrigir.Left = Math.Max(360, ClientSize.Width - corrigir.Width - 24);
                 lblTitulo.Width = Math.Max(240, ClientSize.Width - 350);
-                panelListaRegistros.Top = panelNovoRegistro.Visible ? 335 : 100;
+                panelListaRegistros.Top = panelNovoRegistro.Visible ? panelNovoRegistro.Bottom + 16 : panelFiltrosRegistros.Bottom + 16;
                 panelListaRegistros.Height = Math.Max(260, ClientSize.Height - panelCorpo.Top - panelListaRegistros.Top - 72);
                 panelCorpo.Height = panelListaRegistros.Bottom;
                 labelAviso.Top = panelCorpo.Bottom + 10;
