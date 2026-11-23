@@ -48,7 +48,7 @@ namespace CASE.Services
             estoqueRepository.AtualizarQuantidadesAlvo(estoque);
         }
 
-        public List<Estoque> ListarPorLocal(Usuario usuario, int idLocalEstoque)
+        public List<Estoque> ListarPorLocal(Usuario usuario, int idLocalEstoque, bool somenteDisponiveis = false)
         {
             if (idLocalEstoque <= 0)
             {
@@ -73,7 +73,7 @@ namespace CASE.Services
                 throw new UnauthorizedAccessException("Você não pode acessar este local de estoque.");
             }
 
-            return estoqueRepository.ListarPorLocal(idLocalEstoque);
+            return estoqueRepository.ListarPorLocal(idLocalEstoque, somenteDisponiveis);
         }
 
         public Estoque BuscarPorId(Usuario usuario, int idEstoque)

@@ -16,6 +16,8 @@ namespace CASE
         private readonly Dictionary<int, LocalEstoque> locaisOperacionaisPorId =
             new Dictionary<int, LocalEstoque>();
         private bool incorporado;
+        private LocalEstoque localConsultado;
+        private string pesquisaExterna = string.Empty;
         private readonly ComboBox filtroLocal = new ComboBox();
         private Panel painelPesquisaProduto;
         public event EventHandler OperacaoCorrigida;
@@ -165,6 +167,7 @@ namespace CASE
         public void IncorporarAoEstoque()
         {
             incorporado = true;
+            filtroLocal.Visible = false;
             lblTituloMovimentacoes.Visible = lblSubtituloMovimentacoes.Visible = pictureIconeTela.Visible = false;
             AjustarLayoutHistorico();
         }
@@ -172,6 +175,18 @@ namespace CASE
         public void AtualizarHistorico()
         {
             CarregarMovimentacoes();
+        }
+
+        public void DefinirLocalConsultado(LocalEstoque local)
+        {
+            localConsultado = local;
+            FiltrarProduto();
+        }
+
+        public void DefinirPesquisaExterna(string texto)
+        {
+            pesquisaExterna = (texto ?? string.Empty).Trim();
+            FiltrarProduto();
         }
 
         private void AjustarLayoutHistorico()
@@ -294,14 +309,18 @@ movimento["responsavel"],
         private void FiltrarProduto()
         {
             string[] tipos = { "", "entrada", "transferencia", "venda", "perda" };
-            LocalEstoque local = filtroLocal.SelectedItem as LocalEstoque;
+            LocalEstoque local = incorporado ? localConsultado : filtroLocal.SelectedItem as LocalEstoque;
             int visiveis = 0;
             foreach (DataGridViewRow linha in dgvMovimentacoes.Rows)
             {
                 DataRow operacao = linha.Tag as DataRow;
                 linha.Visible = Convert.ToString(linha.Cells[1].Value).IndexOf(
                     txtProdutoMovimentacao.Text.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0 &&
-                    (cmbTipoMovimentacao.SelectedIndex <= 0 || Convert.ToString(linha.Cells[2].Value) == tipos[cmbTipoMovimentacao.SelectedIndex]) &&
+                    Convert.ToString(linha.Cells[1].Value).IndexOf(pesquisaExterna,
+                        StringComparison.CurrentCultureIgnoreCase) >= 0 &&
+                    (!incorporado || local != null) &&
+                    (cmbTipoMovimentacao.SelectedIndex <= 0 || operacao != null &&
+                        Convert.ToString(operacao["tipo"]) == tipos[cmbTipoMovimentacao.SelectedIndex]) &&
                     MovimentoDoContexto(operacao) &&
                     (local == null || operacao != null && (LerIdLocal(operacao, "id_origem") == local.IdLocalEstoque ||
                         LerIdLocal(operacao, "id_destino") == local.IdLocalEstoque));

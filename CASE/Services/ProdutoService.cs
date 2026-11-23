@@ -121,6 +121,14 @@ namespace CASE.Services
             });
         }
 
+        public bool DesvincularFornecedor(Usuario usuario, int idProduto, int idFornecedor)
+        {
+            autorizacaoService.ExigirAdministrador(usuario);
+            if (idProduto <= 0 || idFornecedor <= 0)
+                throw new ArgumentException("Selecione o fornecedor vinculado que deseja remover.");
+            return new ProdutoFornecedorRepository().Desvincular(idProduto, idFornecedor);
+        }
+
         public List<Produto> Listar(Usuario usuario)
         {
             autorizacaoService.ExigirAdministradorOuGerente(usuario);

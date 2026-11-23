@@ -15,6 +15,7 @@ namespace CASE
         private List<Produto> produtos = new List<Produto>();
         private List<Categoria> categorias = new List<Categoria>();
         private readonly List<System.Drawing.Image> imagensDaGrade = new List<System.Drawing.Image>();
+        private readonly CheckBox mostrarRemovidos = new CheckBox();
 
         public ProdutosControl() : this(null)
         {
@@ -34,6 +35,14 @@ namespace CASE
             }
 
             FrontendTheme.Aplicar(this);
+            mostrarRemovidos.Name = "chkIncluirProdutosRemovidos";
+            mostrarRemovidos.Text = "Incluir produtos removidos";
+            mostrarRemovidos.Font = dgvProdutos.DefaultCellStyle.Font;
+            mostrarRemovidos.ForeColor = VisualUtils.Texto;
+            mostrarRemovidos.SetBounds(panelListaProdutos.Width - 235, 18, 215, 26);
+            mostrarRemovidos.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            mostrarRemovidos.CheckedChanged += Filtros_Changed;
+            panelListaProdutos.Controls.Add(mostrarRemovidos);
             VisualUtils.Arredondar(panelAcoesProdutos, 12);
             VisualUtils.Arredondar(panelListaProdutos, 12);
             VisualUtils.Arredondar(btnNovoProduto, 8);
@@ -192,6 +201,7 @@ namespace CASE
                 using (ComboBox fornecedor = new ComboBox())
                 using (TextBox codigo = new TextBox())
                 using (Button salvar = new Button())
+                using (Button remover = new Button())
                 using (DataGridView grade = new DataGridView())
                 {
                     janela.Text = "Fornecedores · " + produto.Nome;
@@ -214,6 +224,10 @@ namespace CASE
                     salvar.Name = "btnSalvarVinculoFornecedor";
                     salvar.SetBounds(20, 93, 160, 36);
                     salvar.Enabled = perfil == "Administrador" && fornecedores.Count > 0;
+                    remover.Text = "Remover vínculo";
+                    remover.Name = "btnRemoverVinculoFornecedor";
+                    remover.SetBounds(195, 93, 160, 36);
+                    remover.Enabled = false;
                     Label mensagem = FrontendTheme.Legenda("Vínculos do catálogo. Não alteram preços de venda nem saldos.",
                         new System.Drawing.Rectangle(20, 145, 560, 42));
                     grade.SetBounds(20, 195, 560, 210);
@@ -235,8 +249,24 @@ namespace CASE
                     janela.Controls.Add(fornecedor);
                     janela.Controls.Add(codigo);
                     janela.Controls.Add(salvar);
+                    janela.Controls.Add(remover);
                     janela.Controls.Add(mensagem);
                     janela.Controls.Add(grade);
+                    grade.SelectionChanged += (s, argumentos) =>
+                        remover.Enabled = perfil == "Administrador" && grade.SelectedRows.Count == 1 &&
+                            grade.SelectedRows[0].Tag != null;
+                    grade.CellClick += (s, argumentos) =>
+                    {
+                        if (argumentos.RowIndex < 0)
+                            return;
+                        int idFornecedor = Convert.ToInt32(grade.Rows[argumentos.RowIndex].Tag);
+                        foreach (Fornecedor item in fornecedor.Items)
+                            if (item.IdFornecedor == idFornecedor)
+                            {
+                                fornecedor.SelectedItem = item;
+                                break;
+                            }
+                    };
                     Action sincronizarSelecaoGrade = () =>
                     {
                         grade.ClearSelection();
@@ -315,6 +345,33 @@ namespace CASE
                             }
                             CASE.Utils.FeedbackUsuario.Exibir(janela, mensagem.Text, CASE.Utils.TipoFeedback.Erro);
                             System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em VincularFornecedor");
+                        }
+                    };
+                    remover.Click += (s, argumentos) =>
+                    {
+                        if (grade.SelectedRows.Count != 1 || grade.SelectedRows[0].Tag == null)
+                            return;
+                        DataGridViewRow linha = grade.SelectedRows[0];
+                        int idFornecedor = Convert.ToInt32(linha.Tag);
+                        string nomeFornecedor = Convert.ToString(linha.Cells[0].Value);
+                        if (MessageBox.Show(janela,
+                            "Remover o vínculo de \"" + nomeFornecedor + "\" com o produto \"" + produto.Nome + "\"?\n\n" +
+                            "O fornecedor continuará cadastrado. Os outros vínculos e os registros de compras não serão alterados.",
+                            "Remover fornecedor do produto", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
+                            MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                            return;
+                        try
+                        {
+                            bool removido = produtoService.DesvincularFornecedor(usuarioAutenticado,
+                                produto.IdProduto, idFornecedor);
+                            atualizar();
+                            codigo.Clear();
+                            mensagem.Text = removido ? "Fornecedor removido deste produto." : "Este vínculo já foi removido.";
+                            FeedbackUsuario.Exibir(janela, mensagem.Text, TipoFeedback.Sucesso);
+                        }
+                        catch (Exception erro)
+                        {
+                            FeedbackUsuario.ExibirErro(janela, erro, "Não foi possível remover o vínculo. Tente novamente.", mensagem);
                         }
                     };
                     foreach (Fornecedor item in fornecedores)
@@ -504,7 +561,8 @@ namespace CASE
                         cmbFiltroCategoria.Text,
                         StringComparison.CurrentCultureIgnoreCase);
 
-                linha.Visible = nomeCorresponde && categoriaCorresponde;
+                linha.Visible = nomeCorresponde && categoriaCorresponde &&
+                    (produto.Ativo || mostrarRemovidos.Checked);
 
                 if (linha.Visible)
                 {
@@ -512,7 +570,7 @@ namespace CASE
                 }
             }
 
-            lblPaginacao.Text = quantidadeVisivel + " de " + produtos.Count + " produtos";
+            lblPaginacao.Text = quantidadeVisivel + " produto(s) exibido(s)";
             dgvProdutos.ClearSelection();
         }
 

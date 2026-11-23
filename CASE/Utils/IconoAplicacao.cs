@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.IO;
 using System.Windows.Forms;
 
 namespace CASE.Utils
@@ -24,12 +23,14 @@ namespace CASE.Utils
 
             if (iconePrincipal == null)
             {
-                string caminhoIcone = Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "Resources",
-                    "CASE.ico");
-
-                iconePrincipal = new Icon(caminhoIcone);
+                using (var recurso = typeof(IconoAplicacao).Assembly.GetManifestResourceStream("CASE.Resources.CASE.ico"))
+                {
+                    if (recurso == null)
+                        iconePrincipal = (Icon)SystemIcons.Application.Clone();
+                    else
+                        using (var icone = new Icon(recurso))
+                            iconePrincipal = (Icon)icone.Clone();
+                }
             }
 
             formulario.Icon = (Icon)iconePrincipal.Clone();

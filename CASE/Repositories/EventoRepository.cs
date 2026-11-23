@@ -112,12 +112,34 @@ namespace CASE.Repositories
 
         }
 
+        public bool PossuiVendasOuPerdas(int idEvento)
+        {
+            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            {
+                conexao.Open();
+                return PossuiVendasOuPerdas(conexao, null, idEvento);
+            }
+        }
+
+        private static bool PossuiVendasOuPerdas(MySqlConnection conexao, MySqlTransaction transacao, int idEvento)
+        {
+            using (var comando = new MySqlCommand(
+                "SELECT EXISTS(SELECT 1 FROM registro r JOIN escala e ON e.id_escala=r.id_escala " +
+                "JOIN equipeevento eq ON eq.id_equipe=e.id_equipe " +
+                "WHERE eq.id_evento=@evento AND r.tipo IN ('venda','perda'))", conexao, transacao))
+            {
+                comando.Parameters.AddWithValue("@evento", idEvento);
+                return Convert.ToBoolean(comando.ExecuteScalar());
+            }
+        }
+
         public void AtualizarSituacao(
             int idEvento,
             uint versao,
             string situacao,
             int idUsuario,
-            string situacaoAnterior)
+            string situacaoAnterior,
+            bool devolverSaldosSemLancamentos = false)
         {
             using (var conexao = CASE.Data.Conexao.CriarConexao())
             {
@@ -162,6 +184,13 @@ namespace CASE.Repositories
                         if (string.Equals(situacao, SituacoesEvento.Finalizado, StringComparison.OrdinalIgnoreCase) ||
                             string.Equals(situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase))
                         {
+                            if (devolverSaldosSemLancamentos)
+                            {
+                                if (PossuiVendasOuPerdas(conexao, transacao, idEvento))
+                                    throw new InvalidOperationException(
+                                        "Foram encontrados registros de venda ou perda. Confira os lançamentos antes de encerrar o evento.");
+                                DevolverSaldosAoCentral(conexao, transacao, idEvento, idUsuario);
+                            }
                             using (var comando = new MySqlCommand(
                                 "SELECT COUNT(*) FROM estoque e " +
                                 "JOIN vw_localestoque le ON le.id_local_estoque=e.id_local_estoque " +
@@ -221,6 +250,83 @@ namespace CASE.Repositories
                     }
                 }
             }
+        }
+
+        private static void DevolverSaldosAoCentral(MySqlConnection conexao, MySqlTransaction transacao,
+            int idEvento, int idUsuario)
+        {
+            var saldos = new List<Tuple<int, int, decimal>>();
+            using (var comando = new MySqlCommand(
+                "SELECT e.id_local_estoque,e.id_produto,e.quantidade_atual FROM estoque e " +
+                "JOIN vw_localestoque l ON l.id_local_estoque=e.id_local_estoque " +
+                "WHERE l.id_evento=@evento AND e.quantidade_atual<>0 " +
+                "ORDER BY e.id_local_estoque,e.id_produto FOR UPDATE", conexao, transacao))
+            {
+                comando.Parameters.AddWithValue("@evento", idEvento);
+                using (var leitor = comando.ExecuteReader())
+                    while (leitor.Read())
+                    {
+                        decimal quantidade = leitor.GetDecimal("quantidade_atual");
+                        if (quantidade < 0)
+                            throw new InvalidOperationException("Regularize os saldos negativos antes de encerrar o evento.");
+                        saldos.Add(Tuple.Create(leitor.GetInt32("id_local_estoque"),
+                            leitor.GetInt32("id_produto"), quantidade));
+                    }
+            }
+            if (saldos.Count == 0)
+                return;
+
+            int idCentral = 0;
+            using (var comando = new MySqlCommand(
+                "SELECT l.id_local_estoque FROM vw_localestoque l " +
+                "JOIN evento ev ON ev.id_instituicao=l.id_instituicao " +
+                "WHERE ev.id_evento=@evento AND l.eh_central=1 AND l.ativo=1 FOR UPDATE", conexao, transacao))
+            {
+                comando.Parameters.AddWithValue("@evento", idEvento);
+                using (var leitor = comando.ExecuteReader())
+                    while (leitor.Read())
+                    {
+                        if (idCentral != 0)
+                            throw new InvalidOperationException("Confira o cadastro do estoque central da instituição antes de continuar.");
+                        idCentral = leitor.GetInt32(0);
+                    }
+            }
+            if (idCentral == 0)
+                throw new InvalidOperationException("Inicialize o estoque central da instituição antes de encerrar o evento.");
+
+            var transferencias = new Dictionary<int, int>();
+            var ajustes = new List<Tuple<int, int, decimal>>();
+            foreach (var saldo in saldos)
+            {
+                int idTransferencia;
+                if (!transferencias.TryGetValue(saldo.Item1, out idTransferencia))
+                {
+                    idTransferencia = AcessoDados.Inserir(conexao, transacao,
+                        "INSERT INTO transferenciaestoque " +
+                        "(id_local_origem,id_local_destino,id_usuario_responsavel,data_hora,observacao,chave_operacao,criado_em) " +
+                        "VALUES (@origem,@destino,@usuario,NOW(),@observacao,@chave,NOW())",
+                        comando =>
+                        {
+                            comando.Parameters.AddWithValue("@origem", saldo.Item1);
+                            comando.Parameters.AddWithValue("@destino", idCentral);
+                            comando.Parameters.AddWithValue("@usuario", idUsuario);
+                            comando.Parameters.AddWithValue("@observacao", "Devolução dos saldos ao encerrar evento sem vendas ou perdas registradas.");
+                            comando.Parameters.AddWithValue("@chave", Guid.NewGuid().ToString());
+                        });
+                    transferencias.Add(saldo.Item1, idTransferencia);
+                }
+                AcessoDados.Executar(conexao, transacao,
+                    "INSERT INTO transferenciaitem (id_transferencia,id_produto,quantidade) VALUES (@transferencia,@produto,@quantidade)",
+                    comando =>
+                    {
+                        comando.Parameters.AddWithValue("@transferencia", idTransferencia);
+                        comando.Parameters.AddWithValue("@produto", saldo.Item2);
+                        comando.Parameters.AddWithValue("@quantidade", saldo.Item3);
+                    });
+                ajustes.Add(Tuple.Create(saldo.Item1, saldo.Item2, -saldo.Item3));
+                ajustes.Add(Tuple.Create(idCentral, saldo.Item2, saldo.Item3));
+            }
+            ControleSaldoEstoque.AplicarAjustes(conexao, transacao, ajustes);
         }
 
         public void ExcluirCancelado(int idEvento, uint versao)

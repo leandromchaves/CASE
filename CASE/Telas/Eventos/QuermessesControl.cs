@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Windows.Forms;
 using CASE.Models;
@@ -178,37 +178,54 @@ namespace CASE.Quermesse
                 labelAviso.Text = "Selecione um evento autorizado.";
                 return;
             }
-            bool iniciando = situacao == SituacoesEvento.EmAndamento;
-            string confirmacao = situacao == SituacoesEvento.Cancelado
-                ? "Ao cancelar, o evento ficará encerrado para novos cadastros e operações, como incluir funcionários, criar setores e escalas, registrar solicitações ou movimentar estoque. Os dados já registrados continuarão disponíveis para consulta.\n\nDeseja cancelar este evento?"
-                : iniciando
-                    ? "Ao iniciar o evento, as vendas e perdas poderão ser registradas pela equipe nas escalas correspondentes. Deseja iniciar agora?"
-                    : "Confirma alterar a situação do evento?";
-            string tituloConfirmacao = situacao == SituacoesEvento.Cancelado
-                ? "Cancelar evento"
-                : iniciando ? "Iniciar evento" : "Situação do evento";
-            MessageBoxIcon iconeConfirmacao = situacao == SituacoesEvento.Cancelado
-                ? MessageBoxIcon.Warning
-                : iniciando ? MessageBoxIcon.Information : MessageBoxIcon.Question;
-            if (MessageBox.Show(this, confirmacao,
-                tituloConfirmacao, MessageBoxButtons.YesNo, iconeConfirmacao) != DialogResult.Yes)
-            {
-                return;
-            }
             try
             {
-                eventoService.AlterarSituacao(usuarioAutenticado, evento.IdEvento, situacao);
+                bool iniciando = situacao == SituacoesEvento.EmAndamento;
+                bool encerrando = situacao == SituacoesEvento.Cancelado || situacao == SituacoesEvento.Finalizado;
+                bool semLancamentos = encerrando && !eventoService.PossuiVendasOuPerdas(usuarioAutenticado, evento.IdEvento);
+                string confirmacao = situacao == SituacoesEvento.Cancelado
+                    ? "Ao cancelar, o evento ficará encerrado para novos cadastros e operações, como incluir funcionários, criar setores e escalas, registrar solicitações ou movimentar estoque. Os dados já registrados continuarão disponíveis para consulta.\n\nDeseja cancelar este evento?"
+                    : iniciando
+                        ? "Ao iniciar o evento, as vendas e perdas poderão ser registradas pela equipe nas escalas correspondentes. Deseja iniciar agora?"
+                        : "Confirma finalizar este evento? Novas vendas e perdas não poderão ser registradas.";
+                if (semLancamentos)
+                {
+                    string acao = situacao == SituacoesEvento.Cancelado ? "cancelar" : "finalizar";
+                    confirmacao = "Nenhuma venda ou perda foi registrada no evento \"" + evento.Nome + "\".\n\n" +
+                        "Confira se a equipe esqueceu de registrar alguma operação. Se houver lançamentos pendentes, " +
+                        "escolha Não e registre-os antes de continuar.\n\n" +
+                        "Se prosseguir, todos os produtos que ainda têm saldo no estoque geral e nos setores deste evento " +
+                        "serão devolvidos automaticamente ao estoque central da instituição. A devolução ficará no histórico.\n\n" +
+                        "O evento será " + (situacao == SituacoesEvento.Cancelado ? "cancelado" : "finalizado") +
+                        " e não aceitará novas operações. Os registros existentes continuarão disponíveis para consulta.\n\n" +
+                        "Deseja " + acao + " o evento e devolver os saldos ao estoque central?";
+                }
+                string tituloConfirmacao = situacao == SituacoesEvento.Cancelado
+                    ? "Cancelar evento"
+                    : iniciando ? "Iniciar evento" : "Finalizar evento";
+                MessageBoxIcon iconeConfirmacao = situacao == SituacoesEvento.Cancelado || semLancamentos
+                    ? MessageBoxIcon.Warning
+                    : iniciando ? MessageBoxIcon.Information : MessageBoxIcon.Question;
+                if (MessageBox.Show(this, confirmacao,
+                    tituloConfirmacao, MessageBoxButtons.YesNo, iconeConfirmacao,
+                    MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                {
+                    return;
+                }
+                eventoService.AlterarSituacao(usuarioAutenticado, evento.IdEvento, situacao, semLancamentos);
                 CarregarEventos();
                 labelAviso.Text = situacao == SituacoesEvento.Cancelado
                     ? "Evento cancelado. Novos cadastros e operações foram bloqueados; os dados existentes continuam disponíveis para consulta."
                     : iniciando
                         ? "Evento iniciado. Agora a equipe pode registrar vendas e perdas nas escalas."
-                        : "Situação atualizada.";
+                        : "Evento finalizado. Novas operações foram bloqueadas.";
+                if (semLancamentos)
+                    labelAviso.Text += " Os saldos do estoque geral e dos setores foram devolvidos ao estoque central.";
                 if (situacao == SituacoesEvento.Cancelado)
                 {
                     FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Atencao);
                 }
-                else if (iniciando)
+                else
                 {
                     FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
                 }

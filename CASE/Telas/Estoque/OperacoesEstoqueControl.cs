@@ -103,21 +103,35 @@ namespace CASE
             btnFornecedores.Click += (s, e) => FornecedoresSolicitados?.Invoke(this, EventArgs.Empty);
             FrontendTheme.Aplicar(this);
             pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarLocalEstoque", "Pesquisar neste estoque",
-                texto => VisualUtils.FiltrarGrades(this, texto));
+                texto => AplicarPesquisa(texto));
             AutoScrollMinSize = new System.Drawing.Size(760, 740);
             panelAcoes.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             panelSaldos.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             panelHistorico.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             panelSaldos.Padding = panelHistorico.Padding = new Padding(24, 20, 24, 20);
             dgvSaldos.Dock = dgvHistorico.Dock = DockStyle.Fill;
+            VisualUtils.ExibirEstadoVazio(dgvSaldos,
+                "Nenhum produto disponível neste local. Os produtos aparecem após o recebimento de mercadorias.");
             VisualUtils.ExibirEstadoVazio(dgvHistorico, "O histórico consolidado ainda não está disponível.");
-            dgvSaldos.Columns[0].FillWeight = 180;
-            dgvSaldos.Columns[1].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
+            dgvSaldos.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+            dgvSaldos.Columns[0].FillWeight = 160;
+            dgvSaldos.Columns[0].MinimumWidth = 200;
+            dgvSaldos.Columns[1].HeaderText = "Disponível";
             dgvSaldos.Columns[1].FillWeight = 90;
-            dgvSaldos.Columns[2].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleRight;
-            dgvSaldos.Columns[2].FillWeight = 70;
-            dgvSaldos.Columns[3].FillWeight = 100;
-            dgvSaldos.Columns[4].FillWeight = 55;
+            dgvSaldos.Columns[2].HeaderText = "Estoque mínimo";
+            dgvSaldos.Columns[2].FillWeight = 90;
+            dgvSaldos.Columns[3].FillWeight = 110;
+            dgvSaldos.Columns[4].FillWeight = 50;
+            foreach (int indice in new[] { 1, 2, 4 })
+            {
+                DataGridViewColumn coluna = dgvSaldos.Columns[indice];
+                coluna.MinimumWidth = indice == 4 ? 75 : 120;
+                coluna.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                coluna.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+                coluna.DefaultCellStyle.Padding = Padding.Empty;
+                coluna.HeaderCell.Style.Padding = Padding.Empty;
+            }
+            dgvSaldos.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
             dgvHistorico.Columns[4].FillWeight = 180;
             VisualUtils.AplicarIcone(btnEntrada, Properties.Resources.LucideAcaoEntrada);
             VisualUtils.AplicarIcone(btnTransferir, Properties.Resources.LucideAcaoTransferencia);
@@ -445,6 +459,8 @@ namespace CASE
                 }
                 else
                     historicoMercadorias.AtualizarHistorico();
+                historicoMercadorias.DefinirLocalConsultado(cmbLocal.SelectedItem as LocalEstoque);
+                historicoMercadorias.DefinirPesquisaExterna(pesquisa.Text);
                 btnAbaSaldo.BackColor = System.Drawing.Color.White;
                 btnAbaSaldo.ForeColor = VisualUtils.Texto;
                 btnAbaHistorico.BackColor = VisualUtils.Azul;
@@ -480,6 +496,8 @@ namespace CASE
             AtualizarAcaoLimites();
 
             LocalEstoque local = cmbLocal.SelectedItem as LocalEstoque;
+            if (historicoMercadorias != null)
+                historicoMercadorias.DefinirLocalConsultado(local);
 
             if (local == null || usuarioAutenticado == null)
             {
@@ -504,7 +522,8 @@ namespace CASE
 
                 List<Estoque> saldos = estoqueService.ListarPorLocal(
                     usuarioAutenticado,
-                    local.IdLocalEstoque);
+                    local.IdLocalEstoque,
+                    somenteDisponiveis: !local.EhCentral);
                 System.Data.DataTable movimentos = new ConsultaOperacionalService().Movimentacoes(
                     usuarioAutenticado, DateTime.Today.AddDays(-30), DateTime.Today);
                 List<object[]> linhasSaldo = new List<object[]>();
@@ -587,9 +606,12 @@ namespace CASE
                     dgvHistorico.Rows.Add(linha);
                 dgvSaldos.ClearSelection();
                 VisualUtils.ExibirEstadoVazio(dgvHistorico, "Nenhuma movimentação neste local nos últimos 30 dias.");
-                lblResumo.Text = produtosComSaldo + " com saldo · " +
-                    estoquesBaixos + " abaixo do mínimo · " + semEstoque + " sem estoque";
-                VisualUtils.FiltrarGrades(this, pesquisa.Text.Trim());
+                lblResumo.Text = produtosComSaldo + " com saldo neste local · " +
+                    estoquesBaixos + " abaixo do mínimo" +
+                    (local.EhCentral ? " · " + semEstoque + " sem estoque" : string.Empty);
+                if (exibindoHistorico && historicoMercadorias != null)
+                    historicoMercadorias.AtualizarHistorico();
+                AplicarPesquisa(pesquisa.Text.Trim());
                 AtualizarAcaoLimites();
             }
             catch (UnauthorizedAccessException)
@@ -600,6 +622,13 @@ namespace CASE
             {
                 lblMensagem.Text = "Não foi possível carregar os saldos deste local.";
             }
+        }
+
+        private void AplicarPesquisa(string texto)
+        {
+            VisualUtils.FiltrarGrades(panelSaldos, texto);
+            if (historicoMercadorias != null)
+                historicoMercadorias.DefinirPesquisaExterna(texto);
         }
     }
 }

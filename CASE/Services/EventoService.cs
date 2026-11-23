@@ -317,7 +317,15 @@ namespace CASE.Services
             return evento;
         }
 
-        public void AlterarSituacao(Usuario usuario, int idEvento, string novaSituacao)
+        public bool PossuiVendasOuPerdas(Usuario usuario, int idEvento)
+        {
+            if (BuscarPorId(usuario, idEvento) == null)
+                throw new InvalidOperationException("O evento não foi encontrado.");
+            return eventoRepository.PossuiVendasOuPerdas(idEvento);
+        }
+
+        public void AlterarSituacao(Usuario usuario, int idEvento, string novaSituacao,
+            bool devolverSaldosSemLancamentos = false)
         {
             if (idEvento <= 0)
             {
@@ -348,7 +356,8 @@ namespace CASE.Services
 
             if (novaSituacao == SituacoesEvento.Finalizado || novaSituacao == SituacoesEvento.Cancelado)
             {
-                VerificarSaldosZerados(evento.IdEvento);
+                if (!devolverSaldosSemLancamentos)
+                    VerificarSaldosZerados(evento.IdEvento);
             }
 
             eventoRepository.AtualizarSituacao(
@@ -356,7 +365,8 @@ namespace CASE.Services
                 evento.Versao,
                 novaSituacao,
                 usuarioAtual.IdUsuario,
-                evento.Situacao);
+                evento.Situacao,
+                devolverSaldosSemLancamentos);
         }
 
         public void Excluir(Usuario usuario, int idEvento)

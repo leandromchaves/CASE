@@ -9,10 +9,26 @@ namespace CASE.Repositories
 
         private const string Colunas = "id_estoque,id_local_estoque,id_produto,quantidade_minima,quantidade_ideal,quantidade_atual";
 
-        public List<Estoque> ListarPorLocal(int idLocalEstoque)
+        public List<Estoque> ListarPorLocal(int idLocalEstoque, bool somenteDisponiveis = false)
         {
+            string sql = "SELECT " + Colunas + " FROM estoque WHERE id_local_estoque=@id ORDER BY id_produto";
+            if (somenteDisponiveis)
+            {
+                sql = "SELECT e.* FROM estoque e LEFT JOIN (" +
+                    "SELECT id_produto,MIN(ordem) AS primeira_chegada FROM (" +
+                    "SELECT i.id_produto,CONCAT(DATE_FORMAT(en.data_hora,'%Y%m%d%H%i%s')," +
+                    "LPAD(i.id_entrada_item,20,'0')) AS ordem " +
+                    "FROM entradamercadoria en JOIN entradaitem i ON i.id_entrada=en.id_entrada " +
+                    "WHERE en.id_local_destino=@id UNION ALL " +
+                    "SELECT i.id_produto,CONCAT(DATE_FORMAT(tr.data_hora,'%Y%m%d%H%i%s')," +
+                    "LPAD(i.id_transferencia_item,20,'0')) " +
+                    "FROM transferenciaestoque tr JOIN transferenciaitem i ON i.id_transferencia=tr.id_transferencia " +
+                    "WHERE tr.id_local_destino=@id) recebimentos GROUP BY id_produto) r " +
+                    "ON r.id_produto=e.id_produto WHERE e.id_local_estoque=@id AND e.quantidade_atual>0 " +
+                    "ORDER BY r.primeira_chegada IS NULL,r.primeira_chegada,e.id_estoque";
+            }
             return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM estoque WHERE id_local_estoque=@id ORDER BY id_produto",
+                sql,
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@id", idLocalEstoque)
             );

@@ -407,6 +407,7 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Telas\Solicitacoes\SolicitacaoForm.resx">
       <DependentUpon>SolicitacaoForm.cs</DependentUpon>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <Compile Include="Telas\Solicitacoes\DetalhesReposicaoForm.cs">
       <SubType>Form</SubType>
@@ -572,6 +573,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\CASE-logo.png" />
+    <EmbeddedResource Include="Resources\CASE.ico">
+      <LogicalName>CASE.Resources.CASE.ico</LogicalName>
+    </EmbeddedResource>
     <Content Include="Resources\CASE.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
