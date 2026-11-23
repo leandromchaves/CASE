@@ -226,6 +226,8 @@ namespace CASE
                     grade.BackgroundColor = System.Drawing.Color.White;
                     grade.BorderStyle = BorderStyle.None;
                     grade.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
+                    grade.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+                    grade.MultiSelect = false;
                     grade.Columns.Add("fornecedor", "Fornecedor");
                     grade.Columns.Add("codigo", "Código no fornecedor");
                     janela.Controls.Add(FrontendTheme.Legenda("Fornecedor", new System.Drawing.Rectangle(20, 20, 335, 22)));
@@ -235,6 +237,26 @@ namespace CASE
                     janela.Controls.Add(salvar);
                     janela.Controls.Add(mensagem);
                     janela.Controls.Add(grade);
+                    Action sincronizarSelecaoGrade = () =>
+                    {
+                        grade.ClearSelection();
+                        grade.CurrentCell = null;
+                        Fornecedor selecionado = fornecedor.SelectedItem as Fornecedor;
+                        if (selecionado == null)
+                        {
+                            return;
+                        }
+
+                        foreach (DataGridViewRow linha in grade.Rows)
+                        {
+                            if (linha.Tag != null && Convert.ToInt32(linha.Tag) == selecionado.IdFornecedor)
+                            {
+                                linha.Selected = true;
+                                grade.CurrentCell = linha.Cells[0];
+                                return;
+                            }
+                        }
+                    };
                     Action atualizar = () =>
                     {
                         vinculos = produtoService.ListarFornecedores(usuarioAutenticado, produto.IdProduto);
@@ -245,12 +267,14 @@ namespace CASE
                             {
                                 if (item.IdFornecedor == vinculo.IdFornecedor)
                                 {
-                                    grade.Rows.Add(item.Nome, vinculo.CodigoNoFornecedor);
+                                    int indice = grade.Rows.Add(item.Nome, vinculo.CodigoNoFornecedor);
+                                    grade.Rows[indice].Tag = item.IdFornecedor;
                                     break;
                                 }
                             }
                         }
                         VisualUtils.ExibirEstadoVazio(grade, "Nenhum fornecedor vinculado ao produto.");
+                        sincronizarSelecaoGrade();
                     };
                     fornecedor.SelectedIndexChanged += (s, argumentos) =>
                     {
@@ -264,6 +288,7 @@ namespace CASE
                                 break;
                             }
                         }
+                        sincronizarSelecaoGrade();
                     };
                     salvar.Click += (s, argumentos) =>
                     {
