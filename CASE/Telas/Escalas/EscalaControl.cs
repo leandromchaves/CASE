@@ -17,6 +17,7 @@ namespace CASE.Quermesse
         private readonly JornadaSetorService jornadaService = new JornadaSetorService();
         private readonly SetorService setorService = new SetorService();
         private readonly TurnoRepository turnoRepository = new TurnoRepository();
+        private readonly Button btnRemoverEscala = new Button();
         private bool podeAdministrarEscalas;
         private bool usuarioEhMembro;
         private TextBox pesquisa;
@@ -29,6 +30,7 @@ namespace CASE.Quermesse
         {
             InitializeComponent();
             FrontendTheme.Aplicar(this);
+            ConfigurarAcaoRemoverEscala();
             pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarEscala", "Pesquisar escala ou funcionário",
                 texto => AplicarFiltros());
             usuarioAutenticado = usuario;
@@ -36,6 +38,9 @@ namespace CASE.Quermesse
             cmbFiltroEscala.Items.Clear();
             cmbFiltroTurnoEscala.Items.Clear();
             dgvEscala.CellDoubleClick += dgvEscala_CellDoubleClick;
+            dgvEscala.SelectionChanged += (s, e) => AtualizarAcaoRemoverEscala();
+            panelFiltrosEscala.SizeChanged += (s, e) => AjustarAcoesEscala();
+            AjustarAcoesEscala();
 
             if (usuarioAutenticado == null)
             {
@@ -75,7 +80,9 @@ namespace CASE.Quermesse
                 podeAdministrarEscalas = false;
             }
 
-            btnNovaAlocacao.Enabled = podeAdministrarEscalas && eventoSelecionado != null;
+            btnNovaAlocacao.Enabled = podeAdministrarEscalas && EventoPermiteAlteracoes();
+            btnRemoverEscala.Visible = podeAdministrarEscalas && eventoSelecionado != null;
+            AtualizarAcaoRemoverEscala();
 
             if (eventoSelecionado == null && !usuarioEhMembro)
             {
@@ -83,15 +90,116 @@ namespace CASE.Quermesse
                 return;
             }
 
+            if (eventoSelecionado != null && !EventoPermiteAlteracoes())
+            {
+                labelAviso.Text = "Este evento está encerrado. As escalas existentes podem ser consultadas, mas não alteradas.";
+            }
+
             CarregarEscalas();
+        }
+
+        private void ConfigurarAcaoRemoverEscala()
+        {
+            btnRemoverEscala.Name = "btnRemoverEscalaSelecionada";
+            btnRemoverEscala.Text = "Remover escala";
+            btnRemoverEscala.Size = new System.Drawing.Size(175, 40);
+            btnRemoverEscala.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
+            btnRemoverEscala.BackColor = System.Drawing.Color.White;
+            btnRemoverEscala.ForeColor = System.Drawing.Color.FromArgb(180, 55, 65);
+            btnRemoverEscala.FlatStyle = FlatStyle.Flat;
+            btnRemoverEscala.FlatAppearance.BorderSize = 1;
+            btnRemoverEscala.FlatAppearance.BorderColor = VisualUtils.Borda;
+            btnRemoverEscala.Cursor = Cursors.Hand;
+            btnRemoverEscala.Enabled = false;
+            btnRemoverEscala.Visible = false;
+            btnRemoverEscala.Click += RemoverEscalaSelecionada;
+            VisualUtils.EstilizarBotao(btnRemoverEscala);
+            VisualUtils.Arredondar(btnRemoverEscala, 8);
+            panelFiltrosEscala.Controls.Add(btnRemoverEscala);
+        }
+
+        private void AjustarAcoesEscala()
+        {
+            if (panelFiltrosEscala == null || btnNovaAlocacao == null || btnRemoverEscala == null)
+                return;
+
+            int direita = panelFiltrosEscala.ClientSize.Width - 20;
+            btnNovaAlocacao.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnNovaAlocacao.SetBounds(direita - 235, 34, 235, 40);
+            btnRemoverEscala.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnRemoverEscala.SetBounds(btnNovaAlocacao.Left - 187, 34, 175, 40);
+        }
+
+        private bool EventoPermiteAlteracoes()
+        {
+            return eventoSelecionado != null &&
+                (string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Planejado, StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(eventoSelecionado.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void AtualizarAcaoRemoverEscala()
+        {
+            if (btnRemoverEscala == null || dgvEscala == null)
+                return;
+
+            btnRemoverEscala.Enabled = podeAdministrarEscalas && EventoPermiteAlteracoes() &&
+                dgvEscala.SelectedRows.Count > 0;
+        }
+
+        private void RemoverEscalaSelecionada(object sender, EventArgs e)
+        {
+            if (dgvEscala.SelectedRows.Count == 0)
+            {
+                labelAviso.Text = "Selecione a escala que deseja remover.";
+                return;
+            }
+
+            Escala escala = dgvEscala.SelectedRows[0].Tag as Escala;
+            if (escala == null)
+            {
+                labelAviso.Text = "Não foi possível identificar a escala selecionada.";
+                return;
+            }
+
+            string funcionario = Convert.ToString(dgvEscala.SelectedRows[0].Cells[0].Value);
+            string setor = Convert.ToString(dgvEscala.SelectedRows[0].Cells[1].Value);
+            string data = Convert.ToString(dgvEscala.SelectedRows[0].Cells[2].Value);
+            DialogResult confirmar = MessageBox.Show(
+                this,
+                "Remover a escala de " + funcionario + " em " + setor + " no dia " + data + "?\n\n" +
+                "Escalas com vendas, perdas ou solicitações vinculadas não podem ser removidas, para preservar o histórico.",
+                "Remover escala",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+            if (confirmar != DialogResult.Yes)
+                return;
+
+            try
+            {
+                escalaService.Remover(usuarioAutenticado, escala.IdEscala);
+                CarregarEscalas();
+                labelAviso.Text = "Escala removida.";
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
+            }
+            catch (Exception erro)
+            {
+                FeedbackUsuario.ExibirErro(
+                    this,
+                    erro,
+                    "Não foi possível remover a escala. Atualize a lista e tente novamente.",
+                    labelAviso);
+            }
         }
 
         private void btnNovaAlocacao_Click(object sender, EventArgs e)
         {
 
-            if (eventoSelecionado == null || !podeAdministrarEscalas)
+            if (!podeAdministrarEscalas || !EventoPermiteAlteracoes())
             {
-                labelAviso.Text = "Selecione um evento e entre como administrador ou gerente responsável para alocar funcionários.";
+                labelAviso.Text = eventoSelecionado == null
+                    ? "Selecione um evento e entre como administrador ou gerente responsável para alocar funcionários."
+                    : "Este evento está encerrado. Não é possível criar ou alterar escalas.";
                 return;
             }
 
@@ -101,7 +209,7 @@ namespace CASE.Quermesse
         private void dgvEscala_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
 
-            if (e.RowIndex < 0 || eventoSelecionado == null || !podeAdministrarEscalas)
+            if (e.RowIndex < 0 || !podeAdministrarEscalas || !EventoPermiteAlteracoes())
             {
                 return;
             }
@@ -159,8 +267,11 @@ namespace CASE.Quermesse
 
                 PreencherFiltros();
                 AplicarFiltros();
-                labelAviso.Text = escalas.Count + " escala(s) carregada(s).";
-                if (!podeAdministrarEscalas)
+                AtualizarAcaoRemoverEscala();
+                labelAviso.Text = EventoPermiteAlteracoes()
+                    ? escalas.Count + " escala(s) carregada(s)."
+                    : "Este evento está encerrado. As escalas existentes podem ser consultadas, mas não alteradas.";
+                if (!podeAdministrarEscalas && EventoPermiteAlteracoes())
                 {
                     labelAviso.Text += " A alocação é feita pelo gerente responsável pelo evento.";
                 }
@@ -168,6 +279,7 @@ namespace CASE.Quermesse
             catch (UnauthorizedAccessException)
             {
                 btnNovaAlocacao.Enabled = false;
+                btnRemoverEscala.Enabled = false;
                 labelAviso.Text = "Sua conta não pode consultar as escalas deste evento.";
             }
             catch (Exception)
@@ -187,6 +299,7 @@ namespace CASE.Quermesse
                 PreencherFiltros();
                 AplicarFiltros();
                 btnNovaAlocacao.Enabled = false;
+                btnRemoverEscala.Enabled = false;
                 labelAviso.Text = escalas.Count + " escala(s) vinculada(s) à sua conta.";
             }
             catch (UnauthorizedAccessException)
@@ -263,7 +376,8 @@ namespace CASE.Quermesse
                 nomeTurno,
                 escala.EntradaPrevista.ToString(@"hh\:mm"),
                 escala.SaidaPrevista.ToString(@"hh\:mm"),
-                escala.Situacao);
+                CASE.Utils.TextoInterface.FormatarValorBanco(escala.Situacao));
+            linha.Height = 50;
             linha.Tag = escala;
             return linha;
         }

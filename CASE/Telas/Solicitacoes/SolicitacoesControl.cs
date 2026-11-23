@@ -18,6 +18,7 @@ namespace CASE.Quermesse
         private bool exibindoPedidosCentrais;
         private bool mostrandoReposicoesAdministrativas;
         private TextBox pesquisa;
+        private readonly Button btnAtualizarSolicitacoes = new Button();
 
         public event Action<int> AnalisarPedidoCentral;
 
@@ -37,6 +38,7 @@ namespace CASE.Quermesse
             cmbStatusListaSolicitacoes.Items.Clear();
             btnDetalhesSolicitacao.Text = "Detalhes / analisar";
             dgvSolicitacoesQuermesse.CellDoubleClick += dgvSolicitacoesQuermesse_CellDoubleClick;
+            ConfigurarBotaoAtualizar();
 
             if (usuarioAutenticado == null)
             {
@@ -88,7 +90,7 @@ namespace CASE.Quermesse
                     else
                     {
                         exibindoPedidosCentrais = !exibindoPedidosCentrais;
-                        alternar.Text = exibindoPedidosCentrais ? "Reposições dos setores" : "Pedidos ao central";
+                        AtualizarTextoBotaoAlternar();
                     }
                     CarregarSolicitacoes();
                 };
@@ -129,18 +131,19 @@ namespace CASE.Quermesse
 
             if (gerenteAutorizado)
             {
-                if (eventoSelecionado == null)
+                Evento eventoDoPedido = ObterEventoParaPedidoCentral();
+                if (eventoDoPedido == null)
                 {
-                    labelAviso.Text = "Selecione o evento antes de solicitar produtos ao central.";
                     return;
                 }
 
                 using (SolicitacaoEstoqueCentralForm formulario =
-                    new SolicitacaoEstoqueCentralForm(usuarioAutenticado, eventoSelecionado))
+                    new SolicitacaoEstoqueCentralForm(usuarioAutenticado, eventoDoPedido))
                 {
                     if (formulario.ShowDialog(this) == DialogResult.OK)
                     {
                         exibindoPedidosCentrais = true;
+                        AtualizarTextoBotaoAlternar();
                         CarregarSolicitacoes();
                     }
                 }
@@ -157,9 +160,122 @@ namespace CASE.Quermesse
             }
         }
 
+        private Evento ObterEventoParaPedidoCentral()
+        {
+            if (eventoSelecionado != null)
+            {
+                return eventoSelecionado;
+            }
+
+            List<Evento> eventos;
+            try
+            {
+                eventos = new EventoService().Listar(usuarioAutenticado);
+            }
+            catch (Exception)
+            {
+                labelAviso.Text = "Não foi possível consultar os eventos sob sua responsabilidade.";
+                return null;
+            }
+
+            if (eventos.Count == 0)
+            {
+                labelAviso.Text = "Nenhum evento está atribuído à sua conta. Peça ao administrador para definir você como responsável.";
+                return null;
+            }
+
+            if (eventos.Count == 1)
+            {
+                return eventos[0];
+            }
+
+            using (Form dialogo = new Form())
+            using (ComboBox selecao = new ComboBox())
+            using (Button confirmar = new Button())
+            using (Button cancelar = new Button())
+            {
+                dialogo.Text = "Escolher evento";
+                dialogo.StartPosition = FormStartPosition.CenterParent;
+                dialogo.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialogo.MinimizeBox = false;
+                dialogo.MaximizeBox = false;
+                dialogo.ClientSize = new Size(440, 155);
+                dialogo.Font = new Font("Segoe UI", 9F);
+
+                Label instrucao = new Label
+                {
+                    Text = "Selecione o evento que precisa de produtos do estoque central.",
+                    AutoSize = false,
+                    Bounds = new Rectangle(20, 18, 400, 38),
+                    ForeColor = VisualUtils.Marinho
+                };
+                selecao.Name = "cmbEventoPedidoCentral";
+                selecao.DropDownStyle = ComboBoxStyle.DropDownList;
+                selecao.DisplayMember = "Nome";
+                selecao.DataSource = eventos;
+                selecao.SetBounds(20, 62, 400, 32);
+
+                confirmar.Text = "Continuar";
+                confirmar.DialogResult = DialogResult.OK;
+                confirmar.SetBounds(238, 108, 88, 32);
+                cancelar.Text = "Cancelar";
+                cancelar.DialogResult = DialogResult.Cancel;
+                cancelar.SetBounds(332, 108, 88, 32);
+
+                dialogo.Controls.Add(instrucao);
+                dialogo.Controls.Add(selecao);
+                dialogo.Controls.Add(confirmar);
+                dialogo.Controls.Add(cancelar);
+                FrontendTheme.Aplicar(dialogo);
+                VisualUtils.EstilizarSelecao(selecao);
+                VisualUtils.EstilizarBotao(confirmar);
+                VisualUtils.EstilizarBotao(cancelar);
+                dialogo.AcceptButton = confirmar;
+                dialogo.CancelButton = cancelar;
+
+                if (dialogo.ShowDialog(this) == DialogResult.OK)
+                {
+                    return selecao.SelectedItem as Evento;
+                }
+            }
+
+            return null;
+        }
+
+        private void AtualizarTextoBotaoAlternar()
+        {
+            Control[] alternar = Controls.Find(
+                "btnAlternarSolicitacoesGerente",
+                true);
+            if (alternar.Length > 0)
+            {
+                alternar[0].Text = exibindoPedidosCentrais
+                    ? "Reposições dos setores"
+                    : "Pedidos ao central";
+            }
+        }
+
         private void btnDetalhesSolicitacao_Click(object sender, EventArgs e)
         {
             AbrirSolicitacaoSelecionada();
+        }
+
+        private void ConfigurarBotaoAtualizar()
+        {
+            btnAtualizarSolicitacoes.Name = "btnAtualizarSolicitacoes";
+            btnAtualizarSolicitacoes.Text = "Atualizar lista";
+            btnAtualizarSolicitacoes.Bounds = new Rectangle(
+                btnDetalhesSolicitacao.Left - 145,
+                btnDetalhesSolicitacao.Top,
+                130,
+                btnDetalhesSolicitacao.Height);
+            btnAtualizarSolicitacoes.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            btnAtualizarSolicitacoes.Enabled = usuarioAutenticado != null;
+            btnAtualizarSolicitacoes.Click += (s, e) => CarregarSolicitacoes();
+            panelListaSolicitacoes.Controls.Add(btnAtualizarSolicitacoes);
+            lblAcompanhamentodospedidos.Width = btnAtualizarSolicitacoes.Left -
+                lblAcompanhamentodospedidos.Left - 16;
+            VisualUtils.EstilizarBotao(btnAtualizarSolicitacoes);
         }
 
         private void dgvSolicitacoesQuermesse_CellDoubleClick(
@@ -449,14 +565,17 @@ namespace CASE.Quermesse
                 btnDetalhesSolicitacao.Enabled = true;
                 lblSubtitulo.Text = "Analise, aprove ou rejeite reposições dos eventos e atenda os pedidos aprovados.";
                 lblSetor.Text = "Setor";
-                colSolicitacoesQuermesseSetor.HeaderText = "Setor";
+                colSolicitacoesQuermesseSetor.HeaderText = "Evento / setor";
                 colSolicitacoesQuermesseQtd.Visible = false;
             }
 
             if (gerenteAutorizado && eventoSelecionado == null && !exibindoPedidosCentrais)
             {
+                btnNovaSolicitacao.Text = "+ Solicitar ao central";
+                btnNovaSolicitacao.Enabled = true;
                 btnDetalhesSolicitacao.Text = "Detalhes / analisar";
-                labelAviso.Text = "Selecione um evento na tela Eventos para consultar reposições ou solicitar produtos ao central.";
+                lblSubtitulo.Text = "Acompanhe as reposições dos setores e peça produtos ao estoque central.";
+                labelAviso.Text = "Selecione um evento para ver as reposições dos setores. O botão ao lado permite pedir produtos ao estoque central.";
                 return;
             }
 
@@ -469,7 +588,7 @@ namespace CASE.Quermesse
             try
             {
                 lblSetor.Text = "Setor";
-                colSolicitacoesQuermesseSetor.HeaderText = "Setor";
+                colSolicitacoesQuermesseSetor.HeaderText = "Evento / setor";
                 colSolicitacoesQuermesseQtd.Visible = false;
                 List<Solicitacao> solicitacoes = ObterSolicitacoesPermitidas();
 
@@ -481,11 +600,11 @@ namespace CASE.Quermesse
                     int indice = dgvSolicitacoesQuermesse.Rows.Add(
                         solicitacao.DataHora.ToString("dd/MM/yyyy HH:mm"),
                         resumo.Solicitante,
-                        resumo.Setor,
-                        solicitacao.Tipo,
+                        resumo.Evento + " · " + resumo.Setor,
+                        CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Tipo),
                         resumo.Produtos,
                         string.Empty,
-                        solicitacao.Situacao);
+                        CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Situacao));
                     dgvSolicitacoesQuermesse.Rows[indice].Tag = solicitacao;
                 }
 
@@ -494,8 +613,10 @@ namespace CASE.Quermesse
 
                 if (gerenteAutorizado)
                 {
-                    btnNovaSolicitacao.Text = "+ Solicitar ao estoque central";
+                    btnNovaSolicitacao.Text = "+ Solicitar ao central";
+                    btnNovaSolicitacao.Enabled = true;
                     btnDetalhesSolicitacao.Text = "Detalhes / analisar";
+                    lblSubtitulo.Text = "Acompanhe as reposições dos membros deste evento e peça produtos ao estoque central.";
                 }
                 else if (!administrador)
                 {
@@ -504,7 +625,9 @@ namespace CASE.Quermesse
                 }
                 ConfigurarFiltros();
                 AplicarFiltros();
-                labelAviso.Text = solicitacoes.Count + " solicitação(ões) carregada(s).";
+                labelAviso.Text = !administrador && !gerenteAutorizado && !membroComEscala
+                    ? "Sem escala atribuída. Se você já está vinculado ao evento, o estoque geral aparece em Estoque; para solicitar reposição de um setor, o gerente precisa definir seu setor, data e turno."
+                    : solicitacoes.Count + " solicitação(ões) carregada(s).";
             }
             catch (UnauthorizedAccessException)
             {
@@ -557,11 +680,11 @@ namespace CASE.Quermesse
                         pedido.DataHora.ToString("dd/MM/yyyy HH:mm"),
                         solicitante ?? "Usuário " + pedido.IdUsuarioSolicitante,
                         evento ?? "Evento " + pedido.IdEvento,
-                        pedido.Tipo,
+                        CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Tipo),
                         MontarResumoItensCentrais(pedido),
                         service.BuscarIdTransferenciaAtendimento(usuarioAutenticado,
                             pedido.IdSolicitacaoEstoqueCentral).HasValue ? "Concluído" : "—",
-                        pedido.Situacao);
+                        CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Situacao));
                     dgvSolicitacoesQuermesse.Rows[indice].Tag = pedido;
                 }
 
@@ -592,29 +715,51 @@ namespace CASE.Quermesse
                 List<SolicitacaoEstoqueCentral> pedidos =
                     new SolicitacaoEstoqueCentralService().ListarDoGerente(
                         usuarioAutenticado);
+                List<Evento> eventos = new EventoService().Listar(usuarioAutenticado);
+                Dictionary<int, string> nomesEventos = new Dictionary<int, string>();
+                foreach (Evento evento in eventos)
+                {
+                    nomesEventos[evento.IdEvento] = evento.Nome;
+                }
+
+                if (eventoSelecionado != null)
+                {
+                    pedidos = pedidos.FindAll(pedido =>
+                        pedido.IdEvento == eventoSelecionado.IdEvento);
+                }
 
                 foreach (SolicitacaoEstoqueCentral pedido in pedidos)
                 {
                     string resumo = MontarResumoItensCentrais(pedido);
+                    string nomeEvento;
+                    if (!nomesEventos.TryGetValue(pedido.IdEvento, out nomeEvento))
+                    {
+                        nomeEvento = "Evento " + pedido.IdEvento;
+                    }
                     int indice = dgvSolicitacoesQuermesse.Rows.Add(
                         pedido.DataHora.ToString("dd/MM/yyyy HH:mm"),
                         "Você",
-                        "Evento " + pedido.IdEvento,
-                        pedido.Tipo,
+                        nomeEvento,
+                        CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Tipo),
                         resumo,
                         string.Empty,
-                        pedido.Situacao);
+                        CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Situacao));
                     dgvSolicitacoesQuermesse.Rows[indice].Tag = pedido;
                 }
 
                 exibindoPedidosCentrais = true;
-                btnNovaSolicitacao.Enabled = eventoSelecionado != null;
-                btnNovaSolicitacao.Text = "+ Novo pedido ao central";
+                btnNovaSolicitacao.Text = "+ Solicitar ao central";
+                btnNovaSolicitacao.Enabled = true;
                 btnDetalhesSolicitacao.Text = "Consultar detalhes";
                 lblSetor.Text = "Evento";
+                lblSubtitulo.Text = "Acompanhe os pedidos de liberação ou devolução ao estoque central.";
                 colSolicitacoesQuermesseSetor.HeaderText = "Evento";
                 colSolicitacoesQuermesseQtd.Visible = false;
                 ConfigurarFiltros();
+                if (cmbFiltroSolicitacoes.Items.Count > 0)
+                {
+                    cmbFiltroSolicitacoes.Items[0] = "Todos os eventos";
+                }
                 AplicarFiltros();
                 labelAviso.Text = pedidos.Count + " pedido(s) ao estoque central.";
             }
@@ -663,7 +808,8 @@ namespace CASE.Quermesse
                 SolicitacaoEstoqueCentral pedido = service.BuscarPorId(
                     usuarioAutenticado,
                     idSolicitacao);
-                string detalhes = "Pedido " + pedido.Tipo + " · " + pedido.Situacao +
+                string detalhes = "Pedido " + CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Tipo) + " · " +
+                    CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Situacao) +
                     " · evento " + pedido.IdEvento + Environment.NewLine +
                     MontarResumoItensCentrais(pedido);
 
@@ -729,7 +875,17 @@ namespace CASE.Quermesse
             try
             {
                 List<Escala> escalas = new EscalaService().ListarMinhas(usuarioAutenticado);
-                return escalas.Count > 0;
+                foreach (Escala escala in escalas)
+                {
+                    if (!string.Equals(
+                        escala.Situacao,
+                        SituacoesEscala.Cancelada,
+                        StringComparison.OrdinalIgnoreCase))
+                    {
+                        return true;
+                    }
+                }
+                return false;
             }
             catch (UnauthorizedAccessException)
             {
@@ -764,11 +920,11 @@ namespace CASE.Quermesse
 
             cmbStatusListaSolicitacoes.Items.Clear();
             cmbStatusListaSolicitacoes.Items.Add("Todas");
-            cmbStatusListaSolicitacoes.Items.Add(SituacoesSolicitacao.Pendente);
-            cmbStatusListaSolicitacoes.Items.Add(SituacoesSolicitacao.Aprovada);
-            cmbStatusListaSolicitacoes.Items.Add(SituacoesSolicitacao.Atendida);
-            cmbStatusListaSolicitacoes.Items.Add(SituacoesSolicitacao.Rejeitada);
-            cmbStatusListaSolicitacoes.Items.Add(SituacoesSolicitacao.Cancelada);
+            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Pendente));
+            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Aprovada));
+            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Atendida));
+            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Rejeitada));
+            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Cancelada));
             cmbStatusListaSolicitacoes.SelectedIndex = 0;
         }
 

@@ -82,6 +82,7 @@ namespace CASE.Services
                     "Você não é responsável por este evento.");
             }
 
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
             if (!EventoPermiteOperacao(evento.Situacao))
             {
                 throw new InvalidOperationException(
@@ -132,7 +133,8 @@ namespace CASE.Services
 
             foreach (SolicitacaoEstoqueCentralItem item in itens)
             {
-                if (produtoRepository.BuscarPorId(item.IdProduto) == null)
+                Produto produto = produtoRepository.BuscarPorId(item.IdProduto);
+                if (produto == null || !produto.Ativo)
                 {
                     throw new ArgumentException(
                         "Um dos produtos informados não existe.",
@@ -351,6 +353,18 @@ namespace CASE.Services
                     "Somente um administrador pode liberar o estoque central.");
             }
 
+            SolicitacaoEstoqueCentral solicitacao = solicitacaoRepository.BuscarPorId(idSolicitacao);
+            if (solicitacao == null)
+            {
+                throw new InvalidOperationException("A solicitação não foi encontrada.");
+            }
+            Evento evento = eventoRepository.BuscarPorId(solicitacao.IdEvento);
+            if (evento == null)
+            {
+                throw new InvalidOperationException("O evento da solicitação não foi encontrado.");
+            }
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
+
             return transferenciaRepository.AtenderSolicitacaoEstoqueCentral(
                 idSolicitacao,
                 usuarioAtual.IdUsuario);
@@ -391,6 +405,13 @@ namespace CASE.Services
             {
                 throw new InvalidOperationException("A solicitação não foi encontrada.");
             }
+
+            Evento evento = eventoRepository.BuscarPorId(solicitacao.IdEvento);
+            if (evento == null)
+            {
+                throw new InvalidOperationException("O evento da solicitação não foi encontrado.");
+            }
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
 
             if (solicitacao.IdUsuarioSolicitante == usuarioAtual.IdUsuario)
             {

@@ -101,40 +101,44 @@ namespace CASE.Quermesse
         {
             lblNomecompleto.Text = "Membro aprovado para adicionar à equipe";
             txtNomeFuncionario.Visible = false;
+            Panel contornoNome = txtNomeFuncionario.Parent as Panel;
+            if (contornoNome != null && contornoNome.Controls.Count == 1 &&
+                contornoNome.Controls.Contains(txtNomeFuncionario))
+            {
+                contornoNome.Visible = false;
+            }
             txtLoginFuncionario.ReadOnly = true;
             chkFuncionarioAtivo.Checked = true;
             chkFuncionarioAtivo.Enabled = false;
             chkFuncionarioAtivo.Text = "O vínculo será criado como ativo";
-            var painel = new Panel
-            {
-                Name = "panelMembroAprovado", BackColor = VisualUtils.Fundo,
-                Padding = new Padding(8, 0, 8, 0)
-            };
-            painel.SetBounds(28, 94, 440, 38);
             cmbMembroAprovado = new ComboBox
             {
-                Name = "cmbMembroAprovado", DisplayMember = "Nome",
+                Name = "cmbMembroAprovado",
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 AutoCompleteSource = AutoCompleteSource.ListItems,
                 AutoCompleteMode = AutoCompleteMode.SuggestAppend,
+                FormattingEnabled = true,
                 AccessibleName = "Membros aprovados disponíveis",
                 TabIndex = txtNomeFuncionario.TabIndex
             };
-            painel.Controls.Add(cmbMembroAprovado);
-            panelFormulario.Controls.Add(painel);
+            cmbMembroAprovado.Format += (s, e) =>
+            {
+                Pessoa pessoa = e.ListItem as Pessoa;
+                e.Value = pessoa == null ? Convert.ToString(e.ListItem) : pessoa.Nome;
+            };
+            cmbMembroAprovado.SetBounds(28, 94, 440, 38);
+            panelFormulario.Controls.Add(cmbMembroAprovado);
             VisualUtils.EstilizarSelecao(cmbMembroAprovado);
-            cmbMembroAprovado.FlatStyle = FlatStyle.Flat;
-            cmbMembroAprovado.BackColor = painel.BackColor;
+            cmbMembroAprovado.FlatStyle = FlatStyle.Standard;
+            cmbMembroAprovado.BackColor = System.Drawing.Color.White;
             avisoListaVazia.Name = "lblSemMembrosDisponiveis";
             avisoListaVazia.Text = "Nenhum membro disponível para adicionar";
-            avisoListaVazia.BackColor = painel.BackColor;
+            avisoListaVazia.BackColor = panelFormulario.BackColor;
             avisoListaVazia.ForeColor = VisualUtils.TextoSuave;
             avisoListaVazia.Font = new System.Drawing.Font("Segoe UI", 9F);
-            avisoListaVazia.SetBounds(12, 9, 390, 24);
+            avisoListaVazia.SetBounds(28, 94, 440, 38);
             avisoListaVazia.Visible = false;
-            painel.Controls.Add(avisoListaVazia);
-            VisualUtils.Arredondar(painel, 8);
-            VisualUtils.AplicarBorda(painel);
+            panelFormulario.Controls.Add(avisoListaVazia);
             var atualizar = new Button
             {
                 Name = "btnAtualizarMembrosDisponiveis", Text = "Atualizar",
@@ -149,6 +153,7 @@ namespace CASE.Quermesse
             {
                 txtNomeFuncionario.Clear();
                 txtLoginFuncionario.Clear();
+                btnSalvarFuncionario.Enabled = false;
                 Pessoa pessoa = cmbMembroAprovado.SelectedItem as Pessoa;
                 if (pessoa == null)
                     return;
@@ -172,6 +177,7 @@ namespace CASE.Quermesse
         private void CarregarMembrosAprovados()
         {
             cmbMembroAprovado.Items.Clear();
+            cmbMembroAprovado.Items.Add("Selecione um membro aprovado...");
             txtNomeFuncionario.Clear();
             txtLoginFuncionario.Clear();
             btnSalvarFuncionario.Enabled = false;
@@ -183,11 +189,16 @@ namespace CASE.Quermesse
             {
                 foreach (Pessoa pessoa in equipeService.ListarPessoasDisponiveis(usuarioAutenticado, evento.IdEvento))
                     cmbMembroAprovado.Items.Add(pessoa);
-                bool disponiveis = cmbMembroAprovado.Items.Count > 0;
+                bool disponiveis = cmbMembroAprovado.Items.Count > 1;
                 cmbMembroAprovado.Enabled = disponiveis;
                 cmbMembroAprovado.Visible = disponiveis;
                 avisoListaVazia.Visible = !disponiveis;
                 avisoListaVazia.BringToFront();
+                if (disponiveis)
+                {
+                    cmbMembroAprovado.SelectedIndex = 0;
+                    cmbMembroAprovado.BringToFront();
+                }
                 labelAvisoFormulario.Text = !disponiveis
                     ? "Nenhum novo membro disponível. Quem já está na equipe deve ser alterado em Editar vínculo. " +
                         "Novas contas precisam estar aprovadas com perfil Membro."

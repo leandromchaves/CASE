@@ -154,6 +154,14 @@ namespace CASE.Utils
             if (estadoCampo.EstiloAplicado &&
                 ReferenceEquals(estadoCampo.ParentEstilo, campo.Parent))
             {
+                Panel painelExistente = campo.Parent as Panel;
+                if (!estadoCampo.PesquisaAplicada && painelExistente != null &&
+                    painelExistente.Controls.Count == 1 && !campo.Multiline)
+                {
+                    campo.BorderStyle = BorderStyle.None;
+                    campo.TextAlign = HorizontalAlignment.Left;
+                    CentralizarLinhaNoPainel(campo, painelExistente);
+                }
                 return;
             }
 
@@ -441,6 +449,12 @@ namespace CASE.Utils
                 return;
             }
 
+            // Alguns formulários reaplicam Dock.Fill ao reutilizar os campos.
+            // Restaura a linha nativa antes de calcular sua posição vertical.
+            if (campo.Dock != DockStyle.None)
+                campo.Dock = DockStyle.None;
+            if (!campo.AutoSize)
+                campo.AutoSize = true;
             int altura = campo.PreferredHeight;
             int largura = Math.Max(0, painel.ClientSize.Width - painel.Padding.Horizontal);
             int topo = Math.Max(0, (painel.ClientSize.Height - altura) / 2);

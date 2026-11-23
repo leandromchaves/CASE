@@ -32,6 +32,38 @@ namespace CASE.Services
             return locaisPermitidos;
         }
 
+        public List<LocalEstoque> ListarOperacionais(Usuario usuario)
+        {
+            List<LocalEstoque> autorizados = Listar(usuario);
+            List<Evento> eventos = eventoRepository.ListarTodos();
+            HashSet<int> eventosAbertos = new HashSet<int>();
+
+            foreach (Evento evento in eventos)
+            {
+                if (evento != null &&
+                    (string.Equals(evento.Situacao, SituacoesEvento.Planejado, StringComparison.OrdinalIgnoreCase) ||
+                     string.Equals(evento.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase)))
+                {
+                    eventosAbertos.Add(evento.IdEvento);
+                }
+            }
+
+            List<LocalEstoque> locaisOperacionais = new List<LocalEstoque>();
+            foreach (LocalEstoque local in autorizados)
+            {
+                if (local == null || !local.Ativo)
+                    continue;
+
+                if (local.EhCentral ||
+                    (local.IdEvento.HasValue && eventosAbertos.Contains(local.IdEvento.Value)))
+                {
+                    locaisOperacionais.Add(local);
+                }
+            }
+
+            return locaisOperacionais;
+        }
+
         public LocalEstoque ObterCentral(Usuario usuario, int idInstituicao)
         {
             if (idInstituicao <= 0)

@@ -77,7 +77,7 @@ namespace CASE.Utils
                 return ((DateTime)valor).ToString(coluna.ColumnName.Contains("hora") ? "dd/MM/yyyy HH:mm" : "dd/MM/yyyy", Cultura);
             if (Monetaria(coluna) && valor is IConvertible)
                 return Convert.ToDecimal(valor, Cultura).ToString("C2", Cultura);
-            return Convert.ToString(valor, Cultura);
+            return TextoInterface.FormatarColunaBanco(coluna.ColumnName, valor);
         }
 
         // Preços unitários, saldos e conferências sucessivas não são receitas somáveis.
@@ -145,7 +145,7 @@ namespace CASE.Utils
                         else if (valor is decimal || valor is double || valor is float || valor is int || valor is long)
                             celula.Value = Convert.ToDouble(valor, Cultura);
                         else
-                            celula.Value = Convert.ToString(valor, Cultura);
+                            celula.Value = TextoInterface.FormatarColunaBanco(coluna.ColumnName, valor);
                     }
                     folha.Column(c + 1).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
                     if (Monetaria(coluna))

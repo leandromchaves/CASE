@@ -55,7 +55,8 @@ namespace CASE.Quermesse
                         itensVendidos += Convert.ToDecimal(registro["quantidade"]);
                     }
                     dgvAtividade.Rows.Add(registro["responsavel"], registro["setor"],
-                        registro["turno"], registro["tipo"], registro["produto"], registro["quantidade"]);
+                        registro["turno"], CASE.Utils.TextoInterface.FormatarValorBanco(registro["tipo"]),
+                        registro["produto"], registro["quantidade"]);
                 }
                 lblValorIndicador0.Text = operacoes.Count.ToString();
                 lblValorIndicador1.Text = itensVendidos.ToString("N0");

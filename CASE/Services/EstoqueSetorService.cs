@@ -137,6 +137,8 @@ namespace CASE.Services
                     "O local associado deve ser uma barraca ativa do mesmo evento.");
             }
 
+            SituacoesEvento.ExigirEventoAbertoParaAlteracoes(evento.Situacao);
+
             EstoqueSetor associacao = new EstoqueSetor();
             associacao.IdSetor = setor.IdSetor;
             associacao.IdLocalEstoque = local.IdLocalEstoque;

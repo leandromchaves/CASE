@@ -87,14 +87,7 @@ namespace CASE.Services
                     "Somente o administrador ou o gerente responsável pode organizar jornadas deste evento.");
             }
 
-            if (!string.Equals(evento.Situacao, SituacoesEvento.Planejado,
-                    StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(evento.Situacao, SituacoesEvento.EmAndamento,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException(
-                    "O evento não permite alterações de jornadas nesta situação.");
-            }
+            SituacoesEvento.ExigirEventoAbertoParaAlteracoes(evento.Situacao);
 
             return usuarioAtual;
         }

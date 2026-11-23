@@ -93,7 +93,7 @@ namespace CASE.Services
             string login,
             int idPerfil)
         {
-            Usuario usuarioAtual = ValidarGerenteDoEvento(usuario, idEvento);
+            Usuario usuarioAtual = ValidarGerenteDoEvento(usuario, idEvento, exigirEventoAberto: true);
             Perfil perfil = perfilRepository.BuscarPorId(idPerfil);
 
             if (perfil == null)
@@ -158,7 +158,7 @@ namespace CASE.Services
                 throw new ArgumentException("O vínculo de equipe é inválido.", nameof(vinculo));
             }
 
-            Usuario usuarioAtual = ValidarGerenteDoEvento(usuario, vinculo.IdEvento);
+            Usuario usuarioAtual = ValidarGerenteDoEvento(usuario, vinculo.IdEvento, exigirEventoAberto: true);
             EquipeEvento atual = equipeEventoRepository.BuscarPorId(vinculo.IdEquipe);
 
             if (atual == null || atual.IdEvento != vinculo.IdEvento ||
@@ -189,7 +189,10 @@ namespace CASE.Services
             }
         }
 
-        private Usuario ValidarGerenteDoEvento(Usuario usuario, int idEvento)
+        private Usuario ValidarGerenteDoEvento(
+            Usuario usuario,
+            int idEvento,
+            bool exigirEventoAberto = false)
         {
             if (idEvento <= 0)
             {
@@ -214,6 +217,11 @@ namespace CASE.Services
             {
                 throw new UnauthorizedAccessException(
                     "Você não pode administrar a equipe deste evento.");
+            }
+
+            if (exigirEventoAberto)
+            {
+                SituacoesEvento.ExigirEventoAbertoParaAlteracoes(evento.Situacao);
             }
 
             return usuarioAtual;

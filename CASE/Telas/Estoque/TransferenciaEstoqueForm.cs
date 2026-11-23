@@ -13,6 +13,7 @@ namespace CASE
         private readonly List<LocalEstoque> locaisEvento = new List<LocalEstoque>();
         private readonly bool transferenciaCentral;
         private readonly int? idLocalOrigemSolicitado;
+        private readonly int? idEventoContexto;
         private readonly TransferenciaEstoqueService transferenciaService =
             new TransferenciaEstoqueService();
         private readonly LocalEstoqueService localEstoqueService = new LocalEstoqueService();
@@ -38,12 +39,22 @@ namespace CASE
             Usuario usuario,
             int? idLocalOrigem,
             bool transferenciaCentral)
+            : this(usuario, idLocalOrigem, transferenciaCentral, null)
+        {
+        }
+
+        public TransferenciaEstoqueForm(
+            Usuario usuario,
+            int? idLocalOrigem,
+            bool transferenciaCentral,
+            int? idEventoContexto)
         {
             InitializeComponent();
             IconoAplicacao.Aplicar(this);
             usuarioAutenticado = usuario;
             this.transferenciaCentral = transferenciaCentral;
             idLocalOrigemSolicitado = idLocalOrigem;
+            this.idEventoContexto = idEventoContexto;
             lblModoApresentacao.Visible = false;
 
             if (System.ComponentModel.LicenseManager.UsageMode ==
@@ -93,12 +104,18 @@ namespace CASE
         {
             try
             {
-                List<LocalEstoque> locaisAutorizados = localEstoqueService.Listar(usuarioAutenticado);
+                List<LocalEstoque> locaisAutorizados = localEstoqueService.ListarOperacionais(usuarioAutenticado);
                 LocalEstoque centralSelecionado = null;
 
                 foreach (LocalEstoque local in locaisAutorizados)
                 {
                     if (!local.Ativo)
+                    {
+                        continue;
+                    }
+
+                    if (idEventoContexto.HasValue && !local.EhCentral &&
+                        local.IdEvento != idEventoContexto.Value)
                     {
                         continue;
                     }

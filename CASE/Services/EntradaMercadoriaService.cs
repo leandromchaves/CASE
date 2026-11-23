@@ -80,9 +80,10 @@ namespace CASE.Services
 
                 ValidarQuantidade(item.Quantidade);
 
-                if (produtoRepository.BuscarPorId(item.IdProduto) == null)
+                Produto produto = produtoRepository.BuscarPorId(item.IdProduto);
+                if (produto == null || !produto.Ativo)
                 {
-                    throw new ArgumentException("Um produto informado não foi encontrado.", nameof(itens));
+                    throw new ArgumentException("Um dos produtos não está disponível para novas entradas.", nameof(itens));
                 }
             }
 

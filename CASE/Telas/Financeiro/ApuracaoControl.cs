@@ -305,7 +305,8 @@ namespace CASE.Quermesse
                     {
                         precosPendentes = true;
                         dgvApuracao.Rows.Add(venda["responsavel"], venda["setor"], venda["turno"],
-                            Convert.ToDecimal(venda["quantidade"]).ToString("N0"), "Preço não registrado", venda["forma_pagamento"]);
+                            Convert.ToDecimal(venda["quantidade"]).ToString("N0"), "Preço não registrado",
+                            CASE.Utils.TextoInterface.FormatarValorBanco(venda["forma_pagamento"]));
                         continue;
                     }
                     decimal total = Convert.ToDecimal(venda["total"]);

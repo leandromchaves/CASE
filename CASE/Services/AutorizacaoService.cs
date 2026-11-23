@@ -140,16 +140,15 @@ namespace CASE.Services
                 return false;
             }
 
-            if (PerfilEh(nomePerfil, PerfilAdministrador))
-            {
-                return true;
-            }
-
             Evento evento = eventoRepository.BuscarPorId(setor.IdEvento);
-
             if (evento == null)
             {
                 return false;
+            }
+
+            if (PerfilEh(nomePerfil, PerfilAdministrador))
+            {
+                return true;
             }
 
             if (PerfilEh(nomePerfil, PerfilGerente))
@@ -172,16 +171,15 @@ namespace CASE.Services
                 return false;
             }
 
-            if (PerfilEh(nomePerfil, PerfilAdministrador))
-            {
-                return true;
-            }
-
             Evento evento = eventoRepository.BuscarPorId(equipe.IdEvento);
-
             if (evento == null)
             {
                 return false;
+            }
+
+            if (PerfilEh(nomePerfil, PerfilAdministrador))
+            {
+                return true;
             }
 
             if (PerfilEh(nomePerfil, PerfilGerente))
@@ -236,16 +234,15 @@ namespace CASE.Services
                 return false;
             }
 
-            if (PerfilEh(nomePerfil, PerfilAdministrador))
-            {
-                return true;
-            }
-
             Evento evento = eventoRepository.BuscarPorId(equipe.IdEvento);
-
             if (evento == null)
             {
                 return false;
+            }
+
+            if (PerfilEh(nomePerfil, PerfilAdministrador))
+            {
+                return true;
             }
 
             if (PerfilEh(nomePerfil, PerfilGerente))
@@ -268,13 +265,13 @@ namespace CASE.Services
                 return false;
             }
 
-            if (PerfilEh(nomePerfil, PerfilAdministrador))
-            {
-                return true;
-            }
-
             if (local.EhCentral)
             {
+                if (PerfilEh(nomePerfil, PerfilAdministrador))
+                {
+                    return true;
+                }
+
                 if (PerfilEh(nomePerfil, PerfilGerente))
                 {
                     foreach (Evento eventoGerenciado in eventoRepository.ListarPorResponsavel(usuario.IdPessoa))
@@ -293,10 +290,14 @@ namespace CASE.Services
             }
 
             Evento evento = eventoRepository.BuscarPorId(local.IdEvento.Value);
-
             if (evento == null || evento.IdInstituicao != local.IdInstituicao)
             {
                 return false;
+            }
+
+            if (PerfilEh(nomePerfil, PerfilAdministrador))
+            {
+                return true;
             }
 
             if (PerfilEh(nomePerfil, PerfilGerente))
@@ -306,6 +307,19 @@ namespace CASE.Services
 
             if (PerfilEh(nomePerfil, PerfilMembro))
             {
+                if (!local.Ativo)
+                {
+                    return false;
+                }
+
+                // O estoque geral pertence ao evento e abastece todos os seus setores.
+                // Membros ativos do evento podem consultá-lo para planejar reposições,
+                // sem ganhar acesso ao estoque central da instituição.
+                if (local.EhGeralEvento)
+                {
+                    return MembroEstaVinculadoAoEvento(usuario, evento.IdEvento);
+                }
+
                 List<EstoqueSetor> setoresAssociados = estoqueSetorRepository.Listar();
 
                 foreach (EstoqueSetor associacao in setoresAssociados)
@@ -364,6 +378,35 @@ namespace CASE.Services
                 return false;
             }
 
+            LocalEstoque localOrigem = localEstoqueRepository.BuscarPorId(transferencia.IdLocalOrigem);
+            LocalEstoque localDestino = localEstoqueRepository.BuscarPorId(transferencia.IdLocalDestino);
+
+            if (!LocalPossuiVinculoValido(localOrigem) || !LocalPossuiVinculoValido(localDestino) ||
+                localOrigem.EhCentral && localDestino.EhCentral)
+            {
+                return false;
+            }
+
+            if (localOrigem.EhCentral || localDestino.EhCentral)
+            {
+                LocalEstoque localDoEvento = localOrigem.EhCentral ? localDestino : localOrigem;
+                LocalEstoque central = localOrigem.EhCentral ? localOrigem : localDestino;
+                if (!localDoEvento.IdEvento.HasValue ||
+                    central.IdInstituicao != localDoEvento.IdInstituicao)
+                {
+                    return false;
+                }
+
+                return PerfilEh(nomePerfil, PerfilAdministrador);
+            }
+
+            if (!localOrigem.IdEvento.HasValue || !localDestino.IdEvento.HasValue ||
+                localOrigem.IdEvento.Value != localDestino.IdEvento.Value ||
+                localOrigem.IdInstituicao != localDestino.IdInstituicao)
+            {
+                return false;
+            }
+
             if (PerfilEh(nomePerfil, PerfilAdministrador))
             {
                 return true;
@@ -374,19 +417,28 @@ namespace CASE.Services
                 return false;
             }
 
-            LocalEstoque localOrigem = localEstoqueRepository.BuscarPorId(transferencia.IdLocalOrigem);
-            LocalEstoque localDestino = localEstoqueRepository.BuscarPorId(transferencia.IdLocalDestino);
+            return PodeAcessarLocalEstoque(usuario, nomePerfil, localOrigem);
+        }
 
-            if (localOrigem == null || localDestino == null ||
-                localOrigem.EhCentral || localDestino.EhCentral ||
-                !localOrigem.IdEvento.HasValue || !localDestino.IdEvento.HasValue ||
-                localOrigem.IdEvento.Value != localDestino.IdEvento.Value ||
-                localOrigem.IdInstituicao != localDestino.IdInstituicao)
+        private bool LocalPossuiVinculoValido(LocalEstoque local)
+        {
+            if (local == null)
             {
                 return false;
             }
 
-            return PodeAcessarLocalEstoque(usuario, nomePerfil, localOrigem);
+            if (local.EhCentral)
+            {
+                return !local.IdEvento.HasValue;
+            }
+
+            if (!local.IdEvento.HasValue)
+            {
+                return false;
+            }
+
+            Evento evento = eventoRepository.BuscarPorId(local.IdEvento.Value);
+            return evento != null && evento.IdInstituicao == local.IdInstituicao;
         }
 
         internal bool PodeAcessarSolicitacao(
@@ -413,19 +465,18 @@ namespace CASE.Services
                 return false;
             }
 
+            Escala escala = escalaRepository.BuscarPorId(solicitacao.IdEscala);
+            if (!PodeAcessarEscala(usuario, nomePerfil, escala))
+            {
+                return false;
+            }
+
             if (PerfilEh(nomePerfil, PerfilAdministrador))
             {
                 return true;
             }
 
             if (!PerfilEh(nomePerfil, PerfilGerente))
-            {
-                return false;
-            }
-
-            Escala escala = escalaRepository.BuscarPorId(solicitacao.IdEscala);
-
-            if (escala == null)
             {
                 return false;
             }
@@ -478,19 +529,18 @@ namespace CASE.Services
                 return false;
             }
 
+            Evento evento = eventoRepository.BuscarPorId(despesa.IdEvento);
+            if (evento == null)
+            {
+                return false;
+            }
+
             if (PerfilEh(nomePerfil, PerfilAdministrador))
             {
                 return true;
             }
 
             if (!PerfilEh(nomePerfil, PerfilGerente))
-            {
-                return false;
-            }
-
-            Evento evento = eventoRepository.BuscarPorId(despesa.IdEvento);
-
-            if (evento == null)
             {
                 return false;
             }
@@ -505,18 +555,14 @@ namespace CASE.Services
                 return false;
             }
 
-            if (PerfilEh(nomePerfil, PerfilAdministrador))
-            {
-                return true;
-            }
-
-            if (!PerfilEh(nomePerfil, PerfilGerente))
+            JornadaSetor jornada = jornadaSetorRepository.BuscarPorId(apuracao.IdJornada);
+            if (!PodeAcessarJornada(usuario, nomePerfil, jornada))
             {
                 return false;
             }
 
-            JornadaSetor jornada = jornadaSetorRepository.BuscarPorId(apuracao.IdJornada);
-            return PodeAcessarJornada(usuario, nomePerfil, jornada);
+            return PerfilEh(nomePerfil, PerfilAdministrador) ||
+                PerfilEh(nomePerfil, PerfilGerente);
         }
 
         private bool MembroEstaVinculadoAoEvento(Usuario usuario, int idEvento)

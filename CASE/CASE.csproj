@@ -292,6 +292,9 @@
     <Compile Include="Telas\Acesso\CadastroForm.Designer.cs">
       <DependentUpon>CadastroForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Telas\Principal\TodosEventosControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Telas\Dashboard\DashboardControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -386,6 +389,7 @@
     <Compile Include="Utils\IconoAplicacao.cs" />
     <Compile Include="Utils\AcabamentoArredondado.cs" />
     <Compile Include="Utils\FrontendTheme.cs" />
+    <Compile Include="Utils\TextoInterface.cs" />
     <Compile Include="Telas\Equipe\PessoaSetorForm.Designer.cs">
       <DependentUpon>PessoaSetorForm.cs</DependentUpon>
     </Compile>

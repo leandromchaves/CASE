@@ -18,6 +18,12 @@ namespace CASE.Services
             }
             // Aplica as permissões do evento antes de registrar a despesa.
             ListarPorEvento(usuario, despesa.IdEvento);
+            Evento evento = new EventoRepository().BuscarPorId(despesa.IdEvento);
+            if (evento == null)
+            {
+                throw new InvalidOperationException("O evento da despesa não foi encontrado.");
+            }
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
             if (string.IsNullOrWhiteSpace(despesa.Descricao) || despesa.Descricao.Length > 255)
             {
                 throw new ArgumentException("Informe a descrição da despesa com até 255 caracteres.");

@@ -11,6 +11,8 @@ namespace CASE
     public partial class OperacoesEstoqueControl : UserControl
     {
         private readonly Usuario usuarioAutenticado;
+        private readonly Evento eventoContexto;
+        private readonly bool filtrarPorEvento;
         private bool administrador;
         private bool gerente;
         private readonly LocalEstoqueService localEstoqueService = new LocalEstoqueService();
@@ -25,16 +27,22 @@ namespace CASE
         public event EventHandler FornecedoresSolicitados;
         public event EventHandler SolicitacoesSolicitadas;
 
-        public OperacoesEstoqueControl() : this(null)
+        public OperacoesEstoqueControl() : this(null, null, false)
         {
         }
 
-        public OperacoesEstoqueControl(Usuario usuario)
+        public OperacoesEstoqueControl(Usuario usuario) : this(usuario, null, false)
+        {
+        }
+
+        public OperacoesEstoqueControl(Usuario usuario, Evento evento, bool filtrarEvento)
         {
             InitializeComponent();
             btnFornecedores.Visible = false;
             btnFornecedores.TabStop = false;
             usuarioAutenticado = usuario;
+            eventoContexto = evento;
+            filtrarPorEvento = filtrarEvento;
             lblTitulo.Text = "Estoque";
             lblSubtitulo.Text = "Consulte saldos e situações. Selecione um produto para ajustar o mínimo e o ideal.";
             btnAbaSaldo.Text = "Saldo disponível";
@@ -237,11 +245,17 @@ namespace CASE
         {
             try
             {
-                List<LocalEstoque> locais = localEstoqueService.Listar(usuarioAutenticado);
+                List<LocalEstoque> locais = localEstoqueService.ListarOperacionais(usuarioAutenticado);
                 cmbLocal.Items.Clear();
 
                 foreach (LocalEstoque local in locais)
                 {
+                    if (filtrarPorEvento && !local.EhCentral &&
+                        (!eventoContexto.IdEvento.Equals(local.IdEvento) ||
+                         local.IdInstituicao != eventoContexto.IdInstituicao))
+                    {
+                        continue;
+                    }
                     cmbLocal.Items.Add(local);
                 }
 
@@ -301,7 +315,8 @@ namespace CASE
                         using (var formulario = new TransferenciaEstoqueForm(
                             usuarioAutenticado,
                             local.IdLocalEstoque,
-                            true))
+                            true,
+                            filtrarPorEvento ? (int?)eventoContexto.IdEvento : null))
                         {
                             if (formulario.ShowDialog(this) == DialogResult.OK)
                             {
@@ -319,7 +334,11 @@ namespace CASE
                         lblMensagem.Text = "Abra Solicitações para aprovar e atender os pedidos de liberação ou devolução do central.";
                     return;
                 }
-                using (var formulario = new TransferenciaEstoqueForm(usuarioAutenticado, local.IdLocalEstoque))
+                using (var formulario = new TransferenciaEstoqueForm(
+                    usuarioAutenticado,
+                    local.IdLocalEstoque,
+                    false,
+                    filtrarPorEvento ? (int?)eventoContexto.IdEvento : null))
                 {
                     if (formulario.ShowDialog(this) == DialogResult.OK)
                     {
@@ -405,7 +424,10 @@ namespace CASE
             {
                 if (historicoMercadorias == null)
                 {
-                    historicoMercadorias = new MovimentacoesControl(usuarioAutenticado) { Dock = DockStyle.Fill };
+                    historicoMercadorias = new MovimentacoesControl(
+                        usuarioAutenticado,
+                        eventoContexto,
+                        filtrarPorEvento) { Dock = DockStyle.Fill };
                     historicoMercadorias.IncorporarAoEstoque();
                     historicoMercadorias.OperacaoCorrigida += (s, e) => Atualizar();
                     dgvHistorico.Visible = false;
@@ -534,7 +556,7 @@ namespace CASE
                         quantidade = -quantidade;
                     }
                     linhasHistorico.Add(new object[] { movimento["data_hora"], movimento["produto"],
-                        movimento["tipo"], quantidade,
+                        CASE.Utils.TextoInterface.FormatarValorBanco(movimento["tipo"]), quantidade,
                         movimento["origem"] + " → " + movimento["destino"] + " / " + movimento["responsavel"] });
                 }
 

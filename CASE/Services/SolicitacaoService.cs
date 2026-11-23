@@ -16,6 +16,9 @@ namespace CASE.Services
         private readonly SetorRepository setorRepository = new SetorRepository();
         private readonly ProdutoSetorRepository produtoSetorRepository = new ProdutoSetorRepository();
         private readonly ProdutoRepository produtoRepository = new ProdutoRepository();
+        private readonly EstoqueRepository estoqueRepository = new EstoqueRepository();
+        private readonly EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
+        private readonly LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
         private readonly UsuarioRepository usuarioRepository = new UsuarioRepository();
         private readonly PessoaRepository pessoaRepository = new PessoaRepository();
 
@@ -23,11 +26,15 @@ namespace CASE.Services
         {
             public int IdProdutoSetor { get; set; }
             public string Nome { get; set; }
+            public string UnidadeMedida { get; set; }
+            public decimal QuantidadeNoSetor { get; set; }
+            public decimal QuantidadeNoEstoqueGeral { get; set; }
         }
 
         public class ResumoSolicitacao
         {
             public string Solicitante { get; set; }
+            public string Evento { get; set; }
             public string Setor { get; set; }
             public string Produtos { get; set; }
         }
@@ -63,6 +70,8 @@ namespace CASE.Services
             Escala escala = escalaRepository.BuscarPorId(solicitacao.IdEscala);
             JornadaSetor jornada = jornadaRepository.BuscarPorId(escala.IdJornada);
             Setor setor = setorRepository.BuscarPorId(jornada.IdSetor);
+            Evento evento = eventoRepository.BuscarPorId(setor.IdEvento);
+            resumo.Evento = evento == null ? "Evento " + setor.IdEvento : evento.Nome;
             resumo.Setor = setor.Nome;
 
             List<SolicitacaoItem> itens = solicitacaoItemRepository.ListarPorSolicitacao(
@@ -163,9 +172,51 @@ namespace CASE.Services
                 throw new InvalidOperationException("A jornada da escala não foi encontrada.");
             }
 
+            Setor setor = setorRepository.BuscarPorId(jornada.IdSetor);
+            if (setor == null)
+            {
+                throw new InvalidOperationException("O setor da escala não foi encontrado.");
+            }
+
             List<ProdutoSetor> produtosSetor = produtoSetorRepository.ListarPorSetor(
                 jornada.IdSetor);
             List<ProdutoSolicitacaoOpcao> opcoes = new List<ProdutoSolicitacaoOpcao>();
+            EstoqueSetor associacaoEstoqueSetor = estoqueSetorRepository.BuscarPorSetor(
+                jornada.IdSetor);
+            LocalEstoque estoqueGeralEvento = null;
+            Dictionary<int, decimal> saldosPorProdutoNoSetor = new Dictionary<int, decimal>();
+            Dictionary<int, decimal> saldosPorProdutoNoGeral = new Dictionary<int, decimal>();
+
+            if (associacaoEstoqueSetor != null && associacaoEstoqueSetor.IdEvento == setor.IdEvento)
+            {
+                List<Estoque> saldosSetor = estoqueRepository.ListarPorLocal(
+                    associacaoEstoqueSetor.IdLocalEstoque);
+                foreach (Estoque saldo in saldosSetor)
+                {
+                    saldosPorProdutoNoSetor[saldo.IdProduto] = saldo.QuantidadeAtual;
+                }
+            }
+
+            List<LocalEstoque> locaisEvento = localEstoqueRepository.ListarPorEvento(
+                setor.IdEvento);
+            foreach (LocalEstoque local in locaisEvento)
+            {
+                if (local.EhGeralEvento && local.Ativo)
+                {
+                    estoqueGeralEvento = local;
+                    break;
+                }
+            }
+
+            if (estoqueGeralEvento != null)
+            {
+                List<Estoque> saldosGerais = estoqueRepository.ListarPorLocal(
+                    estoqueGeralEvento.IdLocalEstoque);
+                foreach (Estoque saldo in saldosGerais)
+                {
+                    saldosPorProdutoNoGeral[saldo.IdProduto] = saldo.QuantidadeAtual;
+                }
+            }
 
             foreach (ProdutoSetor produtoSetor in produtosSetor)
             {
@@ -179,6 +230,21 @@ namespace CASE.Services
                 ProdutoSolicitacaoOpcao opcao = new ProdutoSolicitacaoOpcao();
                 opcao.IdProdutoSetor = produtoSetor.IdProdutoSetor;
                 opcao.Nome = produto.Nome;
+                opcao.UnidadeMedida = produto.UnidadeMedida;
+
+                decimal quantidadeNoSetor;
+                opcao.QuantidadeNoSetor = saldosPorProdutoNoSetor.TryGetValue(
+                    produto.IdProduto,
+                    out quantidadeNoSetor)
+                    ? quantidadeNoSetor
+                    : 0;
+                decimal quantidadeNoGeral;
+                opcao.QuantidadeNoEstoqueGeral = saldosPorProdutoNoGeral.TryGetValue(
+                    produto.IdProduto,
+                    out quantidadeNoGeral)
+                    ? quantidadeNoGeral
+                    : 0;
+
                 opcoes.Add(opcao);
             }
 
@@ -239,6 +305,13 @@ namespace CASE.Services
             {
                 throw new InvalidOperationException("O setor da escala não foi encontrado.");
             }
+
+            Evento evento = eventoRepository.BuscarPorId(setor.IdEvento);
+            if (evento == null)
+            {
+                throw new InvalidOperationException("O evento da escala não foi encontrado.");
+            }
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
 
             foreach (SolicitacaoItem item in itens)
             {
@@ -350,6 +423,16 @@ namespace CASE.Services
                 throw new UnauthorizedAccessException(
                     "Somente o gerente responsável pelo evento pode decidir esta solicitação.");
             }
+
+            Escala escala = escalaRepository.BuscarPorId(solicitacao.IdEscala);
+            JornadaSetor jornada = escala == null ? null : jornadaRepository.BuscarPorId(escala.IdJornada);
+            Setor setor = jornada == null ? null : setorRepository.BuscarPorId(jornada.IdSetor);
+            Evento evento = setor == null ? null : eventoRepository.BuscarPorId(setor.IdEvento);
+            if (evento == null)
+            {
+                throw new InvalidOperationException("O evento da solicitação não foi encontrado.");
+            }
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
 
             if (!string.Equals(
                 solicitacao.Situacao,

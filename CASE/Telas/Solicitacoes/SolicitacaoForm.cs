@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Windows.Forms;
 using CASE.Models;
 using CASE.Services;
@@ -19,6 +20,7 @@ namespace CASE.Quermesse
         private readonly int? idSolicitacaoDetalhe;
         private readonly SolicitacaoService solicitacaoService = new SolicitacaoService();
         private readonly EscalaService escalaService = new EscalaService();
+        private readonly EventoService eventoService = new EventoService();
         private readonly ComboBox comboProdutos = new ComboBox();
 
         public SolicitacaoForm() : this(null, null)
@@ -81,11 +83,12 @@ namespace CASE.Quermesse
             comboProdutos.Bounds = txtProdutoSolicitacao.Bounds;
             comboProdutos.DisplayMember = "Nome";
             comboProdutos.Visible = false;
+            comboProdutos.SelectedIndexChanged += comboProdutos_SelectedIndexChanged;
             panelFormulario.Controls.Add(comboProdutos);
             comboProdutos.BringToFront();
             txtProdutoSolicitacao.Visible = false;
             lblProduto.Text = "Produto disponível no setor";
-            lblSetor.Text = "Escala e setor";
+            lblSetor.Text = "Evento, setor e escala";
             cmbSetorSolicitacao.Items.Clear();
             cmbSetorSolicitacao.SelectedIndexChanged += cmbSetorSolicitacao_SelectedIndexChanged;
         }
@@ -129,6 +132,14 @@ namespace CASE.Quermesse
                         continue;
                     }
 
+                    Evento evento = eventoService.BuscarPorId(
+                        usuarioAutenticado,
+                        setor.IdEvento);
+                    if (evento == null)
+                    {
+                        continue;
+                    }
+
                     string nomeTurno = "Turno " + jornada.IdTurno;
 
                     if (turno != null)
@@ -138,8 +149,8 @@ namespace CASE.Quermesse
 
                     EscalaOpcao opcao = new EscalaOpcao();
                     opcao.Escala = escala;
-                    opcao.Descricao = setor.Nome + " - " + jornada.Data.ToString("dd/MM/yyyy") +
-                        " - " + nomeTurno;
+                    opcao.Descricao = evento.Nome + " · " + setor.Nome + " · " +
+                        jornada.Data.ToString("dd/MM/yyyy") + " · " + nomeTurno;
                     cmbSetorSolicitacao.Items.Add(opcao);
                 }
 
@@ -148,7 +159,7 @@ namespace CASE.Quermesse
                 if (cmbSetorSolicitacao.Items.Count == 0)
                 {
                     btnSalvarVisual.Enabled = false;
-                    labelAvisoFormulario.Text = "Você não possui escalas disponíveis para solicitar produtos.";
+                    labelAvisoFormulario.Text = "Para solicitar reposição, o gerente precisa vincular você ao evento e definir seu setor, data e turno em Escala de trabalho.";
                     return;
                 }
 
@@ -177,6 +188,8 @@ namespace CASE.Quermesse
         private void CarregarProdutosDaEscalaSelecionada()
         {
             comboProdutos.Items.Clear();
+            comboProdutos.Visible = false;
+            btnSalvarVisual.Enabled = false;
 
             EscalaOpcao opcao = cmbSetorSolicitacao.SelectedItem as EscalaOpcao;
 
@@ -202,13 +215,13 @@ namespace CASE.Quermesse
                     comboProdutos.SelectedIndex = 0;
                     comboProdutos.Visible = true;
                     btnSalvarVisual.Enabled = true;
-                    labelAvisoFormulario.Text = "Selecione o produto e informe a quantidade desejada.";
+                    AtualizarResumoEstoqueDoProduto();
                 }
                 else
                 {
                     comboProdutos.Visible = false;
                     btnSalvarVisual.Enabled = false;
-                    labelAvisoFormulario.Text = "Este setor não possui produtos configurados para solicitação.";
+                    labelAvisoFormulario.Text = "Este setor ainda não tem produtos configurados. O responsável pode incluí-los em Equipes e setores > Produtos e preços.";
                 }
             }
             catch (Exception)
@@ -216,6 +229,44 @@ namespace CASE.Quermesse
                 btnSalvarVisual.Enabled = false;
                 labelAvisoFormulario.Text = "Não foi possível carregar os produtos do setor.";
             }
+        }
+
+        private void comboProdutos_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            AtualizarResumoEstoqueDoProduto();
+        }
+
+        private void AtualizarResumoEstoqueDoProduto()
+        {
+            SolicitacaoService.ProdutoSolicitacaoOpcao produto =
+                comboProdutos.SelectedItem as SolicitacaoService.ProdutoSolicitacaoOpcao;
+
+            if (produto == null)
+            {
+                return;
+            }
+
+            string unidade = string.IsNullOrWhiteSpace(produto.UnidadeMedida)
+                ? "un"
+                : produto.UnidadeMedida;
+
+            if (produto.QuantidadeNoEstoqueGeral <= 0)
+            {
+                labelAvisoFormulario.Text = "Saldo do setor: " + FormatarQuantidade(produto.QuantidadeNoSetor) +
+                    " " + unidade + ". Estoque geral do evento: 0 " + unidade +
+                    ". Você ainda pode enviar o pedido para avaliação.";
+                return;
+            }
+
+            labelAvisoFormulario.Text = "No setor: " +
+                FormatarQuantidade(produto.QuantidadeNoSetor) + " " + unidade +
+                " · disponível no estoque geral do evento: " +
+                FormatarQuantidade(produto.QuantidadeNoEstoqueGeral) + " " + unidade + ".";
+        }
+
+        private static string FormatarQuantidade(decimal quantidade)
+        {
+            return quantidade.ToString("N0", CultureInfo.GetCultureInfo("pt-BR"));
         }
 
         private void CarregarDetalhes()
@@ -245,11 +296,11 @@ namespace CASE.Quermesse
                 cmbSetorSolicitacao.SelectedIndex = 0;
                 cmbSetorSolicitacao.Enabled = false;
                 cmbTipoSolicitacao.Items.Clear();
-                cmbTipoSolicitacao.Items.Add(solicitacao.Tipo);
+                cmbTipoSolicitacao.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Tipo));
                 cmbTipoSolicitacao.SelectedIndex = 0;
                 cmbTipoSolicitacao.Enabled = false;
                 cmbStatusSolicitacao.Items.Clear();
-                cmbStatusSolicitacao.Items.Add(solicitacao.Situacao);
+                cmbStatusSolicitacao.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Situacao));
                 cmbStatusSolicitacao.SelectedIndex = 0;
                 cmbStatusSolicitacao.Visible = true;
                 lblSituacao.Visible = true;

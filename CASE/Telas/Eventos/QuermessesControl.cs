@@ -18,6 +18,7 @@ namespace CASE.Quermesse
         private readonly Dictionary<int, string> nomesResponsaveis = new Dictionary<int, string>();
         private List<Evento> eventosCarregados = new List<Evento>();
         private string pesquisaAtual = string.Empty;
+        private ComboBox filtroEventos;
 
         public QuermessesControl() : this((Usuario)null)
         {
@@ -68,12 +69,16 @@ namespace CASE.Quermesse
             ToolStripMenuItem iniciar = new ToolStripMenuItem("Iniciar evento");
             ToolStripMenuItem finalizar = new ToolStripMenuItem("Finalizar evento");
             ToolStripMenuItem cancelar = new ToolStripMenuItem("Cancelar evento");
+            ToolStripMenuItem excluir = new ToolStripMenuItem("Excluir evento cancelado");
             iniciar.Click += (s, e) => AlterarSituacaoSelecionada(SituacoesEvento.EmAndamento);
             finalizar.Click += (s, e) => AlterarSituacaoSelecionada(SituacoesEvento.Finalizado);
             cancelar.Click += (s, e) => AlterarSituacaoSelecionada(SituacoesEvento.Cancelado);
+            excluir.Click += ExcluirEventoSelecionado;
             menu.Items.Add(iniciar);
             menu.Items.Add(finalizar);
             menu.Items.Add(cancelar);
+            menu.Items.Add(new ToolStripSeparator());
+            menu.Items.Add(excluir);
             ToolStripMenuItem resumo = new ToolStripMenuItem("Consultar resumo do evento");
             resumo.Click += AbrirResumoEvento;
             menu.Items.Add(new ToolStripSeparator());
@@ -101,6 +106,7 @@ namespace CASE.Quermesse
                 finalizar.Enabled = podeAlterarSituacao && evento.Situacao == SituacoesEvento.EmAndamento;
                 cancelar.Enabled = podeAlterarSituacao && (evento.Situacao == SituacoesEvento.Planejado ||
                     evento.Situacao == SituacoesEvento.EmAndamento);
+                excluir.Enabled = podeAlterarSituacao && evento.Situacao == SituacoesEvento.Cancelado;
             };
             dgvQuermesses.ContextMenuStrip = menu;
             dgvQuermesses.CellMouseDown += (s, e) =>
@@ -118,6 +124,18 @@ namespace CASE.Quermesse
             situacao.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             situacao.Click += (s, e) => menu.Show(situacao, new System.Drawing.Point(0, situacao.Height));
             panelListaQuermesses.Controls.Add(situacao);
+            filtroEventos = new ComboBox
+            {
+                Name = "cmbFiltroEventosAtivos",
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Width = 210
+            };
+            filtroEventos.Items.Add("Todos os eventos");
+            filtroEventos.Items.Add("Eventos ativos");
+            filtroEventos.SelectedIndex = 0;
+            filtroEventos.SelectedIndexChanged += (s, e) => Pesquisar(pesquisaAtual);
+            panelListaQuermesses.Controls.Add(filtroEventos);
+            VisualUtils.EstilizarSelecao(filtroEventos);
             lblEventoscadastrados.Width = 480;
             VisualUtils.EstilizarBotao(situacao);
             Disposed += (s, e) => menu.Dispose();
@@ -138,12 +156,13 @@ namespace CASE.Quermesse
             panelListaQuermesses.SetBounds(0, 0, largura, altura);
             Control situacao = panelListaQuermesses.Controls["btnSituacaoEvento"];
             situacao.SetBounds(largura - 204, 18, 180, 40);
+            filtroEventos.SetBounds(18, 18, 210, 40);
             btnEditarQuermesse.Visible = false;
             btnEditarQuermesse.TabStop = false;
             btnNovaQuermesse.SetBounds(situacao.Left - 182, 18, 170, 40);
             btnNovaQuermesse.TabIndex = 0;
             situacao.TabIndex = 1;
-            lblEventoscadastrados.SetBounds(18, 25, Math.Max(140, btnNovaQuermesse.Left - 36), 28);
+            lblEventoscadastrados.SetBounds(242, 25, Math.Max(140, btnNovaQuermesse.Left - 260), 28);
             dgvQuermesses.SetBounds(12, 76, largura - 24, altura - 90);
             dgvQuermesses.TabIndex = 3;
             labelAviso.SetBounds(30, panelCorpo.Bottom + 12, largura, 28);
@@ -159,8 +178,20 @@ namespace CASE.Quermesse
                 labelAviso.Text = "Selecione um evento autorizado.";
                 return;
             }
-            if (MessageBox.Show(this, "Confirma alterar a situação para " + situacao + "?",
-                "Situação do evento", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+            bool iniciando = situacao == SituacoesEvento.EmAndamento;
+            string confirmacao = situacao == SituacoesEvento.Cancelado
+                ? "Ao cancelar, o evento ficará encerrado para novos cadastros e operações, como incluir funcionários, criar setores e escalas, registrar solicitações ou movimentar estoque. Os dados já registrados continuarão disponíveis para consulta.\n\nDeseja cancelar este evento?"
+                : iniciando
+                    ? "Ao iniciar o evento, as vendas e perdas poderão ser registradas pela equipe nas escalas correspondentes. Deseja iniciar agora?"
+                    : "Confirma alterar a situação do evento?";
+            string tituloConfirmacao = situacao == SituacoesEvento.Cancelado
+                ? "Cancelar evento"
+                : iniciando ? "Iniciar evento" : "Situação do evento";
+            MessageBoxIcon iconeConfirmacao = situacao == SituacoesEvento.Cancelado
+                ? MessageBoxIcon.Warning
+                : iniciando ? MessageBoxIcon.Information : MessageBoxIcon.Question;
+            if (MessageBox.Show(this, confirmacao,
+                tituloConfirmacao, MessageBoxButtons.YesNo, iconeConfirmacao) != DialogResult.Yes)
             {
                 return;
             }
@@ -168,7 +199,19 @@ namespace CASE.Quermesse
             {
                 eventoService.AlterarSituacao(usuarioAutenticado, evento.IdEvento, situacao);
                 CarregarEventos();
-                labelAviso.Text = "Situação atualizada.";
+                labelAviso.Text = situacao == SituacoesEvento.Cancelado
+                    ? "Evento cancelado. Novos cadastros e operações foram bloqueados; os dados existentes continuam disponíveis para consulta."
+                    : iniciando
+                        ? "Evento iniciado. Agora a equipe pode registrar vendas e perdas nas escalas."
+                        : "Situação atualizada.";
+                if (situacao == SituacoesEvento.Cancelado)
+                {
+                    FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Atencao);
+                }
+                else if (iniciando)
+                {
+                    FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
+                }
             }
             catch (Exception erro)
             {
@@ -178,6 +221,45 @@ namespace CASE.Quermesse
                     CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível atualizar a situação do evento.", labelAviso);
                 }
                 System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em AlterarSituacaoSelecionada");
+            }
+        }
+
+        private void ExcluirEventoSelecionado(object sender, EventArgs e)
+        {
+            Evento evento = ObterEventoSelecionado();
+            if (evento == null || usuarioAutenticado == null)
+            {
+                labelAviso.Text = "Selecione um evento cancelado para excluir.";
+                return;
+            }
+
+            if (evento.Situacao != SituacoesEvento.Cancelado)
+            {
+                labelAviso.Text = "Somente eventos cancelados podem ser excluídos.";
+                return;
+            }
+
+            string confirmacao = "Excluir definitivamente o evento \"" + evento.Nome + "\"?\n\n" +
+                "Os dados vinculados, como vendas, perdas, estoque, escalas, solicitações e despesas, " +
+                "serão removidos e não poderão mais ser consultados ou recuperados.\n\n" +
+                "Esta ação não pode ser desfeita.";
+            if (MessageBox.Show(this, confirmacao, "Excluir evento cancelado",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+                return;
+
+            try
+            {
+                eventoService.Excluir(usuarioAutenticado, evento.IdEvento);
+                CarregarEventos();
+                labelAviso.Text = "Evento excluído. Os dados vinculados não estão mais disponíveis para consulta.";
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
+            }
+            catch (Exception erro)
+            {
+                labelAviso.Text = "Não foi possível excluir o evento.";
+                if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
+                    FeedbackUsuario.ExibirErro(this, erro, "Não foi possível excluir o evento.", labelAviso);
+                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExcluirEventoSelecionado");
             }
         }
 
@@ -245,7 +327,7 @@ namespace CASE.Quermesse
 
             lblQuermessedeSaoJoao2026.Text = evento == null ? "Nenhum evento selecionado" : evento.Nome;
             lblPatiodacomunidadeEmandamento.Text = evento == null ? string.Empty :
-                evento.Local + " · " + evento.Situacao;
+                evento.Local + " · " + CASE.Utils.TextoInterface.FormatarValorBanco(evento.Situacao);
 
             Action<Evento> eventoSelecionado = EventoSelecionado;
 
@@ -413,7 +495,14 @@ namespace CASE.Quermesse
 
             foreach (Evento evento in eventosCarregados)
             {
-                string conteudo = evento.Nome + " " + evento.Local + " " + evento.Situacao;
+                bool ativo = evento.Situacao == SituacoesEvento.Planejado ||
+                    evento.Situacao == SituacoesEvento.EmAndamento;
+                if (filtroEventos != null && filtroEventos.SelectedIndex == 1 && !ativo)
+                {
+                    continue;
+                }
+                string situacaoExibida = CASE.Utils.TextoInterface.FormatarValorBanco(evento.Situacao);
+                string conteudo = evento.Nome + " " + evento.Local + " " + situacaoExibida;
                 if (conteudo.IndexOf(termo, StringComparison.CurrentCultureIgnoreCase) < 0)
                 {
                     continue;
@@ -434,7 +523,7 @@ namespace CASE.Quermesse
                     nomesResponsaveis.ContainsKey(evento.IdResponsavel)
                         ? nomesResponsaveis[evento.IdResponsavel]
                         : "Responsável não encontrado",
-                    evento.Situacao);
+                    situacaoExibida);
                 dgvQuermesses.Rows[indiceLinha].Tag = evento;
             }
 
@@ -455,9 +544,11 @@ namespace CASE.Quermesse
 
             if (dgvQuermesses.Rows.Count == 0)
             {
-                labelAviso.Text = string.IsNullOrWhiteSpace(termo)
-                    ? "Nenhum evento cadastrado."
-                    : "Nenhum evento corresponde à busca.";
+                labelAviso.Text = filtroEventos != null && filtroEventos.SelectedIndex == 1
+                    ? "Nenhum evento ativo corresponde aos filtros."
+                    : string.IsNullOrWhiteSpace(termo)
+                        ? "Nenhum evento cadastrado."
+                        : "Nenhum evento corresponde à busca.";
             }
             else
             {

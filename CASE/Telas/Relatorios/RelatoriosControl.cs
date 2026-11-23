@@ -65,6 +65,7 @@ namespace CASE
             panelGraficoDireitoArea.BackColor = System.Drawing.Color.White;
             gradeRelatorio.Dock = DockStyle.Fill;
             gradeRelatorio.Name = "dgvRelatorio";
+            gradeRelatorio.CellFormatting += FormatarValorExibido;
             gradeRelatorio.BackgroundColor = System.Drawing.Color.White;
             gradeRelatorio.RowHeadersVisible = false;
             gradeRelatorio.EnableHeadersVisualStyles = false;
@@ -264,6 +265,20 @@ namespace CASE
             }
             if (estoqueCritico)
                 gradeRelatorio.Columns["reposicao_minima"].DisplayIndex = gradeRelatorio.Columns["situacao"].DisplayIndex;
+        }
+
+        private void FormatarValorExibido(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Value == null || e.Value == DBNull.Value)
+                return;
+
+            string nomeColuna = gradeRelatorio.Columns[e.ColumnIndex].Name;
+            if (nomeColuna == "situacao" || nomeColuna == "status" || nomeColuna == "tipo" ||
+                nomeColuna == "forma_pagamento")
+            {
+                e.Value = TextoInterface.FormatarColunaBanco(nomeColuna, e.Value);
+                e.FormattingApplied = true;
+            }
         }
 
         private void ExportarCsv(object sender, EventArgs e)

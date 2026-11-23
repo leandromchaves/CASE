@@ -64,12 +64,11 @@ namespace CASE
             DataGridViewButtonColumn colunaExcluir = new DataGridViewButtonColumn();
             colunaExcluir.Name = "colExcluir";
             colunaExcluir.HeaderText = "";
-            colunaExcluir.Text = "Excluir";
-            colunaExcluir.UseColumnTextForButtonValue = true;
+            colunaExcluir.Text = "";
+            colunaExcluir.UseColumnTextForButtonValue = false;
             colunaExcluir.FlatStyle = FlatStyle.Flat;
             colunaExcluir.FillWeight = 14;
-            colunaExcluir.DefaultCellStyle.ForeColor = System.Drawing.Color.Firebrick;
-            // A exclusão de produtos ainda não está disponível.
+            colunaExcluir.DefaultCellStyle.ForeColor = System.Drawing.Color.FromArgb(185, 48, 48);
             colunaExcluir.Visible = false;
             dgvProdutos.Columns.Add(colunaExcluir);
             ConfigurarApresentacaoDaGrade();
@@ -110,6 +109,7 @@ namespace CASE
                     string perfil;
                     new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
                     btnNovoProduto.Enabled = perfil == "Administrador";
+                    colunaExcluir.Visible = perfil == "Administrador";
                     if (perfil != "Administrador")
                     {
                         colAcoes.Text = "Consultar";
@@ -371,6 +371,11 @@ namespace CASE
 
                 int indiceLinha = dgvProdutos.Rows.Add(valores);
                 dgvProdutos.Rows[indiceLinha].Tag = produto;
+                dgvProdutos.Rows[indiceLinha].Cells["colExcluir"].Value = produto.Ativo ? "Remover" : "Reativar";
+                if (!produto.Ativo)
+                {
+                    dgvProdutos.Rows[indiceLinha].DefaultCellStyle.ForeColor = System.Drawing.Color.Gray;
+                }
             }
 
             AplicarFiltros();
@@ -532,12 +537,31 @@ namespace CASE
 
             if (dgvProdutos.Columns[e.ColumnIndex].Name == "colExcluir")
             {
-                MessageBox.Show(
-                    this,
-                    "A exclusão não está disponível para produtos nesta etapa.",
-                    "Produtos",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                bool ativar = !produto.Ativo;
+                string acao = ativar ? "reativar" : "remover";
+                string explicacao = ativar
+                    ? "O produto voltará a aparecer para novas operações."
+                    : "O produto deixará de aparecer para novas operações. O histórico e os registros existentes serão preservados.";
+                if (MessageBox.Show(this,
+                    "Deseja " + acao + " “" + produto.Nome + "”?\n\n" + explicacao,
+                    "Produtos", MessageBoxButtons.YesNo,
+                    ativar ? MessageBoxIcon.Question : MessageBoxIcon.Warning) != DialogResult.Yes)
+                {
+                    return;
+                }
+                try
+                {
+                    produtoService.AlterarAtivo(usuarioAutenticado, produto.IdProduto, ativar);
+                    CarregarProdutos();
+                    lblPaginacao.Text = ativar
+                        ? "Produto reativado. Ele já está disponível para novas operações."
+                        : "Produto removido do catálogo ativo. O histórico foi preservado.";
+                }
+                catch (Exception erro)
+                {
+                    FeedbackUsuario.ExibirErro(this, erro,
+                        "Não foi possível atualizar o produto. Tente novamente.", lblPaginacao);
+                }
             }
         }
 

@@ -170,6 +170,215 @@ namespace CASE.Repositories
             }
         }
 
+        public void ExcluirSeVazio(Setor setor, int idUsuario)
+        {
+            if (setor == null || setor.IdSetor <= 0 || setor.IdEvento <= 0 || idUsuario <= 0)
+            {
+                throw new ArgumentException("Os dados do setor são inválidos.", nameof(setor));
+            }
+
+            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            {
+                conexao.Open();
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        ValidarGerenteResponsavel(
+                            conexao,
+                            transacao,
+                            setor.IdEvento,
+                            idUsuario);
+
+                        using (var comando = new MySqlCommand(
+                            "SELECT id_setor FROM setor WHERE id_setor=@setor AND id_evento=@evento FOR UPDATE",
+                            conexao,
+                            transacao))
+                        {
+                            AcessoDados.AdicionarParametro(comando, "@setor", setor.IdSetor);
+                            AcessoDados.AdicionarParametro(comando, "@evento", setor.IdEvento);
+                            if (comando.ExecuteScalar() == null)
+                            {
+                                throw new InvalidOperationException(
+                                    "O setor não existe mais. Atualize a lista e tente novamente.");
+                            }
+                        }
+
+                        long jornadas = ContarNaTransacao(
+                            conexao,
+                            transacao,
+                            "SELECT COUNT(*) FROM jornadasetor WHERE id_setor=@id",
+                            setor.IdSetor);
+                        if (jornadas > 0)
+                        {
+                            throw new InvalidOperationException(
+                                "Este setor já possui escalas ou jornadas. Remova primeiro os vínculos de trabalho para preservar o histórico.");
+                        }
+
+                        long registros = ContarNaTransacao(
+                            conexao,
+                            transacao,
+                            "SELECT COUNT(*) FROM registroitem ri " +
+                            "JOIN produtosetor ps ON ps.id_produto_setor=ri.id_produto_setor " +
+                            "WHERE ps.id_setor=@id",
+                            setor.IdSetor);
+                        long solicitacoes = ContarNaTransacao(
+                            conexao,
+                            transacao,
+                            "SELECT COUNT(*) FROM solicitacaoitem si " +
+                            "JOIN produtosetor ps ON ps.id_produto_setor=si.id_produto_setor " +
+                            "WHERE ps.id_setor=@id",
+                            setor.IdSetor);
+                        if (registros > 0 || solicitacoes > 0)
+                        {
+                            throw new InvalidOperationException(
+                                "Este setor possui registros ou solicitações vinculadas e não pode ser removido.");
+                        }
+
+                        long associacoes = ContarNaTransacao(
+                            conexao,
+                            transacao,
+                            "SELECT COUNT(*) FROM estoquesetor WHERE id_setor=@id AND id_evento=@evento",
+                            setor.IdSetor,
+                            setor.IdEvento);
+                        if (associacoes != 1)
+                        {
+                            throw new InvalidOperationException(
+                                "O estoque deste setor não está configurado corretamente. O setor não foi removido.");
+                        }
+
+                        int idLocal;
+                        using (var comando = new MySqlCommand(
+                            "SELECT id_local_estoque FROM estoquesetor WHERE id_setor=@setor AND id_evento=@evento FOR UPDATE",
+                            conexao,
+                            transacao))
+                        {
+                            AcessoDados.AdicionarParametro(comando, "@setor", setor.IdSetor);
+                            AcessoDados.AdicionarParametro(comando, "@evento", setor.IdEvento);
+                            idLocal = Convert.ToInt32(comando.ExecuteScalar());
+                        }
+
+                        long entradas = ContarNaTransacao(
+                            conexao,
+                            transacao,
+                            "SELECT COUNT(*) FROM entradamercadoria WHERE id_local_destino=@id",
+                            idLocal);
+                        long transferencias = ContarNaTransacao(
+                            conexao,
+                            transacao,
+                            "SELECT COUNT(*) FROM transferenciaestoque WHERE id_local_origem=@id OR id_local_destino=@id",
+                            idLocal);
+                        long saldo = ContarNaTransacao(
+                            conexao,
+                            transacao,
+                            "SELECT COUNT(*) FROM estoque WHERE id_local_estoque=@id AND quantidade_atual<>0",
+                            idLocal);
+
+                        if (entradas > 0 || transferencias > 0 || saldo > 0)
+                        {
+                            throw new InvalidOperationException(
+                                "Este setor já possui saldo ou movimentações. Para preservar o histórico do estoque, ele não pode ser removido.");
+                        }
+
+                        AcessoDados.Executar(
+                            conexao,
+                            transacao,
+                            "DELETE FROM produtosetor WHERE id_setor=@setor",
+                            comando => AcessoDados.AdicionarParametro(comando, "@setor", setor.IdSetor));
+
+                        AcessoDados.Executar(
+                            conexao,
+                            transacao,
+                            "DELETE FROM estoque WHERE id_local_estoque=@local",
+                            comando => AcessoDados.AdicionarParametro(comando, "@local", idLocal));
+
+                        int associacaoRemovida = AcessoDados.Executar(
+                            conexao,
+                            transacao,
+                            "DELETE FROM estoquesetor WHERE id_setor=@setor AND id_local_estoque=@local AND id_evento=@evento",
+                            comando =>
+                            {
+                                AcessoDados.AdicionarParametro(comando, "@setor", setor.IdSetor);
+                                AcessoDados.AdicionarParametro(comando, "@local", idLocal);
+                                AcessoDados.AdicionarParametro(comando, "@evento", setor.IdEvento);
+                            });
+                        if (associacaoRemovida != 1)
+                        {
+                            throw new InvalidOperationException(
+                                "O setor foi alterado durante a operação. Atualize a lista e tente novamente.");
+                        }
+
+                        int localRemovido = AcessoDados.Executar(
+                            conexao,
+                            transacao,
+                            "DELETE FROM localestoque WHERE id_local_estoque=@local AND id_evento=@evento " +
+                            "AND id_instituicao_central IS NULL AND eh_geral_evento=0",
+                            comando =>
+                            {
+                                AcessoDados.AdicionarParametro(comando, "@local", idLocal);
+                                AcessoDados.AdicionarParametro(comando, "@evento", setor.IdEvento);
+                            });
+                        if (localRemovido != 1)
+                        {
+                            throw new InvalidOperationException(
+                                "O local de estoque do setor não pôde ser removido. Nenhuma alteração foi salva.");
+                        }
+
+                        int setorRemovido = AcessoDados.Executar(
+                            conexao,
+                            transacao,
+                            "DELETE FROM setor WHERE id_setor=@setor AND id_evento=@evento",
+                            comando =>
+                            {
+                                AcessoDados.AdicionarParametro(comando, "@setor", setor.IdSetor);
+                                AcessoDados.AdicionarParametro(comando, "@evento", setor.IdEvento);
+                            });
+                        if (setorRemovido != 1)
+                        {
+                            throw new InvalidOperationException(
+                                "O setor não foi removido. Atualize a lista e tente novamente.");
+                        }
+
+                        transacao.Commit();
+                    }
+                    catch (MySqlException erro)
+                    {
+                        transacao.Rollback();
+                        if (erro.Number == 1451 || erro.Number == 1452)
+                        {
+                            throw new InvalidOperationException(
+                                "Este setor possui informações vinculadas e não pode ser removido. O histórico foi preservado.",
+                                erro);
+                        }
+                        throw;
+                    }
+                    catch
+                    {
+                        transacao.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private static long ContarNaTransacao(
+            MySqlConnection conexao,
+            MySqlTransaction transacao,
+            string sql,
+            int id,
+            int? idEvento = null)
+        {
+            using (var comando = new MySqlCommand(sql, conexao, transacao))
+            {
+                AcessoDados.AdicionarParametro(comando, "@id", id);
+                if (idEvento.HasValue)
+                {
+                    AcessoDados.AdicionarParametro(comando, "@evento", idEvento.Value);
+                }
+                return Convert.ToInt64(comando.ExecuteScalar());
+            }
+        }
+
         private static void ValidarGerenteResponsavel(
             MySqlConnection conexao,
             MySqlTransaction transacao,

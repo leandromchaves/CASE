@@ -18,6 +18,7 @@ namespace CASE.Quermesse
         private readonly JornadaSetorService jornadaService = new JornadaSetorService();
         private readonly TurnoRepository turnoRepository = new TurnoRepository();
         private bool podeAdministrarEvento;
+        private bool eventoPermiteAlteracoes;
         private Setor setorEmEdicao;
         private TextBox pesquisa;
         private readonly Button btnProdutosPrecosSetor = new Button();
@@ -86,17 +87,26 @@ namespace CASE.Quermesse
                 podeAdministrarEvento = false;
             }
 
-            btnAdicionarSetor.Enabled = podeAdministrarEvento;
-            btnNovoFuncionario.Enabled = podeAdministrarEvento;
-            btnEditarFuncionario.Enabled = podeAdministrarEvento;
-            txtNovoSetor.Enabled = podeAdministrarEvento;
+            eventoPermiteAlteracoes = string.Equals(
+                eventoSelecionado.Situacao,
+                SituacoesEvento.Planejado,
+                StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(
+                    eventoSelecionado.Situacao,
+                    SituacoesEvento.EmAndamento,
+                    StringComparison.OrdinalIgnoreCase);
+
+            btnAdicionarSetor.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
+            btnNovoFuncionario.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
+            btnEditarFuncionario.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
+            txtNovoSetor.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
             AtualizarAcaoProdutosPrecos();
 
             CarregarSetores();
             CarregarEquipe();
             ContextMenuStrip menuSetor = new ContextMenuStrip();
             ToolStripMenuItem renomear = new ToolStripMenuItem("Renomear setor selecionado");
-            renomear.Enabled = podeAdministrarEvento;
+            renomear.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
             renomear.Click += (s, e) =>
             {
                 if (dgvSetores.SelectedRows.Count == 0)
@@ -115,6 +125,16 @@ namespace CASE.Quermesse
                 }
             };
             menuSetor.Items.Add(renomear);
+            ToolStripMenuItem remover = new ToolStripMenuItem("Remover setor selecionado");
+            remover.Click += (s, e) => RemoverSetorSelecionado();
+            menuSetor.Items.Add(new ToolStripSeparator());
+            menuSetor.Items.Add(remover);
+            menuSetor.Opening += (s, e) =>
+            {
+                bool setorSelecionado = dgvSetores.SelectedRows.Count > 0;
+                renomear.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes && setorSelecionado;
+                remover.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes && setorSelecionado;
+            };
             Disposed += (s, e) => menuSetor.Dispose();
             txtNovoSetor.KeyDown += (s, e) =>
             {
@@ -127,10 +147,24 @@ namespace CASE.Quermesse
                 }
             };
             dgvSetores.ContextMenuStrip = menuSetor;
-            dgvSetores.SelectionChanged += (s, e) => AtualizarAcaoProdutosPrecos();
-            Disposed += (s, e) => menuSetor.Dispose();
+            dgvSetores.CellMouseDown += (s, e) =>
+            {
+                if (e.Button != MouseButtons.Right || e.RowIndex < 0)
+                {
+                    return;
+                }
 
-            if (!podeAdministrarEvento)
+                dgvSetores.ClearSelection();
+                dgvSetores.Rows[e.RowIndex].Selected = true;
+                dgvSetores.CurrentCell = dgvSetores.Rows[e.RowIndex].Cells[0];
+            };
+            dgvSetores.SelectionChanged += (s, e) => AtualizarAcaoProdutosPrecos();
+
+            if (string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase))
+            {
+                labelAviso.Text = "Este evento foi cancelado. Os dados permanecem disponíveis para consulta, mas novos cadastros e alterações estão bloqueados.";
+            }
+            else if (!podeAdministrarEvento)
             {
                 labelAviso.Text = "Consulta administrativa. Equipes, setores e preços são gerenciados pelo gerente responsável pelo evento.";
             }
@@ -168,8 +202,13 @@ namespace CASE.Quermesse
                 return;
 
             bool setorSelecionado = dgvSetores.SelectedRows.Count > 0;
-            btnProdutosPrecosSetor.Enabled = podeAdministrarEvento && setorSelecionado;
-            lblAjudaProdutosPrecos.Text = !podeAdministrarEvento
+            btnProdutosPrecosSetor.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes && setorSelecionado;
+            lblAjudaProdutosPrecos.Text = eventoSelecionado != null &&
+                    string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase)
+                ? "Evento cancelado: os produtos e preços existentes podem ser consultados, mas não alterados."
+                : !eventoPermiteAlteracoes
+                    ? "Evento encerrado: os produtos e preços existentes podem ser consultados, mas não alterados."
+                : !podeAdministrarEvento
                 ? "Os preços são configurados pelo administrador ou gerente responsável."
                 : setorSelecionado
                     ? "Defina os produtos disponíveis e o preço padrão de venda deste setor."
@@ -222,6 +261,13 @@ namespace CASE.Quermesse
 
         private void AbrirFormularioMembro(EquipeEvento vinculo)
         {
+            if (!eventoPermiteAlteracoes)
+            {
+                labelAviso.Text = "Este evento foi cancelado ou encerrado. Não é possível adicionar ou alterar membros.";
+                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Atencao);
+                return;
+            }
+
             using (PessoaSetorForm formulario = new PessoaSetorForm(
                 usuarioAutenticado,
                 eventoSelecionado,
@@ -242,6 +288,14 @@ namespace CASE.Quermesse
             if (eventoSelecionado == null || usuarioAutenticado == null)
             {
                 labelAviso.Text = "Selecione um evento e autentique-se antes de criar um setor.";
+                return;
+            }
+
+            if (!eventoPermiteAlteracoes)
+            {
+                CASE.Utils.FeedbackUsuario.ExibirErro(this,
+                    new InvalidOperationException("Este evento foi cancelado ou encerrado. Não é possível adicionar ou alterar setores."),
+                    "Alterações indisponíveis", labelAviso);
                 return;
             }
 
@@ -356,9 +410,76 @@ namespace CASE.Quermesse
             }
         }
 
+        private void RemoverSetorSelecionado()
+        {
+            if (!podeAdministrarEvento || dgvSetores.SelectedRows.Count == 0)
+            {
+                labelAviso.Text = "Selecione um setor que você possa remover.";
+                return;
+            }
+
+            Setor setor = dgvSetores.SelectedRows[0].Tag as Setor;
+            if (setor == null)
+            {
+                labelAviso.Text = "Não foi possível identificar o setor selecionado.";
+                return;
+            }
+
+            DialogResult confirmar = MessageBox.Show(
+                this,
+                "Deseja remover o setor \"" + setor.Nome + "\"?\n\n" +
+                "As configurações de produtos e o saldo zerado vinculados a ele serão removidos. " +
+                "Setores com escalas, saldo ou movimentações não podem ser removidos, para preservar o histórico.",
+                "Remover setor",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2);
+            if (confirmar != DialogResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                setorService.Excluir(usuarioAutenticado, setor.IdSetor);
+                if (setorEmEdicao != null && setorEmEdicao.IdSetor == setor.IdSetor)
+                {
+                    setorEmEdicao = null;
+                    txtNovoSetor.Clear();
+                    btnAdicionarSetor.Text = "Adicionar setor";
+                }
+
+                CarregarSetores();
+                CarregarEquipe();
+                labelAviso.Text = "Setor removido. As informações históricas do evento foram preservadas.";
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                labelAviso.Text = "Sua conta não pode remover setores deste evento.";
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Erro);
+            }
+            catch (InvalidOperationException ex)
+            {
+                FeedbackUsuario.ExibirErro(
+                    this,
+                    ex,
+                    "Não foi possível remover o setor. As informações vinculadas foram preservadas.",
+                    labelAviso);
+            }
+            catch (Exception ex)
+            {
+                FeedbackUsuario.ExibirErro(
+                    this,
+                    ex,
+                    "Não foi possível remover o setor. Tente novamente.",
+                    labelAviso);
+            }
+        }
+
         private void ConfigurarProdutoDoSetor(object sender, DataGridViewCellEventArgs e)
         {
-            if (!podeAdministrarEvento || dgvSetores.SelectedRows.Count == 0 ||
+            if (!podeAdministrarEvento || !eventoPermiteAlteracoes || dgvSetores.SelectedRows.Count == 0 ||
                 (e != null && e.RowIndex < 0))
             {
                 return;

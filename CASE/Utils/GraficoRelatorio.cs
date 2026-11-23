@@ -135,7 +135,7 @@ namespace CASE.Utils
                 case "entrada": return "Entrada";
                 case "venda": return "Venda";
                 case "perda": return "Perda";
-                default: return nome.Replace('_', ' ');
+                default: return TextoInterface.FormatarValorBanco(nome);
             }
         }
 

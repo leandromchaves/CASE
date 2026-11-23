@@ -12,6 +12,7 @@ namespace CASE.Services
         private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
         private readonly SolicitacaoRepository solicitacaoRepository = new SolicitacaoRepository();
         private readonly LocalEstoqueRepository localRepository = new LocalEstoqueRepository();
+        private readonly EventoRepository eventoRepository = new EventoRepository();
         private readonly SolicitacaoItemRepository solicitacaoItemRepository = new SolicitacaoItemRepository();
         private readonly EscalaRepository escalaRepository = new EscalaRepository();
         private readonly JornadaSetorRepository jornadaRepository = new JornadaSetorRepository();
@@ -192,6 +193,8 @@ namespace CASE.Services
                     "A transferência deve ocorrer entre locais compatíveis do mesmo evento. Somente o Administrador pode transferir diretamente do estoque central para o estoque geral.");
             }
 
+            ExigirEventosNaoCancelados(localOrigem, localDestino);
+
             if (transferencia.IdSolicitacaoEstoqueCentral.HasValue)
             {
                 throw new UnauthorizedAccessException(
@@ -251,6 +254,14 @@ namespace CASE.Services
 
                 ValidarQuantidade(item.Quantidade);
 
+                Produto produto = new ProdutoRepository().BuscarPorId(item.IdProduto);
+                if (produto == null || !produto.Ativo)
+                {
+                    throw new ArgumentException(
+                        "Um dos produtos não está disponível para novas transferências.",
+                        nameof(itens));
+                }
+
                 if (!produtosInformados.Add(item.IdProduto))
                 {
                     throw new ArgumentException(
@@ -297,7 +308,33 @@ namespace CASE.Services
                 throw new InvalidOperationException("A transferência não foi encontrada.");
             }
             ControleCorrecaoOperacao.ValidarVersao(atual.Versao, transferencia.Versao, justificativa);
+            ExigirEventosNaoCancelados(
+                localRepository.BuscarPorId(atual.IdLocalOrigem),
+                localRepository.BuscarPorId(atual.IdLocalDestino));
             transferenciaRepository.AtualizarComItens(transferencia, itens, usuario.IdUsuario, justificativa);
+        }
+
+        private void ExigirEventosNaoCancelados(LocalEstoque origem, LocalEstoque destino)
+        {
+            if (origem != null && origem.IdEvento.HasValue)
+            {
+                Evento eventoOrigem = eventoRepository.BuscarPorId(origem.IdEvento.Value);
+                if (eventoOrigem == null)
+                {
+                    throw new InvalidOperationException("O evento do estoque de origem não foi encontrado.");
+                }
+                SituacoesEvento.ExigirEventoNaoCancelado(eventoOrigem.Situacao);
+            }
+
+            if (destino != null && destino.IdEvento.HasValue)
+            {
+                Evento eventoDestino = eventoRepository.BuscarPorId(destino.IdEvento.Value);
+                if (eventoDestino == null)
+                {
+                    throw new InvalidOperationException("O evento do estoque de destino não foi encontrado.");
+                }
+                SituacoesEvento.ExigirEventoNaoCancelado(eventoDestino.Situacao);
+            }
         }
 
         public List<TransferenciaEstoque> ListarPorLocalOrigem(Usuario usuario, int idLocalEstoque)

@@ -17,6 +17,14 @@ namespace CASE.Services
                 throw new ArgumentNullException(nameof(apuracao));
             }
             List<Apuracao> anteriores = ListarPorJornada(usuario, apuracao.IdJornada);
+            JornadaSetor jornada = new JornadaSetorRepository().BuscarPorId(apuracao.IdJornada);
+            Setor setor = jornada == null ? null : new SetorRepository().BuscarPorId(jornada.IdSetor);
+            Evento evento = setor == null ? null : new EventoRepository().BuscarPorId(setor.IdEvento);
+            if (evento == null)
+            {
+                throw new InvalidOperationException("O evento da conferência não foi encontrado.");
+            }
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
             if (!ultimaConferenciaEsperada.HasValue)
             {
                 ultimaConferenciaEsperada = 0;

@@ -130,8 +130,11 @@ namespace CASE.Utils
                 : verde ? Color.FromArgb(43, 133, 104) : pendente ? Color.FromArgb(163, 120, 39)
                 : roxa ? Color.FromArgb(113, 73, 181)
                 : azul ? Azul : Color.FromArgb(194, 78, 88);
-            int largura = Math.Min(e.CellBounds.Width - 12, TextRenderer.MeasureText(valor, grade.Font).Width + 16);
-            var area = new Rectangle(e.CellBounds.Left + 6, e.CellBounds.Top + 10, largura, e.CellBounds.Height - 20);
+            int larguraMaxima = Math.Max(1, e.CellBounds.Width - 12);
+            int largura = Math.Min(larguraMaxima, TextRenderer.MeasureText(valor, grade.Font).Width + 16);
+            int altura = Math.Max(1, Math.Min(28, e.CellBounds.Height - 6));
+            int topo = e.CellBounds.Top + (e.CellBounds.Height - altura) / 2;
+            var area = new Rectangle(e.CellBounds.Left + 6, topo, largura, altura);
             e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
             using (var caminho = VisualUtils.CriarRetanguloArredondado(area, 5))
             using (var pincel = new SolidBrush(fundo))

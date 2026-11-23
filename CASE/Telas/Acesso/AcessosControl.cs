@@ -56,9 +56,9 @@ namespace CASE
 
             cmbSituacao.Items.Clear();
             cmbSituacao.Items.Add("Todas");
-            cmbSituacao.Items.Add(SituacoesUsuario.Pendente);
-            cmbSituacao.Items.Add(SituacoesUsuario.Aprovado);
-            cmbSituacao.Items.Add(SituacoesUsuario.Rejeitado);
+            cmbSituacao.Items.Add(TextoInterface.FormatarValorBanco(SituacoesUsuario.Pendente));
+            cmbSituacao.Items.Add(TextoInterface.FormatarValorBanco(SituacoesUsuario.Aprovado));
+            cmbSituacao.Items.Add(TextoInterface.FormatarValorBanco(SituacoesUsuario.Rejeitado));
             cmbSituacao.SelectedIndex = 0;
 
             cmbPerfil.Items.Clear();
@@ -142,7 +142,8 @@ namespace CASE
                 dgvContas.Rows.Clear();
                 foreach (object[] linha in linhas)
                 {
-                    int indice = dgvContas.Rows.Add(linha[1], linha[2], linha[3], linha[4], linha[5]);
+                    int indice = dgvContas.Rows.Add(linha[1], linha[2],
+                        TextoInterface.FormatarValorBanco(linha[3]), linha[4], linha[5]);
                     dgvContas.Rows[indice].Tag = linha[0];
                 }
 
@@ -236,7 +237,7 @@ namespace CASE
             {
                 lblSelecionado.Text = Convert.ToString(
                     dgvContas.SelectedRows[0].Cells[0].Value) + " · " +
-                    selecionado.SituacaoConta;
+                    TextoInterface.FormatarValorBanco(selecionado.SituacaoConta);
                 txtMotivo.Text = string.Empty;
                 SelecionarPerfil(selecionado.IdPerfilSistema);
 

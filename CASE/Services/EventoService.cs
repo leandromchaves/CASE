@@ -50,6 +50,20 @@ namespace CASE.Services
                 "Seu perfil não pode consultar a administração de eventos.");
         }
 
+        public List<Evento> ListarEmAberto(Usuario usuario)
+        {
+            List<Evento> eventosAbertos = new List<Evento>();
+            foreach (Evento evento in Listar(usuario))
+            {
+                if (string.Equals(evento.Situacao, SituacoesEvento.Planejado, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(evento.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase))
+                {
+                    eventosAbertos.Add(evento);
+                }
+            }
+            return eventosAbertos;
+        }
+
         public int ObterIdInstituicaoUnica(Usuario usuario)
         {
             autorizacaoService.ExigirAdministradorOuGerente(usuario);
@@ -181,6 +195,8 @@ namespace CASE.Services
             {
                 throw new InvalidOperationException("O evento não foi encontrado.");
             }
+
+            SituacoesEvento.ExigirEventoNaoCancelado(eventoExistente.Situacao);
 
             if (evento.Versao != eventoExistente.Versao)
             {
@@ -343,6 +359,29 @@ namespace CASE.Services
                 evento.Situacao);
         }
 
+        public void Excluir(Usuario usuario, int idEvento)
+        {
+            if (idEvento <= 0)
+                throw new ArgumentException("O identificador do evento deve ser válido.", nameof(idEvento));
+
+            string nomePerfil;
+            Usuario usuarioAtual = autorizacaoService.ValidarUsuarioEObterPerfil(usuario, out nomePerfil);
+            Evento evento = eventoRepository.BuscarPorId(idEvento);
+            if (evento == null)
+                throw new InvalidOperationException("O evento não foi encontrado.");
+
+            bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
+            bool gerenteResponsavel = string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) &&
+                evento.IdResponsavel == usuarioAtual.IdPessoa;
+            if (!administrador && !gerenteResponsavel)
+                throw new UnauthorizedAccessException("Somente o administrador ou o gerente responsável pode excluir este evento.");
+
+            if (!string.Equals(evento.Situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("Somente eventos cancelados podem ser excluídos.");
+
+            eventoRepository.ExcluirCancelado(evento.IdEvento, evento.Versao);
+        }
+
         private void VerificarSaldosZerados(int idEvento)
         {
             List<LocalEstoque> locais = localEstoqueRepository.ListarPorEvento(idEvento);
@@ -356,7 +395,7 @@ namespace CASE.Services
                     if (estoque.QuantidadeAtual != 0)
                     {
                         throw new InvalidOperationException(
-                            "O evento possui saldo no estoque geral ou nas barracas e não pode ser finalizado.");
+                            "O evento ainda possui produtos no estoque geral ou nas barracas. Transfira ou regularize esses saldos antes de encerrar ou cancelar o evento.");
                     }
                 }
             }

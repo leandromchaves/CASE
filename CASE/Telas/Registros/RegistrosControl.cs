@@ -21,6 +21,7 @@ namespace CASE.Quermesse
         private bool ajustandoLayout;
         private bool carregando = true;
         private bool registrando;
+        private bool eventoEmAndamentoAtual;
         private string chaveOperacao = Guid.NewGuid().ToString();
         private readonly Label resumoRegistros = new Label();
 
@@ -35,7 +36,7 @@ namespace CASE.Quermesse
             eventoSelecionado = evento;
             FrontendTheme.Aplicar(this);
             lblTitulo.Text = "Vendas e perdas";
-            lblSubtitulo.Text = "Consulte os lançamentos da escala selecionada. Revisar lançamento permite corrigir erros com justificativa.";
+            lblSubtitulo.Text = "Selecione uma escala. Vendas e perdas ficam disponíveis quando o evento estiver em andamento.";
             Button abrirCorrecao = new Button();
             abrirCorrecao.Name = "btnCorrigirRegistro";
             abrirCorrecao.Text = "Revisar lançamento";
@@ -215,6 +216,7 @@ namespace CASE.Quermesse
                 if (escala == null)
                 {
                     panelNovoRegistro.Visible = false;
+                    eventoEmAndamentoAtual = false;
                     btnRegistrar.Enabled = false;
                     AtualizarRegistros();
                     AjustarCamposAoEspaco();
@@ -232,20 +234,18 @@ namespace CASE.Quermesse
                 }
                 string perfil;
                 new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
-                bool administrador = string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase);
-                bool podeRegistrar = administrador || string.Equals(perfil, "Membro", StringComparison.OrdinalIgnoreCase);
+                bool podeRegistrar = string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(perfil, "Membro", StringComparison.OrdinalIgnoreCase);
                 panelNovoRegistro.Visible = podeRegistrar;
-                btnRegistrar.Enabled = podeRegistrar && produtos.Rows.Count > 0;
-                lblContextoRegistro.Text = "Novo lançamento na escala selecionada";
+                AtualizarEstadoLancamento(escala, podeRegistrar, produtos.Rows.Count);
                 lblTitulo.Text = podeRegistrar ? "Registrar vendas e perdas" : "Consulta de vendas e perdas";
                 lblSubtitulo.Text = podeRegistrar
-                    ? "Escolha sua escala, registre a venda ou perda e acompanhe seus lançamentos abaixo."
+                    ? "Selecione uma escala. Vendas e perdas ficam disponíveis quando o evento estiver em andamento."
                     : "Consulte os lançamentos da escala selecionada. Revisar lançamento permite corrigir erros com justificativa.";
-                labelAviso.Text = administrador
-                    ? "Como administrador, selecione uma escala para registrar a venda ou perda. O lançamento ficará associado à sua conta."
-                    : perfil == "Membro"
-                    ? "Cada lançamento reduz o estoque do setor. Perdas exigem justificativa; vendas informam preço e pagamento."
-                    : "Os membros registram as vendas e perdas. Aqui você consulta ou corrige lançamentos; o Financeiro confere os recebimentos.";
+                if (!podeRegistrar)
+                {
+                    labelAviso.Text = "Os membros registram as vendas e perdas. Aqui você consulta ou corrige lançamentos; o Financeiro confere os recebimentos.";
+                }
                 AtualizarRegistros();
                 AjustarCamposAoEspaco();
             }
@@ -253,6 +253,72 @@ namespace CASE.Quermesse
             {
                 btnRegistrar.Enabled = false;
                 ExibirErro(erro);
+            }
+        }
+
+        private void AtualizarEstadoLancamento(DataRowView escala, bool podeRegistrar, int quantidadeProdutos)
+        {
+            string situacaoEvento = escala != null && escala.DataView.Table.Columns.Contains("situacao_evento")
+                ? Convert.ToString(escala["situacao_evento"])
+                : string.Empty;
+            eventoEmAndamentoAtual = string.Equals(situacaoEvento, SituacoesEvento.EmAndamento,
+                StringComparison.OrdinalIgnoreCase);
+
+            bool lancamentoPermitido = podeRegistrar && eventoEmAndamentoAtual && quantidadeProdutos > 0;
+            btnRegistrar.Enabled = lancamentoPermitido && !registrando;
+            cmbTipoRegistro.Enabled = lancamentoPermitido;
+            cmbProdutoRegistro.Enabled = lancamentoPermitido;
+            numQuantidadeRegistro.Enabled = lancamentoPermitido;
+            precoPraticado.Enabled = lancamentoPermitido && cmbTipoRegistro.Text == "venda";
+            formaPagamento.Enabled = lancamentoPermitido && cmbTipoRegistro.Text == "venda";
+            txtObservacaoRegistro.Enabled = lancamentoPermitido;
+            Panel painelObservacao = txtObservacaoRegistro.Parent as Panel;
+            if (painelObservacao != null && painelObservacao.Parent == panelNovoRegistro)
+                painelObservacao.Enabled = lancamentoPermitido;
+
+            if (!podeRegistrar)
+                return;
+
+            lblContextoRegistro.BorderStyle = BorderStyle.FixedSingle;
+            lblContextoRegistro.TextAlign = System.Drawing.ContentAlignment.MiddleLeft;
+            if (eventoEmAndamentoAtual)
+            {
+                lblContextoRegistro.Text = quantidadeProdutos > 0
+                    ? "Evento em andamento — vendas e perdas liberadas para esta escala."
+                    : "Evento em andamento — nenhum produto está vinculado a esta escala.";
+                lblContextoRegistro.BackColor = System.Drawing.Color.FromArgb(232, 247, 239);
+                lblContextoRegistro.ForeColor = System.Drawing.Color.FromArgb(24, 116, 75);
+                labelAviso.Text = quantidadeProdutos > 0
+                    ? "O lançamento atualiza o estoque do setor. Perdas precisam de justificativa; vendas informam preço e forma de pagamento."
+                    : "Vincule produtos ao setor desta escala para habilitar os lançamentos.";
+            }
+            else if (string.Equals(situacaoEvento, SituacoesEvento.Planejado, StringComparison.OrdinalIgnoreCase))
+            {
+                lblContextoRegistro.Text = "Evento ainda não iniciado — inicie em Eventos > Situação do evento para liberar vendas e perdas.";
+                lblContextoRegistro.BackColor = System.Drawing.Color.FromArgb(255, 246, 222);
+                lblContextoRegistro.ForeColor = System.Drawing.Color.FromArgb(143, 91, 0);
+                labelAviso.Text = "Para registrar vendas ou perdas, primeiro inicie este evento na tela Eventos, em Situação do evento > Iniciar evento.";
+            }
+            else if (string.Equals(situacaoEvento, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase))
+            {
+                lblContextoRegistro.Text = "Evento cancelado — novos lançamentos estão bloqueados; os registros existentes continuam disponíveis.";
+                lblContextoRegistro.BackColor = System.Drawing.Color.FromArgb(253, 234, 234);
+                lblContextoRegistro.ForeColor = System.Drawing.Color.FromArgb(160, 45, 45);
+                labelAviso.Text = "Este evento foi cancelado. Consulte os lançamentos existentes ou escolha uma escala de outro evento.";
+            }
+            else if (string.Equals(situacaoEvento, SituacoesEvento.Finalizado, StringComparison.OrdinalIgnoreCase))
+            {
+                lblContextoRegistro.Text = "Evento finalizado — novos lançamentos estão bloqueados; os registros existentes continuam disponíveis.";
+                lblContextoRegistro.BackColor = System.Drawing.Color.FromArgb(237, 240, 244);
+                lblContextoRegistro.ForeColor = System.Drawing.Color.FromArgb(82, 98, 117);
+                labelAviso.Text = "Este evento já foi finalizado. Escolha uma escala de um evento em andamento para registrar vendas ou perdas.";
+            }
+            else
+            {
+                lblContextoRegistro.Text = "Não foi possível confirmar a situação do evento. Os lançamentos estão bloqueados.";
+                lblContextoRegistro.BackColor = System.Drawing.Color.FromArgb(253, 234, 234);
+                lblContextoRegistro.ForeColor = System.Drawing.Color.FromArgb(160, 45, 45);
+                labelAviso.Text = "Atualize a tela e confira a situação do evento antes de registrar.";
             }
         }
 
@@ -269,8 +335,10 @@ namespace CASE.Quermesse
         private void TipoAlterado(object sender, EventArgs e)
         {
             bool venda = cmbTipoRegistro.Text == "venda";
-            precoPraticado.Enabled = venda;
-            formaPagamento.Enabled = venda;
+            bool lancamentoPermitido = panelNovoRegistro.Visible && eventoEmAndamentoAtual &&
+                cmbProdutoRegistro.Items.Count > 0;
+            precoPraticado.Enabled = venda && lancamentoPermitido;
+            formaPagamento.Enabled = venda && lancamentoPermitido;
             btnRegistrar.Text = venda ? "Registrar venda" : "Registrar perda";
             lblObservacao.Text = venda ? "Observação" : "Motivo da perda *";
         }
@@ -306,7 +374,7 @@ namespace CASE.Quermesse
                     linhas.Add(new object[] { id, linha["data_hora"], linha["responsavel"], linha["setor"],
                         linha["turno"], venda ? "Venda" : "Perda", linha["produto"], linha["quantidade"],
                         linha["observacao"], venda ? linha["preco_unitario_praticado"] : DBNull.Value,
-                        !venda ? "—" : pagamento == "cartao" ? "Cartão" : pagamento == "pix" ? "Pix" : pagamento == "dinheiro" ? "Dinheiro" : "Não informado",
+                        !venda ? "—" : CASE.Utils.TextoInterface.FormatarColunaBanco("forma_pagamento", pagamento),
                         venda ? linha["total"] : DBNull.Value });
                 }
                 dgvRegistrosEquipe.Rows.Clear();
@@ -396,7 +464,8 @@ namespace CASE.Quermesse
                         if (!IsDisposed)
                         {
                             registrando = false;
-                            btnRegistrar.Enabled = true;
+                            btnRegistrar.Enabled = panelNovoRegistro.Visible && eventoEmAndamentoAtual &&
+                                cmbProdutoRegistro.Items.Count > 0;
                         }
                     }));
                 }

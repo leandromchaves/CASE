@@ -64,6 +64,17 @@ namespace CASE.Repositories
 
         }
 
+        public bool AlterarAtivo(int idProduto, bool ativo)
+        {
+            return AcessoDados.Executar(
+                "UPDATE produto SET ativo=@ativo WHERE id_produto=@id",
+                comando =>
+                {
+                    AcessoDados.AdicionarParametro(comando, "@id", idProduto);
+                    AcessoDados.AdicionarParametro(comando, "@ativo", ativo);
+                }) > 0;
+        }
+
         private static void Vincular(MySqlCommand comando, Produto item)
         {
             AcessoDados.AdicionarParametro(comando, "@categoria", item.IdCategoria);

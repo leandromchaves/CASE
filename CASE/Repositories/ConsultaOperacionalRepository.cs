@@ -14,7 +14,7 @@ namespace CASE.Repositories
 
         public DataTable Escalas(string perfil, int pessoa, int evento)
         {
-            string sql = "SELECT e.id_escala,eq.id_pessoa,eq.ativo,e.situacao,j.id_jornada,j.data AS data_jornada,s.id_setor, " +
+            string sql = "SELECT e.id_escala,eq.id_pessoa,eq.ativo,e.situacao,j.id_jornada,j.data AS data_jornada,s.id_setor,ev.situacao AS situacao_evento, " +
                 "CONCAT(ev.nome,' / ',s.nome,' / ',DATE_FORMAT(j.data,'%d/%m/%Y')," +
                 "' / ',p.nome,' / ',e.entrada_prevista,' - ',e.saida_prevista) AS descricao," +
                 "CONCAT(s.nome,' / ',DATE_FORMAT(j.data,'%d/%m/%Y'),' / ',t.nome) AS descricao_jornada " +
@@ -70,20 +70,35 @@ namespace CASE.Repositories
                 "(@perfil='Administrador' OR (@perfil='Gerente' AND (ev.id_responsavel=@pessoa OR " +
                 "(l.eh_central=1 AND EXISTS (SELECT 1 FROM evento ce WHERE ce.id_responsavel=@pessoa " +
                 "AND ce.id_instituicao=l.id_instituicao)))) " +
-                "OR (@perfil='Membro' AND EXISTS (SELECT 1 FROM estoquesetor xs " +
+                "OR (@perfil='Membro' AND (" +
+                "(l.ativo=1 AND l.eh_geral_evento=1 AND EXISTS (SELECT 1 FROM equipeevento eqg " +
+                "WHERE eqg.id_evento=ev.id_evento AND eqg.id_pessoa=@pessoa AND eqg.ativo=1)) " +
+                "OR (l.ativo=1 AND EXISTS (SELECT 1 FROM estoquesetor xs " +
                 "JOIN jornadasetor j ON j.id_setor=xs.id_setor " +
                 "JOIN escala e ON e.id_jornada=j.id_jornada " +
                 "JOIN equipeevento eq ON eq.id_equipe=e.id_equipe " +
                 "WHERE xs.id_local_estoque=l.id_local_estoque AND eq.id_evento=xs.id_evento " +
-                "AND eq.ativo=1 AND eq.id_pessoa=@pessoa AND LOWER(e.situacao)<>'cancelada'))) " +
+                "AND eq.ativo=1 AND eq.id_pessoa=@pessoa AND LOWER(e.situacao)<>'cancelada')))) " +
+                ") " +
                 "ORDER BY l.nome,p.nome";
             return Consultar(sql, perfil, pessoa, 0, DateTime.Today, DateTime.Today);
         }
 
         public DataTable Movimentacoes(string perfil, int pessoa, DateTime inicio, DateTime fim)
         {
+            return Movimentacoes(perfil, pessoa, inicio, fim, false);
+        }
+
+        internal DataTable Movimentacoes(
+            string perfil,
+            int pessoa,
+            DateTime inicio,
+            DateTime fim,
+            bool incluirIdEvento)
+        {
             // Transferências aparecem como uma operação com origem e destino, sem duplicar o total institucional.
-            string sql = "SELECT m.data_hora,m.tipo,m.produto,m.quantidade,m.origem,m.destino,m.responsavel,m.id_origem,m.id_destino,m.id_operacao,m.entidade " +
+            string colunaEvento = incluirIdEvento ? ",m.evento AS id_evento" : string.Empty;
+            string sql = "SELECT m.data_hora,m.tipo,m.produto,m.quantidade,m.origem,m.destino,m.responsavel,m.id_origem,m.id_destino,m.id_operacao,m.entidade" + colunaEvento + " " +
                 "FROM (SELECT en.data_hora,'entrada' AS tipo,p.nome AS produto,i.quantidade," +
                 "'' AS origem,l.nome AS destino,u.login AS responsavel,NULL AS evento,0 AS id_origem,l.id_local_estoque AS id_destino," +
                 "en.id_entrada AS id_operacao,'entradamercadoria' AS entidade " +

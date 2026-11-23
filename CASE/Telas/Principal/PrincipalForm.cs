@@ -24,6 +24,8 @@ namespace CASE
         private readonly ComboBox cmbEventoContexto = new ComboBox();
         private readonly Label lblEventoContexto = new Label();
         private bool sincronizandoContextoEvento;
+        private bool consultarTodosEventos;
+        private bool usuarioAdministraEventos;
         private readonly ToolTip dicaNotificacoes = new ToolTip();
         private readonly ToolTip dicaNomeUsuario = new ToolTip();
         private readonly Label indicadorNotificacoes = new Label();
@@ -167,13 +169,20 @@ namespace CASE
 
         private void AtualizarEventoSelecionado(Evento evento)
         {
-            if (evento == null)
-                return;
-            int? idAnterior = eventoSelecionado == null ? (int?)null : eventoSelecionado.IdEvento;
+            Evento anterior = eventoSelecionado;
+            bool contextoAlterado = anterior == null || evento == null ||
+                anterior.IdEvento != evento.IdEvento ||
+                !string.Equals(anterior.Nome, evento.Nome, StringComparison.Ordinal) ||
+                !string.Equals(anterior.Local, evento.Local, StringComparison.Ordinal) ||
+                !string.Equals(anterior.Situacao, evento.Situacao, StringComparison.OrdinalIgnoreCase) ||
+                anterior.DataInicio != evento.DataInicio || anterior.DataFim != evento.DataFim ||
+                anterior.IdResponsavel != evento.IdResponsavel;
             eventoSelecionado = evento;
-            int? idNovo = evento == null ? (int?)null : evento.IdEvento;
-            if (idAnterior == idNovo)
+            if (!contextoAlterado || !usuarioAdministraEventos)
                 return;
+
+            // Atualiza o seletor quando o evento muda de situação, deixa de existir
+            // ou passa a ter outra responsabilidade enquanto a lista está aberta.
             SincronizarSeletorEventoContexto();
         }
 
@@ -208,27 +217,32 @@ namespace CASE
             sincronizandoContextoEvento = true;
             try
             {
-                List<Evento> eventos = new CASE.Services.EventoService().Listar(usuarioAutenticado);
+                List<Evento> eventos = new CASE.Services.EventoService().ListarEmAberto(usuarioAutenticado);
                 cmbEventoContexto.BeginUpdate();
                 cmbEventoContexto.Items.Clear();
+                cmbEventoContexto.Items.Add("Todos os eventos em aberto");
                 foreach (Evento evento in eventos)
                     cmbEventoContexto.Items.Add(evento);
 
-                int indice = -1;
+                int indice = consultarTodosEventos ? 0 : -1;
                 for (int i = 0; i < cmbEventoContexto.Items.Count; i++)
                 {
                     Evento item = cmbEventoContexto.Items[i] as Evento;
-                    if (item != null && eventoSelecionado != null && item.IdEvento == eventoSelecionado.IdEvento)
+                    if (!consultarTodosEventos && item != null && eventoSelecionado != null && item.IdEvento == eventoSelecionado.IdEvento)
                     {
                         indice = i;
                         break;
                     }
                 }
                 if (indice < 0 && cmbEventoContexto.Items.Count > 0)
-                    indice = 0;
+                {
+                    indice = cmbEventoContexto.Items.Count > 1 ? 1 : 0;
+                    if (cmbEventoContexto.Items.Count == 1)
+                        consultarTodosEventos = true;
+                }
                 cmbEventoContexto.SelectedIndex = indice;
                 eventoSelecionado = indice >= 0 ? cmbEventoContexto.Items[indice] as Evento : null;
-                cmbEventoContexto.Enabled = cmbEventoContexto.Items.Count > 0;
+                cmbEventoContexto.Enabled = cmbEventoContexto.Items.Count > 1;
             }
             catch (Exception erro)
             {
@@ -244,7 +258,7 @@ namespace CASE
 
         private bool TelaDependeDeEvento(Button menu)
         {
-            return menu == buttonEquipeSetores || menu == buttonFinanceiro || menu == buttonEscala ||
+            return menu == buttonEstoque || menu == buttonEquipeSetores || menu == buttonFinanceiro || menu == buttonEscala ||
                 menu == buttonSolicitacoes || menu == buttonMovimentacoes;
         }
 
@@ -252,10 +266,18 @@ namespace CASE
         {
             if (sincronizandoContextoEvento)
                 return;
-            Evento selecionado = cmbEventoContexto.SelectedItem as Evento;
-            if (selecionado == null || (eventoSelecionado != null && selecionado.IdEvento == eventoSelecionado.IdEvento))
+            if (cmbEventoContexto.SelectedIndex == 0)
+            {
+                consultarTodosEventos = true;
+                eventoSelecionado = null;
+                if (TelaDependeDeEvento(menuAtual))
+                    ReabrirTelaDependenteDeEvento(menuAtual);
                 return;
-
+            }
+            Evento selecionado = cmbEventoContexto.SelectedItem as Evento;
+            if (selecionado == null || (!consultarTodosEventos && eventoSelecionado != null && selecionado.IdEvento == eventoSelecionado.IdEvento))
+                return;
+            consultarTodosEventos = false;
             eventoSelecionado = selecionado;
             if (TelaDependeDeEvento(menuAtual))
                 ReabrirTelaDependenteDeEvento(menuAtual);
@@ -263,7 +285,9 @@ namespace CASE
 
         private void ReabrirTelaDependenteDeEvento(Button menu)
         {
-            if (menu == buttonEquipeSetores)
+            if (menu == buttonEstoque)
+                AbrirTela(menu, CriarOperacoesEstoque);
+            else if (menu == buttonEquipeSetores)
                 AbrirTela(menu, () => new EquipeSetoresControl(usuarioAutenticado, eventoSelecionado));
             else if (menu == buttonFinanceiro)
                 AbrirTela(menu, () => new FinanceiroControl(usuarioAutenticado, eventoSelecionado));
@@ -284,11 +308,14 @@ namespace CASE
                     usuarioAutenticado,
                     out perfil);
 
-                if (string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+                usuarioAdministraEventos =
+                    string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase);
+
+                if (usuarioAdministraEventos)
                 {
-                    eventoSelecionado = new CASE.Services.EventoService()
-                        .Listar(usuarioAutenticado)
+                eventoSelecionado = new CASE.Services.EventoService()
+                        .ListarEmAberto(usuarioAutenticado)
                         .FirstOrDefault();
                 }
             }
@@ -352,7 +379,10 @@ namespace CASE
 
         private UserControl CriarOperacoesEstoque()
         {
-            var tela = new OperacoesEstoqueControl(usuarioAutenticado);
+            var tela = new OperacoesEstoqueControl(
+                usuarioAutenticado,
+                eventoSelecionado,
+                !consultarTodosEventos && eventoSelecionado != null);
             tela.FornecedoresSolicitados += (s, e) => AbrirTela(buttonFornecedores, () => new FornecedoresControl(usuarioAutenticado));
             tela.SolicitacoesSolicitadas += (s, e) => AbrirTela(buttonSolicitacoes, () =>
             {
@@ -549,7 +579,8 @@ namespace CASE
                     usuarioAutenticado,
                     idSolicitacao);
                 System.Text.StringBuilder detalhes = new System.Text.StringBuilder();
-                detalhes.AppendLine("Pedido " + solicitacao.Tipo + " do evento " + solicitacao.IdEvento);
+                detalhes.AppendLine("Pedido " + CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Tipo) +
+                    " do evento " + solicitacao.IdEvento);
                 detalhes.AppendLine();
 
                 foreach (CASE.Models.SolicitacaoEstoqueCentralItem solicitacaoItem in itens)
@@ -1146,7 +1177,13 @@ namespace CASE
             {
                 // Mantém a tela atual se a abertura da próxima falhar.
                 bool dependeDeEvento = TelaDependeDeEvento(menu);
-                bool possuiEventosNoContexto = cmbEventoContexto.Items.Count > 0;
+                if (dependeDeEvento && usuarioAdministraEventos)
+                {
+                    // Reconsulta eventos ao abrir a tela para refletir novas responsabilidades
+                    // atribuídas enquanto esta sessão continua aberta.
+                    SincronizarSeletorEventoContexto();
+                }
+                bool possuiEventosNoContexto = cmbEventoContexto.Items.Count > 1;
                 cmbEventoContexto.Visible = dependeDeEvento && possuiEventosNoContexto;
                 lblEventoContexto.Visible = dependeDeEvento && possuiEventosNoContexto;
 
@@ -1155,7 +1192,26 @@ namespace CASE
                     InicializarEventoSelecionado();
                 }
 
-                tela = criar();
+                if (dependeDeEvento && consultarTodosEventos && menu != buttonEstoque)
+                {
+                    var consulta = new TodosEventosControl(usuarioAutenticado, menu.Text, evento =>
+                    {
+                        if (menu == buttonEquipeSetores) return new EquipeSetoresControl(usuarioAutenticado, evento);
+                        if (menu == buttonEscala) return new EscalaControl(usuarioAutenticado, evento);
+                        if (menu == buttonFinanceiro) return new FinanceiroControl(usuarioAutenticado, evento);
+                        if (menu == buttonSolicitacoes) return new SolicitacoesControl(usuarioAutenticado, evento);
+                        return new RegistrosControl(usuarioAutenticado, evento);
+                    });
+                    consulta.EventoSolicitado += evento =>
+                    {
+                        consultarTodosEventos = false;
+                        eventoSelecionado = evento;
+                        SincronizarSeletorEventoContexto();
+                        ReabrirTelaDependenteDeEvento(menu);
+                    };
+                    tela = consulta;
+                }
+                else tela = criar();
                 tela.Dock = DockStyle.None;
                 panelConteudo.SuspendLayout();
                 while (panelConteudo.Controls.Count > 0)

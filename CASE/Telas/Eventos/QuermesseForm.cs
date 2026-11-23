@@ -215,7 +215,7 @@ namespace CASE.Quermesse
             if (eventoEmEdicao == null)
             {
                 Text = lblTitulo.Text = "Novo evento";
-                cmbSituacaoQuermesse.Items.Add(SituacoesEvento.Planejado);
+                cmbSituacaoQuermesse.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesEvento.Planejado));
                 cmbSituacaoQuermesse.SelectedIndex = 0;
                 txtResponsavelQuermesse.Text = usuarioAutenticado.Login;
                 dtpInicioQuermesse.Value = DateTime.Today;
@@ -230,7 +230,7 @@ namespace CASE.Quermesse
             txtObservacaoQuermesse.Text = eventoEmEdicao.Observacao;
             dtpInicioQuermesse.Value = eventoEmEdicao.DataInicio;
             dtpFimQuermesse.Value = eventoEmEdicao.DataFim;
-            cmbSituacaoQuermesse.Items.Add(eventoEmEdicao.Situacao);
+            cmbSituacaoQuermesse.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(eventoEmEdicao.Situacao));
             cmbSituacaoQuermesse.SelectedIndex = 0;
             SelecionarTipoEvento(eventoEmEdicao.IdTipoEvento);
         }

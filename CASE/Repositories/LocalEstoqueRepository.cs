@@ -65,7 +65,8 @@ transacao))
         public List<LocalEstoque> Listar()
         {
             return AcessoDados.ConsultarLista(
-                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM vw_localestoque ORDER BY id_local_estoque",
+                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+                "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento ORDER BY le.id_local_estoque",
                 ConverterLinha
             );
         }
@@ -73,7 +74,9 @@ transacao))
         public List<LocalEstoque> ListarCentrais(int idInstituicao)
         {
             return AcessoDados.ConsultarLista(
-                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM vw_localestoque WHERE id_instituicao=@instituicao AND eh_central=1 ORDER BY id_local_estoque",
+                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+                "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento " +
+                "WHERE le.id_instituicao=@instituicao AND le.eh_central=1 ORDER BY le.id_local_estoque",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@instituicao", idInstituicao)
             );
@@ -82,8 +85,9 @@ transacao))
         public List<LocalEstoque> ListarPorEvento(int idEvento)
         {
             return AcessoDados.ConsultarLista(
-                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento " +
-                "FROM vw_localestoque WHERE id_evento=@evento ORDER BY id_local_estoque",
+                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+                "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento " +
+                "WHERE le.id_evento=@evento ORDER BY le.id_local_estoque",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@evento", idEvento)
             );
@@ -92,9 +96,10 @@ transacao))
         public List<LocalEstoque> ListarGeraisPorEvento(int idEvento)
         {
             return AcessoDados.ConsultarLista(
-                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento " +
-                "FROM vw_localestoque WHERE id_evento=@evento AND eh_geral_evento=1 " +
-                "ORDER BY id_local_estoque",
+                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+                "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento " +
+                "WHERE le.id_evento=@evento AND le.eh_geral_evento=1 " +
+                "ORDER BY le.id_local_estoque",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@evento", idEvento)
             );
@@ -103,7 +108,9 @@ transacao))
         public LocalEstoque BuscarPorId(int id)
         {
             return AcessoDados.ConsultarUnico(
-                "SELECT id_local_estoque,id_instituicao,id_evento,nome,ativo,eh_central,eh_geral_evento FROM vw_localestoque WHERE id_local_estoque=@id",
+                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+                "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento " +
+                "WHERE le.id_local_estoque=@id",
                 ConverterLinha,
                 comando => AcessoDados.AdicionarParametro(comando, "@id", id)
             );
@@ -146,6 +153,9 @@ transacao))
                 IdInstituicao = leitor.GetInt32("id_instituicao"),
                 IdEvento = AcessoDados.LerInteiroOpcional(leitor, "id_evento"),
                 Nome = leitor.GetString("nome"),
+                EventoNome = leitor.IsDBNull(leitor.GetOrdinal("nome_evento"))
+                    ? string.Empty
+                    : leitor.GetString("nome_evento"),
                 Ativo = leitor.GetBoolean("ativo"),
                 EhCentral = leitor.GetBoolean("eh_central"),
                 EhGeralEvento = leitor.GetBoolean("eh_geral_evento")

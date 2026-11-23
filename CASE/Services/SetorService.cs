@@ -41,24 +41,7 @@ namespace CASE.Services
                     "Somente o administrador ou o gerente responsável pode criar setores neste evento.");
             }
 
-            bool eventoPermiteSetores = string.Equals(
-                evento.Situacao,
-                SituacoesEvento.Planejado,
-                StringComparison.OrdinalIgnoreCase);
-
-            if (!eventoPermiteSetores)
-            {
-                eventoPermiteSetores = string.Equals(
-                    evento.Situacao,
-                    SituacoesEvento.EmAndamento,
-                    StringComparison.OrdinalIgnoreCase);
-            }
-
-            if (!eventoPermiteSetores)
-            {
-                throw new InvalidOperationException(
-                    "O evento não permite a criação de setores nesta situação.");
-            }
+            SituacoesEvento.ExigirEventoAbertoParaAlteracoes(evento.Situacao);
 
             setor.Nome = setor.Nome.Trim();
 
@@ -114,10 +97,7 @@ namespace CASE.Services
             {
                 throw new UnauthorizedAccessException("Somente o administrador ou o gerente responsável pode renomear o setor.");
             }
-            if (evento.Situacao != SituacoesEvento.Planejado && evento.Situacao != SituacoesEvento.EmAndamento)
-            {
-                throw new InvalidOperationException("O evento não permite alterações de setores nesta situação.");
-            }
+            SituacoesEvento.ExigirEventoAbertoParaAlteracoes(evento.Situacao);
             if (!string.Equals(setor.Nome, nomeAnterior, StringComparison.Ordinal))
             {
                 throw new InvalidOperationException("O setor foi alterado. Atualize a lista antes de editar.");
@@ -129,6 +109,44 @@ namespace CASE.Services
             }
             setor.Nome = nome;
             setorRepository.RenomearComLocal(setor, atual.IdUsuario, nomeAnterior);
+        }
+
+        public void Excluir(Usuario usuario, int idSetor)
+        {
+            if (idSetor <= 0)
+            {
+                throw new ArgumentException("Selecione um setor válido.", nameof(idSetor));
+            }
+
+            string perfil;
+            Usuario atual = autorizacaoService.ValidarUsuarioEObterPerfil(usuario, out perfil);
+            if (!string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException(
+                    "Somente o administrador ou o gerente responsável pode remover setores.");
+            }
+
+            Setor setor = BuscarPorId(usuario, idSetor);
+            if (setor == null)
+            {
+                throw new InvalidOperationException("O setor não foi encontrado.");
+            }
+
+            Evento evento = eventoRepository.BuscarPorId(setor.IdEvento);
+            bool administrador = string.Equals(
+                perfil,
+                "Administrador",
+                StringComparison.OrdinalIgnoreCase);
+            if (evento == null || (!administrador && evento.IdResponsavel != atual.IdPessoa))
+            {
+                throw new UnauthorizedAccessException(
+                    "Somente o administrador ou o gerente responsável pode remover setores deste evento.");
+            }
+
+            SituacoesEvento.ExigirEventoAbertoParaAlteracoes(evento.Situacao);
+
+            setorRepository.ExcluirSeVazio(setor, atual.IdUsuario);
         }
 
         public Setor BuscarPorId(Usuario usuario, int idSetor)

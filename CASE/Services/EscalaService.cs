@@ -184,6 +184,39 @@ namespace CASE.Services
                 escala.IdEscala);
         }
 
+        public void Remover(Usuario usuario, int idEscala)
+        {
+            if (idEscala <= 0)
+            {
+                throw new ArgumentException("Selecione uma escala válida.", nameof(idEscala));
+            }
+
+            Escala escala = escalaRepository.BuscarPorId(idEscala);
+            if (escala == null)
+            {
+                throw new InvalidOperationException("A escala não foi encontrada. Atualize a lista e tente novamente.");
+            }
+
+            ValidarGerenteResponsavel(
+                usuario,
+                escala.IdEquipe,
+                escala.IdJornada,
+                out _,
+                out _);
+
+            bool possuiHistorico;
+            if (!escalaRepository.RemoverSeSemHistorico(idEscala, out possuiHistorico))
+            {
+                if (possuiHistorico)
+                {
+                    throw new InvalidOperationException(
+                        "Esta escala possui vendas, perdas ou solicitações vinculadas e não pode ser removida. O histórico foi preservado.");
+                }
+
+                throw new InvalidOperationException("A escala já foi removida. Atualize a lista e tente novamente.");
+            }
+        }
+
         private Usuario ValidarGerenteResponsavel(
             Usuario usuario,
             int idEquipe,
@@ -228,13 +261,7 @@ namespace CASE.Services
                 throw new ArgumentException("A jornada da escala está fora do período do evento.");
             }
 
-            if (!string.Equals(evento.Situacao, SituacoesEvento.Planejado,
-                    StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(evento.Situacao, SituacoesEvento.EmAndamento,
-                    StringComparison.OrdinalIgnoreCase))
-            {
-                throw new InvalidOperationException("O evento não permite alterações de escala nesta situação.");
-            }
+            SituacoesEvento.ExigirEventoAbertoParaAlteracoes(evento.Situacao);
 
             return usuarioAtual;
         }

@@ -14,6 +14,8 @@ namespace CASE.Services
         private readonly JornadaSetorRepository jornadaRepository = new JornadaSetorRepository();
         private readonly SetorRepository setorRepository = new SetorRepository();
         private readonly EventoRepository eventoRepository = new EventoRepository();
+        private readonly ProdutoRepository produtoRepository = new ProdutoRepository();
+        private readonly ProdutoSetorRepository produtoSetorRepository = new ProdutoSetorRepository();
 
         public int Registrar(Usuario usuario, Registro registro, IList<RegistroItem> itens)
         {
@@ -71,7 +73,13 @@ namespace CASE.Services
 
             Evento evento = eventoRepository.BuscarPorId(setor.IdEvento);
 
-            if (evento == null || !string.Equals(
+            if (evento == null)
+            {
+                throw new InvalidOperationException("O evento da escala não foi encontrado.");
+            }
+
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
+            if (!string.Equals(
                 evento.Situacao,
                 SituacoesEvento.EmAndamento,
                 StringComparison.OrdinalIgnoreCase))
@@ -117,6 +125,14 @@ namespace CASE.Services
                 {
                     throw new ArgumentException("Agrupe a quantidade de cada produto em um único item.");
                 }
+                ProdutoSetor produtoSetor = produtoSetorRepository.BuscarPorId(item.IdProdutoSetor);
+                Produto produto = produtoSetor == null
+                    ? null
+                    : produtoRepository.BuscarPorId(produtoSetor.IdProduto);
+                if (produto == null || !produto.Ativo)
+                {
+                    throw new ArgumentException("Um dos produtos não está disponível para novas vendas ou perdas.");
+                }
                 if (registro.Tipo == TiposRegistro.Venda &&
                     (!item.PrecoUnitarioPraticado.HasValue || item.PrecoUnitarioPraticado.Value < 0 ||
                     item.PrecoUnitarioPraticado.Value > 99999999.99M ||
@@ -150,8 +166,13 @@ namespace CASE.Services
             }
             ControleCorrecaoOperacao.ValidarVersao(atual.Versao, registro.Versao, justificativa);
             Evento evento = ObterEventoDoRegistro(atual);
-            if (evento == null ||
-                !string.Equals(evento.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase))
+            if (evento == null)
+            {
+                throw new InvalidOperationException("O evento do registro não foi encontrado.");
+            }
+
+            SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
+            if (!string.Equals(evento.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("Registros só podem ser corrigidos enquanto o evento estiver em andamento.");
             }

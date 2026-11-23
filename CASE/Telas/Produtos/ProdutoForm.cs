@@ -187,6 +187,12 @@ namespace CASE
             })
                 campo.Visible = false;
 
+            // O tema envolve TextBoxes em um painel arredondado. Como o preço não
+            // pertence ao cadastro geral, o campo e seu contêiner precisam sumir juntos.
+            Control contornoPreco = ControleVisual(txtPrecoUnitario);
+            if (contornoPreco != txtPrecoUnitario)
+                contornoPreco.Visible = false;
+
             lblFornecedorProduto.Text = "Fornecedores vinculados";
             var fornecedores = new Button
             {

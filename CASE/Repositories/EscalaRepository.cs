@@ -73,6 +73,65 @@ namespace CASE.Repositories
 
         }
 
+        public bool RemoverSeSemHistorico(int idEscala, out bool possuiHistorico)
+        {
+            possuiHistorico = false;
+            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            {
+                conexao.Open();
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        using (var comando = new MySqlCommand(
+                            "SELECT id_escala FROM escala WHERE id_escala=@id FOR UPDATE",
+                            conexao,
+                            transacao))
+                        {
+                            comando.Parameters.AddWithValue("@id", idEscala);
+                            if (comando.ExecuteScalar() == null)
+                            {
+                                transacao.Commit();
+                                return false;
+                            }
+                        }
+
+                        using (var comando = new MySqlCommand(
+                            "SELECT EXISTS(SELECT 1 FROM registro WHERE id_escala=@id) " +
+                            "OR EXISTS(SELECT 1 FROM solicitacao WHERE id_escala=@id)",
+                            conexao,
+                            transacao))
+                        {
+                            comando.Parameters.AddWithValue("@id", idEscala);
+                            possuiHistorico = System.Convert.ToInt32(comando.ExecuteScalar()) > 0;
+                        }
+
+                        if (possuiHistorico)
+                        {
+                            transacao.Commit();
+                            return false;
+                        }
+
+                        using (var comando = new MySqlCommand(
+                            "DELETE FROM escala WHERE id_escala=@id",
+                            conexao,
+                            transacao))
+                        {
+                            comando.Parameters.AddWithValue("@id", idEscala);
+                            bool removida = comando.ExecuteNonQuery() > 0;
+                            transacao.Commit();
+                            return removida;
+                        }
+                    }
+                    catch
+                    {
+                        transacao.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
         public int SalvarValidandoConflito(
             Escala item,
             int idPessoa,

@@ -25,6 +25,15 @@ namespace CASE.Services
                 throw new ArgumentException("O estoque não foi encontrado.");
             }
             LocalEstoque local = localEstoqueRepository.BuscarPorId(estoque.IdLocalEstoque);
+            if (local != null && local.IdEvento.HasValue)
+            {
+                Evento evento = new EventoRepository().BuscarPorId(local.IdEvento.Value);
+                if (evento == null)
+                {
+                    throw new InvalidOperationException("O evento deste estoque não foi encontrado.");
+                }
+                SituacoesEvento.ExigirEventoNaoCancelado(evento.Situacao);
+            }
             if (local.EhCentral && perfil != "Administrador")
             {
                 throw new UnauthorizedAccessException("Somente o administrador configura o estoque central.");

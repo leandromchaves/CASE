@@ -56,10 +56,10 @@ namespace CASE
             lblEntradasMesTitulo.Text = "Unidades recebidas no mês";
             dicaIndicadorEntradas.SetToolTip(
                 lblEntradasMesTitulo,
-                "Soma das quantidades registradas como entrada. Transferências entre estoques não são incluídas.");
+                "Soma das unidades recebidas no estoque central neste mês. Confira em Estoque > Histórico de mercadorias, com o tipo Entrada e o local Estoque central. Transferências não entram nesta soma.");
             dicaIndicadorEntradas.SetToolTip(
                 lblEntradasMesValor,
-                "Soma das quantidades registradas como entrada. Transferências entre estoques não são incluídas.");
+                "Soma das unidades recebidas no estoque central neste mês. Confira em Estoque > Histórico de mercadorias, com o tipo Entrada e o local Estoque central. Transferências não entram nesta soma.");
             lblTituloDashboard.Font = new Font("Segoe UI", 22, FontStyle.Bold);
             lblTituloDashboard.SetBounds(80, 25, 400, 40);
             lblSubtituloDashboard.Location = new Point(82, 68);
@@ -132,7 +132,7 @@ namespace CASE
             {
                 LocalEstoqueService localService = new LocalEstoqueService();
                 EstoqueService estoqueService = new EstoqueService();
-                List<CASE.Models.LocalEstoque> locais = localService.Listar(
+                List<CASE.Models.LocalEstoque> locais = localService.ListarOperacionais(
                     usuarioAutenticado);
                 int quantidadeEstoqueBaixo = 0;
 
@@ -297,9 +297,10 @@ namespace CASE
                 inicioGrafico = cmbPeriodoGrafico.SelectedIndex == 1 ? DateTime.Today.AddDays(-6) :
                     cmbPeriodoGrafico.SelectedIndex == 2 ? DateTime.Today.AddDays(-29) : inicioMes;
                 var consulta = new ConsultaOperacionalService();
-                DataTable movimentosMes = consulta.Movimentacoes(usuarioAutenticado, inicioMes, DateTime.Today);
+                DataTable movimentosMes = consulta.MovimentacoesDoDashboard(
+                    usuarioAutenticado, inicioMes, DateTime.Today);
                 movimentosConsultados = inicioGrafico == inicioMes ? movimentosMes :
-                    consulta.Movimentacoes(usuarioAutenticado, inicioGrafico, DateTime.Today);
+                    consulta.MovimentacoesDoDashboard(usuarioAutenticado, inicioGrafico, DateTime.Today);
                 decimal entradas = 0;
                 decimal saidas = 0;
                 foreach (DataRow movimento in movimentosMes.Rows)

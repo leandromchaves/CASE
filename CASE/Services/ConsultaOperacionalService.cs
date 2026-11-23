@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using CASE.Models;
 using CASE.Repositories;
@@ -9,6 +10,7 @@ namespace CASE.Services
     {
         private readonly AutorizacaoService autorizacao = new AutorizacaoService();
         private readonly ConsultaOperacionalRepository repository = new ConsultaOperacionalRepository();
+        private readonly EventoRepository eventoRepository = new EventoRepository();
 
         public DataTable Escalas(Usuario usuario, int idEvento)
         {
@@ -47,6 +49,39 @@ namespace CASE.Services
             string perfil;
             Usuario atual = autorizacao.ValidarUsuarioEObterPerfil(usuario, out perfil);
             return repository.Movimentacoes(perfil, atual.IdPessoa, inicio, fim);
+        }
+
+        public DataTable MovimentacoesDoDashboard(Usuario usuario, DateTime inicio, DateTime fim)
+        {
+            ValidarPeriodo(inicio, fim);
+            string perfil;
+            Usuario atual = autorizacao.ValidarUsuarioEObterPerfil(usuario, out perfil);
+            DataTable consultadas = repository.Movimentacoes(
+                perfil, atual.IdPessoa, inicio, fim, true);
+            HashSet<int> eventosConsiderados = new HashSet<int>();
+
+            foreach (Evento evento in eventoRepository.ListarTodos())
+            {
+                if (evento != null &&
+                    !string.Equals(evento.Situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase) &&
+                    autorizacao.PodeAcessarEvento(atual, perfil, evento))
+                {
+                    eventosConsiderados.Add(evento.IdEvento);
+                }
+            }
+
+            DataTable resultado = consultadas.Clone();
+            foreach (DataRow movimento in consultadas.Rows)
+            {
+                if (movimento["id_evento"] == DBNull.Value ||
+                    eventosConsiderados.Contains(Convert.ToInt32(movimento["id_evento"])))
+                {
+                    resultado.ImportRow(movimento);
+                }
+            }
+
+            resultado.Columns.Remove("id_evento");
+            return resultado;
         }
 
         public void ExportarPdf(Usuario usuario, bool estoqueAtual, DateTime inicio, DateTime fim, string caminho)

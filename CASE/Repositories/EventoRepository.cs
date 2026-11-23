@@ -223,6 +223,158 @@ namespace CASE.Repositories
             }
         }
 
+        public void ExcluirCancelado(int idEvento, uint versao)
+        {
+            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            {
+                conexao.Open();
+
+                using (var transacao = conexao.BeginTransaction())
+                {
+                    try
+                    {
+                        using (var comando = new MySqlCommand(
+                            "SELECT situacao,versao FROM evento WHERE id_evento=@id FOR UPDATE",
+                            conexao,
+                            transacao))
+                        {
+                            comando.Parameters.AddWithValue("@id", idEvento);
+                            using (MySqlDataReader leitor = comando.ExecuteReader())
+                            {
+                                if (!leitor.Read())
+                                    throw new InvalidOperationException("O evento não foi encontrado.");
+                                if (!string.Equals(leitor.GetString("situacao"), SituacoesEvento.Cancelado,
+                                    StringComparison.OrdinalIgnoreCase))
+                                    throw new InvalidOperationException("Somente eventos cancelados podem ser excluídos.");
+                                if (leitor.GetUInt32("versao") != versao)
+                                    throw new InvalidOperationException("O evento foi alterado. Atualize a lista e tente novamente.");
+                            }
+                        }
+
+                        // Limpa o histórico operacional do evento junto com os dados que deixarão de ser consultáveis.
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM historicoalteracaooperacao WHERE " +
+                            "(entidade='evento' AND id_entidade=@evento) OR " +
+                            "(entidade='equipeevento' AND id_entidade IN (SELECT id_equipe FROM equipeevento WHERE id_evento=@evento)) OR " +
+                            "(entidade='registro' AND id_entidade IN (SELECT r.id_registro FROM registro r " +
+                                "JOIN escala e ON e.id_escala=r.id_escala JOIN equipeevento q ON q.id_equipe=e.id_equipe " +
+                                "JOIN jornadasetor j ON j.id_jornada=e.id_jornada JOIN setor s ON s.id_setor=j.id_setor " +
+                                "WHERE q.id_evento=@evento OR s.id_evento=@evento)) OR " +
+                            "(entidade='solicitacao' AND id_entidade IN (SELECT so.id_solicitacao FROM solicitacao so " +
+                                "JOIN escala e ON e.id_escala=so.id_escala JOIN equipeevento q ON q.id_equipe=e.id_equipe " +
+                                "JOIN jornadasetor j ON j.id_jornada=e.id_jornada JOIN setor s ON s.id_setor=j.id_setor " +
+                                "WHERE q.id_evento=@evento OR s.id_evento=@evento)) OR " +
+                            "(entidade='solicitacaoestoquecentral' AND id_entidade IN (SELECT sc.id_solicitacao_estoque_central " +
+                                "FROM solicitacaoestoquecentral sc JOIN localestoque lo ON lo.id_evento=@evento " +
+                                "WHERE sc.id_local_origem=lo.id_local_estoque OR sc.id_local_destino=lo.id_local_estoque)) OR " +
+                            "(entidade='entradamercadoria' AND id_entidade IN (SELECT en.id_entrada FROM entradamercadoria en " +
+                                "JOIN localestoque lo ON lo.id_local_estoque=en.id_local_destino WHERE lo.id_evento=@evento)) OR " +
+                            "(entidade='transferenciaestoque' AND id_entidade IN (SELECT tr.id_transferencia FROM transferenciaestoque tr " +
+                                "JOIN localestoque lo ON lo.id_evento=@evento " +
+                                "WHERE tr.id_local_origem=lo.id_local_estoque OR tr.id_local_destino=lo.id_local_estoque))",
+                            idEvento);
+
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM registroitem WHERE id_registro IN (SELECT r.id_registro FROM registro r " +
+                            "JOIN escala e ON e.id_escala=r.id_escala JOIN equipeevento q ON q.id_equipe=e.id_equipe " +
+                            "JOIN jornadasetor j ON j.id_jornada=e.id_jornada JOIN setor s ON s.id_setor=j.id_setor " +
+                            "WHERE q.id_evento=@evento OR s.id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM solicitacaoitem WHERE id_solicitacao IN (SELECT so.id_solicitacao FROM solicitacao so " +
+                            "JOIN escala e ON e.id_escala=so.id_escala JOIN equipeevento q ON q.id_equipe=e.id_equipe " +
+                            "JOIN jornadasetor j ON j.id_jornada=e.id_jornada JOIN setor s ON s.id_setor=j.id_setor " +
+                            "WHERE q.id_evento=@evento OR s.id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM solicitacaoestoquecentralitem WHERE id_solicitacao_estoque_central IN " +
+                            "(SELECT sc.id_solicitacao_estoque_central FROM solicitacaoestoquecentral sc " +
+                            "JOIN localestoque lo ON lo.id_evento=@evento " +
+                            "WHERE sc.id_local_origem=lo.id_local_estoque OR sc.id_local_destino=lo.id_local_estoque)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM transferenciaitem WHERE id_transferencia IN (SELECT tr.id_transferencia FROM transferenciaestoque tr " +
+                            "JOIN localestoque lo ON lo.id_evento=@evento " +
+                            "WHERE tr.id_local_origem=lo.id_local_estoque OR tr.id_local_destino=lo.id_local_estoque)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM entradaitem WHERE id_entrada IN (SELECT en.id_entrada FROM entradamercadoria en " +
+                            "JOIN localestoque lo ON lo.id_local_estoque=en.id_local_destino WHERE lo.id_evento=@evento)", idEvento);
+
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM transferenciaestoque WHERE id_local_origem IN (SELECT id_local_estoque FROM localestoque WHERE id_evento=@evento) " +
+                            "OR id_local_destino IN (SELECT id_local_estoque FROM localestoque WHERE id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM solicitacaoestoquecentral WHERE id_local_origem IN (SELECT id_local_estoque FROM localestoque WHERE id_evento=@evento) " +
+                            "OR id_local_destino IN (SELECT id_local_estoque FROM localestoque WHERE id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM solicitacao WHERE id_escala IN (SELECT e.id_escala FROM escala e " +
+                            "JOIN equipeevento q ON q.id_equipe=e.id_equipe JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +
+                            "JOIN setor s ON s.id_setor=j.id_setor WHERE q.id_evento=@evento OR s.id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM registro WHERE id_escala IN (SELECT e.id_escala FROM escala e " +
+                            "JOIN equipeevento q ON q.id_equipe=e.id_equipe JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +
+                            "JOIN setor s ON s.id_setor=j.id_setor WHERE q.id_evento=@evento OR s.id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM entradamercadoria WHERE id_local_destino IN (SELECT id_local_estoque FROM localestoque WHERE id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM despesa WHERE id_evento=@evento", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM apuracaototallegado WHERE id_apuracao IN (SELECT a.id_apuracao FROM apuracao a " +
+                            "JOIN jornadasetor j ON j.id_jornada=a.id_jornada JOIN setor s ON s.id_setor=j.id_setor WHERE s.id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM apuracao WHERE id_jornada IN (SELECT j.id_jornada FROM jornadasetor j " +
+                            "JOIN setor s ON s.id_setor=j.id_setor WHERE s.id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM estoque WHERE id_local_estoque IN (SELECT id_local_estoque FROM localestoque WHERE id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM estoquesetor WHERE id_evento=@evento", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM produtosetor WHERE id_setor IN (SELECT id_setor FROM setor WHERE id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM escala WHERE id_equipe IN (SELECT id_equipe FROM equipeevento WHERE id_evento=@evento) " +
+                            "OR id_jornada IN (SELECT j.id_jornada FROM jornadasetor j JOIN setor s ON s.id_setor=j.id_setor WHERE s.id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM equipeevento WHERE id_evento=@evento", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM jornadasetor WHERE id_setor IN (SELECT id_setor FROM setor WHERE id_evento=@evento)", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM setor WHERE id_evento=@evento", idEvento);
+                        ExecutarExclusao(conexao, transacao,
+                            "DELETE FROM localestoque WHERE id_evento=@evento", idEvento);
+
+                        using (var comando = new MySqlCommand(
+                            "DELETE FROM evento WHERE id_evento=@id AND situacao=@situacao AND versao=@versao",
+                            conexao,
+                            transacao))
+                        {
+                            comando.Parameters.AddWithValue("@id", idEvento);
+                            comando.Parameters.AddWithValue("@situacao", SituacoesEvento.Cancelado);
+                            comando.Parameters.AddWithValue("@versao", versao);
+                            if (comando.ExecuteNonQuery() != 1)
+                                throw new InvalidOperationException("O evento foi alterado. Atualize a lista e tente novamente.");
+                        }
+
+                        transacao.Commit();
+                    }
+                    catch
+                    {
+                        transacao.Rollback();
+                        throw;
+                    }
+                }
+            }
+        }
+
+        private static void ExecutarExclusao(
+            MySqlConnection conexao,
+            MySqlTransaction transacao,
+            string sql,
+            int idEvento)
+        {
+            using (var comando = new MySqlCommand(sql, conexao, transacao))
+            {
+                comando.Parameters.AddWithValue("@evento", idEvento);
+                comando.ExecuteNonQuery();
+            }
+        }
+
         private static void Vincular(MySqlCommand comando, Evento item)
         {
             AcessoDados.AdicionarParametro(comando, "@instituicao", item.IdInstituicao);

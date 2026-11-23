@@ -52,10 +52,7 @@ namespace CASE.Services
         public int ConfigurarNoSetor(Usuario usuario, int idSetor, int idProduto, decimal preco)
         {
             Evento evento = ValidarGerenteDoSetor(usuario, idSetor);
-            if (evento.Situacao != SituacoesEvento.Planejado && evento.Situacao != SituacoesEvento.EmAndamento)
-            {
-                throw new InvalidOperationException("Este evento não permite configurar produtos.");
-            }
+            SituacoesEvento.ExigirEventoAbertoParaAlteracoes(evento.Situacao);
             Produto produto = produtoRepository.BuscarPorId(idProduto);
             if (produto == null || !produto.Ativo)
             {
@@ -191,6 +188,25 @@ namespace CASE.Services
             produto.UnidadeMedida = produto.UnidadeMedida.Trim();
 
             return produtoRepository.Atualizar(produto);
+        }
+
+        public bool AlterarAtivo(Usuario usuario, int idProduto, bool ativo)
+        {
+            autorizacaoService.ExigirAdministrador(usuario);
+            if (idProduto <= 0)
+            {
+                throw new ArgumentException("Selecione um produto válido.", nameof(idProduto));
+            }
+            Produto produto = produtoRepository.BuscarPorId(idProduto);
+            if (produto == null)
+            {
+                throw new ArgumentException("O produto não foi encontrado.", nameof(idProduto));
+            }
+            if (produto.Ativo == ativo)
+            {
+                return false;
+            }
+            return produtoRepository.AlterarAtivo(idProduto, ativo);
         }
 
         private void ValidarProduto(Produto produto)

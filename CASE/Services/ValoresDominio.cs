@@ -79,6 +79,26 @@ namespace CASE.Services
                 nameof(situacao));
         }
 
+        public static void ExigirEventoNaoCancelado(string situacao)
+        {
+            if (string.Equals(situacao, Cancelado, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Este evento foi cancelado. Não é possível adicionar ou alterar informações nele. Os dados já registrados continuam disponíveis para consulta.");
+            }
+        }
+
+        public static void ExigirEventoAbertoParaAlteracoes(string situacao)
+        {
+            ExigirEventoNaoCancelado(situacao);
+            if (!string.Equals(situacao, Planejado, StringComparison.OrdinalIgnoreCase) &&
+                !string.Equals(situacao, EmAndamento, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException(
+                    "Este evento foi encerrado. Não é possível adicionar ou alterar informações nele. Os dados existentes continuam disponíveis para consulta.");
+            }
+        }
+
         public static bool PodeTransicionar(string situacaoAtual, string novaSituacao)
         {
             string atual = Normalizar(situacaoAtual);
