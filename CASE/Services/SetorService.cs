@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,9 +7,9 @@ namespace CASE.Services
 {
     public class SetorService
     {
-        private readonly SetorRepository setorRepository = new SetorRepository();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private SetorRepository setorRepository = new SetorRepository();
+        private EventoRepository eventoRepository = new EventoRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public int Criar(Usuario usuario, Setor setor)
         {

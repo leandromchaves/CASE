@@ -1,6 +1,5 @@
-﻿
+﻿using System.Collections.Generic;
 using System;
-using System.Collections.Generic;
 using CASE.Data;
 using CASE.Models;
 using CASE.Services;
@@ -12,7 +11,7 @@ namespace CASE.Repositories
     {
         public List<Fornecedor> Listar()
         {
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
@@ -20,9 +19,9 @@ namespace CASE.Repositories
 
                 string sql = "SELECT id_fornecedor, nome, documento, telefone, email FROM fornecedor";
 
-                using (var comando = new MySqlCommand(sql, conexao))
+                using (MySqlCommand comando = new MySqlCommand(sql, conexao))
                 {
-                    using (var leitor = comando.ExecuteReader())
+                    using (MySqlDataReader leitor = comando.ExecuteReader())
                     {
                         List<Fornecedor> fornecedores = new List<Fornecedor>();
 
@@ -47,16 +46,16 @@ namespace CASE.Repositories
 
         public void Cadastrar(Fornecedor fornecedor)
         {
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
                         ValidarAcesso(conexao, transacao, false);
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "INSERT INTO fornecedor (nome, documento, telefone, email) VALUES (@nome, @documento, @telefone, @email)",
 conexao,
 transacao))
@@ -78,7 +77,7 @@ transacao))
 
         public Fornecedor BuscarPorId(int id)
         {
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
@@ -86,11 +85,11 @@ transacao))
 
                 string sql = "SELECT id_fornecedor, nome, documento, telefone, email FROM fornecedor WHERE id_fornecedor = @id";
 
-                using (var comando = new MySqlCommand(sql, conexao))
+                using (MySqlCommand comando = new MySqlCommand(sql, conexao))
                 {
                     comando.Parameters.AddWithValue("@id", id);
 
-                    using (var leitor = comando.ExecuteReader())
+                    using (MySqlDataReader leitor = comando.ExecuteReader())
                     {
                         if (leitor.Read())
                         {
@@ -113,16 +112,16 @@ transacao))
 
         public void Atualizar(Fornecedor fornecedor)
         {
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
                         ValidarAcesso(conexao, transacao, false);
-                        using (var comando = new MySqlCommand("SELECT id_fornecedor FROM fornecedor WHERE id_fornecedor=@id FOR UPDATE", conexao, transacao))
+                        using (MySqlCommand comando = new MySqlCommand("SELECT id_fornecedor FROM fornecedor WHERE id_fornecedor=@id FOR UPDATE", conexao, transacao))
                         {
                             comando.Parameters.AddWithValue("@id", fornecedor.IdFornecedor);
                             if (comando.ExecuteScalar() == null)
@@ -146,17 +145,17 @@ transacao))
 
         public bool Excluir(int id)
         {
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
                         ValidarAcesso(conexao, transacao, true);
                         int linhasAfetadas;
-                        using (var comando = new MySqlCommand("DELETE FROM fornecedor WHERE id_fornecedor=@id", conexao, transacao))
+                        using (MySqlCommand comando = new MySqlCommand("DELETE FROM fornecedor WHERE id_fornecedor=@id", conexao, transacao))
                         {
                             comando.Parameters.AddWithValue("@id", id);
                             linhasAfetadas = comando.ExecuteNonQuery();
@@ -190,7 +189,7 @@ transacao))
             {
                 sql += " FOR UPDATE";
             }
-            using (var comando = new MySqlCommand(sql, conexao, transacao))
+            using (MySqlCommand comando = new MySqlCommand(sql, conexao, transacao))
             {
                 comando.Parameters.AddWithValue("@usuario", sessao.IdUsuario);
                 comando.Parameters.AddWithValue("@pessoa", sessao.IdPessoa);

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,8 +7,8 @@ namespace CASE.Services
 {
     public class DespesaService
     {
-        private readonly DespesaRepository despesaRepository = new DespesaRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private DespesaRepository despesaRepository = new DespesaRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public int Cadastrar(Usuario usuario, Despesa despesa)
         {

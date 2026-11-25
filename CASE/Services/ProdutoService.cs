@@ -39,9 +39,9 @@ namespace CASE.Services
                 throw new ArgumentException("O arquivo não contém uma imagem JPG ou PNG válida.");
             }
         }
-        private readonly ProdutoRepository produtoRepository = new ProdutoRepository();
-        private readonly CategoriaRepository categoriaRepository = new CategoriaRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private ProdutoRepository produtoRepository = new ProdutoRepository();
+        private CategoriaRepository categoriaRepository = new CategoriaRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public List<ProdutoSetor> ListarConfiguracoesDoSetor(Usuario usuario, int idSetor)
         {

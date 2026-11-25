@@ -1,27 +1,28 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Drawing;
 using System.Windows.Forms;
-using CASE.Utils;
+using System;
 using CASE.Models;
 using CASE.Services;
-using System.Data;
+using CASE.Utils;
 
 namespace CASE
 {
     public partial class MovimentacoesControl : UserControl
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly Evento eventoContexto;
-        private readonly bool filtrarPorEvento;
-        private readonly Dictionary<int, LocalEstoque> locaisOperacionaisPorId =
-            new Dictionary<int, LocalEstoque>();
+        private Usuario usuarioAutenticado;
+        private Evento eventoContexto;
+        private bool filtrarPorEvento;
+        private Dictionary<int, LocalEstoque> locaisOperacionaisPorId = new Dictionary<int, LocalEstoque>();
         private bool incorporado;
         private LocalEstoque localConsultado;
         private string pesquisaExterna = string.Empty;
-        private readonly ComboBox filtroLocal = new ComboBox();
+        private ComboBox filtroLocal = new ComboBox();
         private Panel painelPesquisaProduto;
         public event EventHandler OperacaoCorrigida;
-
         public MovimentacoesControl() : this(null, null, false)
         {
         }
@@ -33,10 +34,12 @@ namespace CASE
         public MovimentacoesControl(Usuario usuario, Evento evento, bool filtrarEvento)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             usuarioAutenticado = usuario;
             eventoContexto = evento;
             filtrarPorEvento = filtrarEvento;
-            CASE.Utils.FrontendTheme.Aplicar(this);
+            FrontendTheme.Aplicar(this);
             VisualUtils.Arredondar(panelCardEntradasMes, 12);
             panelCardEntradasMes.SizeChanged += AjustarArredondamento;
             VisualUtils.AplicarBorda(panelCardEntradasMes);
@@ -63,9 +66,7 @@ namespace CASE
             VisualUtils.EstilizarBotao(abrirCorrecao);
             Controls.Add(abrirCorrecao);
             abrirCorrecao.BringToFront();
-            dgvMovimentacoes.SelectionChanged += (s, e) =>
-                abrirCorrecao.Enabled = usuarioAutenticado != null && dgvMovimentacoes.SelectedRows.Count > 0 &&
-                    dgvMovimentacoes.SelectedRows[0].Visible;
+            dgvMovimentacoes.SelectionChanged += Tratar_dgvMovimentacoes_SelectionChanged;
             panelCardEntradasMes.Visible = panelCardSaidasMes.Visible = false;
             panelFiltrosMovimentacoes.Top = 115;
             panelListaMovimentacoes.Top = 225;
@@ -78,28 +79,26 @@ namespace CASE
             cmbTipoMovimentacao.Items.Clear();
             cmbTipoMovimentacao.Items.AddRange(new object[] { "Todos", "Entrada", "Transferência", "Venda", "Perda" });
             cmbTipoMovimentacao.SelectedIndex = 0;
-            foreach (Control campo in new Control[] { cmbTipoMovimentacao, txtProdutoMovimentacao, dtpDataInicial, dtpDataFinal })
+            foreach (Control campo in new Control[]
             {
-                string titulo = campo == cmbTipoMovimentacao
-                    ? "Tipo"
-                    : campo == txtProdutoMovimentacao
-                        ? "Produto"
-                        : campo == dtpDataInicial
-                            ? "Data inicial"
-                            : "Data final";
-                Label legenda = FrontendTheme.Legenda(titulo,
-                    new System.Drawing.Rectangle(campo.Left, 7, campo.Width, 20));
+                cmbTipoMovimentacao,
+                txtProdutoMovimentacao,
+                dtpDataInicial,
+                dtpDataFinal
+            }
+
+            )
+            {
+                string titulo = campo == cmbTipoMovimentacao ? "Tipo" : campo == txtProdutoMovimentacao ? "Produto" : campo == dtpDataInicial ? "Data inicial" : "Data final";
+                Label legenda = FrontendTheme.Legenda(titulo, new Rectangle(campo.Left, 7, campo.Width, 20));
                 legenda.Name = "lblFiltro_" + campo.Name;
                 panelFiltrosMovimentacoes.Controls.Add(legenda);
             }
-            btnNovaMovimentacao.Click += (s, e) =>
-            {
-                CarregarMovimentacoes();
-                dgvMovimentacoes.ClearSelection();
-            };
-            txtProdutoMovimentacao.TextChanged += (s, e) => FiltrarProduto();
+
+            btnNovaMovimentacao.Click += btnNovaMovimentacao_Click;
+            txtProdutoMovimentacao.TextChanged += txtProdutoMovimentacao_TextChanged;
             painelPesquisaProduto = VisualUtils.EstilizarPesquisa(txtProdutoMovimentacao, "Pesquisar produto");
-            cmbTipoMovimentacao.SelectedIndexChanged += (s, e) => FiltrarProduto();
+            cmbTipoMovimentacao.SelectedIndexChanged += cmbTipoMovimentacao_SelectedIndexChanged;
             dgvMovimentacoes.Columns[0].MinimumWidth = 145;
             dgvMovimentacoes.Columns[0].HeaderText = "Data / hora";
             dgvMovimentacoes.Columns[1].MinimumWidth = 180;
@@ -120,12 +119,11 @@ namespace CASE
                     List<LocalEstoque> locais = new LocalEstoqueService().ListarOperacionais(usuarioAutenticado);
                     foreach (LocalEstoque local in locais)
                     {
-                        if (filtrarPorEvento && !local.EhCentral &&
-                            (!eventoContexto.IdEvento.Equals(local.IdEvento) ||
-                             local.IdInstituicao != eventoContexto.IdInstituicao))
+                        if (filtrarPorEvento && !local.EhCentral && (!eventoContexto.IdEvento.Equals(local.IdEvento) || local.IdInstituicao != eventoContexto.IdInstituicao))
                         {
                             continue;
                         }
+
                         filtroLocal.Items.Add(local);
                     }
                 }
@@ -134,34 +132,29 @@ namespace CASE
             {
                 filtroLocal.Enabled = false;
             }
-            filtroLocal.SelectedIndexChanged += (s, e) => FiltrarProduto();
-            dgvMovimentacoes.CellFormatting += (s, e) =>
-            {
-                if (e.ColumnIndex == 2)
-                {
-                    string valor = Convert.ToString(e.Value);
-                    e.Value = valor == "transferencia" ? "Transferência" : valor == "entrada" ? "Entrada" :
-                        valor == "venda" ? "Venda" : valor == "perda" ? "Perda" : valor;
-                }
-            };
+
+            filtroLocal.SelectedIndexChanged += filtroLocal_SelectedIndexChanged;
+            dgvMovimentacoes.CellFormatting += dgvMovimentacoes_CellFormatting;
             ContextMenuStrip menu = new ContextMenuStrip();
             ToolStripMenuItem corrigir = new ToolStripMenuItem("Revisar operação e histórico de correções");
             corrigir.Name = "menuCorrigirMovimentacao";
             corrigir.Click += CorrigirMovimentacao;
             menu.Items.Add(corrigir);
             dgvMovimentacoes.ContextMenuStrip = menu;
-            dgvMovimentacoes.CellMouseDown += (s, e) =>
-            {
-                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
-                {
-                    dgvMovimentacoes.CurrentCell = dgvMovimentacoes.Rows[e.RowIndex].Cells[0];
-                    dgvMovimentacoes.Rows[e.RowIndex].Selected = true;
-                }
-            };
-            Disposed += (s, e) => menu.Dispose();
-            SizeChanged += (s, e) => AjustarLayoutHistorico();
+            dgvMovimentacoes.CellMouseDown += dgvMovimentacoes_CellMouseDown;
+            Disposed += Tratar_Disposed;
+            SizeChanged += Tela_SizeChanged;
             AjustarLayoutHistorico();
             CarregarMovimentacoes();
+            void Tratar_dgvMovimentacoes_SelectionChanged(object s, EventArgs e)
+            {
+                abrirCorrecao.Enabled = usuarioAutenticado != null && dgvMovimentacoes.SelectedRows.Count > 0 && dgvMovimentacoes.SelectedRows[0].Visible;
+            }
+
+            void Tratar_Disposed(object s, EventArgs e)
+            {
+                menu.Dispose();
+            }
         }
 
         public void IncorporarAoEstoque()
@@ -195,8 +188,7 @@ namespace CASE
             int topo = incorporado ? 0 : 112;
             int largura = Math.Max(920, ClientSize.Width - margem * 2);
             panelFiltrosMovimentacoes.SetBounds(margem, topo, largura, 90);
-            panelListaMovimentacoes.SetBounds(margem, topo + 104, largura,
-                Math.Max(260, ClientSize.Height - topo - 120));
+            panelListaMovimentacoes.SetBounds(margem, topo + 104, largura, Math.Max(260, ClientSize.Height - topo - 120));
             dgvMovimentacoes.SetBounds(16, 60, panelListaMovimentacoes.Width - 32, panelListaMovimentacoes.Height - 76);
             int larguraInterior = largura - 40;
             int larguraPesquisa = Math.Min(280, Math.Max(190, (int)(larguraInterior * 0.28)));
@@ -225,7 +217,8 @@ namespace CASE
                 revisar.Parent = panelListaMovimentacoes;
                 revisar.SetBounds(largura - 235, 12, 220, 36);
             }
-            AutoScrollMinSize = new System.Drawing.Size(incorporado ? 920 : 970, panelListaMovimentacoes.Bottom + 16);
+
+            AutoScrollMinSize = new Size(incorporado ? 920 : 970, panelListaMovimentacoes.Bottom + 16);
         }
 
         private void PosicionarLegenda(string nome, int esquerda, int topo, int largura)
@@ -237,34 +230,26 @@ namespace CASE
 
         private void CarregarMovimentacoes()
         {
-
             if (usuarioAutenticado == null)
             {
                 lblListaMovimentacoes.Text = "Autentique-se para consultar o histórico.";
                 btnNovaMovimentacao.Enabled = false;
                 return;
             }
+
             try
             {
-                DataTable movimentos = new ConsultaOperacionalService().Movimentacoes(
-                    usuarioAutenticado, dtpDataInicial.Value, dtpDataFinal.Value);
+                DataTable movimentos = new ConsultaOperacionalService().Movimentacoes(usuarioAutenticado, dtpDataInicial.Value, dtpDataFinal.Value);
                 locaisOperacionaisPorId.Clear();
                 foreach (LocalEstoque localOperacional in new LocalEstoqueService().ListarOperacionais(usuarioAutenticado))
                     locaisOperacionaisPorId[localOperacional.IdLocalEstoque] = localOperacional;
                 dgvMovimentacoes.Rows.Clear();
                 foreach (DataRow movimento in movimentos.Rows)
                 {
-                    int indice = dgvMovimentacoes.Rows.Add(
-Convert.ToDateTime(movimento["data_hora"]).ToString("dd/MM/yyyy HH:mm"),
-                        movimento["produto"],
-CASE.Utils.TextoInterface.FormatarValorBanco(movimento["tipo"]),
-movimento["quantidade"],
-movimento["responsavel"],
-                        string.IsNullOrWhiteSpace(Convert.ToString(movimento["origem"])) ? "Recebimento em " + movimento["destino"] :
-                        string.IsNullOrWhiteSpace(Convert.ToString(movimento["destino"])) ? "Saída de " + movimento["origem"] :
-                        movimento["origem"] + " → " + movimento["destino"]);
+                    int indice = dgvMovimentacoes.Rows.Add(Convert.ToDateTime(movimento["data_hora"]).ToString("dd/MM/yyyy HH:mm"), movimento["produto"], TextoInterface.FormatarValorBanco(movimento["tipo"]), movimento["quantidade"], movimento["responsavel"], string.IsNullOrWhiteSpace(Convert.ToString(movimento["origem"])) ? "Recebimento em " + movimento["destino"] : string.IsNullOrWhiteSpace(Convert.ToString(movimento["destino"])) ? "Saída de " + movimento["origem"] : movimento["origem"] + " → " + movimento["destino"]);
                     dgvMovimentacoes.Rows[indice].Tag = movimento;
                 }
+
                 dgvMovimentacoesColMotivo.Visible = true;
                 dgvMovimentacoesColMotivo.HeaderText = "Origem → destino";
                 lblListaMovimentacoes.Text = movimentos.Rows.Count + " movimentação(ões) autorizada(s) no período";
@@ -276,9 +261,10 @@ movimento["responsavel"],
                 lblListaMovimentacoes.Text = "Não foi possível consultar o histórico.";
                 if (erro is ArgumentException || erro is UnauthorizedAccessException)
                 {
-                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar o histórico.", lblListaMovimentacoes);
+                    FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar o histórico.", lblListaMovimentacoes);
                 }
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em MovimentacoesControl: " + erro.StackTrace);
+
+                Trace.WriteLine(erro.GetType().Name + " em MovimentacoesControl: " + erro.StackTrace);
             }
         }
 
@@ -289,13 +275,14 @@ movimento["responsavel"],
                 lblListaMovimentacoes.Text = "Selecione uma operação autorizada.";
                 return;
             }
+
             DataRow operacao = dgvMovimentacoes.SelectedRows[0].Tag as DataRow;
             if (operacao == null)
             {
                 return;
             }
-            using (CorrecaoOperacaoForm formulario = new CorrecaoOperacaoForm(usuarioAutenticado,
-                Convert.ToString(operacao["entidade"]), Convert.ToInt32(operacao["id_operacao"])))
+
+            using (CorrecaoOperacaoForm formulario = new CorrecaoOperacaoForm(usuarioAutenticado, Convert.ToString(operacao["entidade"]), Convert.ToInt32(operacao["id_operacao"])))
             {
                 if (formulario.ShowDialog(this) == DialogResult.OK)
                 {
@@ -308,27 +295,26 @@ movimento["responsavel"],
 
         private void FiltrarProduto()
         {
-            string[] tipos = { "", "entrada", "transferencia", "venda", "perda" };
+            string[] tipos =
+            {
+                "",
+                "entrada",
+                "transferencia",
+                "venda",
+                "perda"
+            };
             LocalEstoque local = incorporado ? localConsultado : filtroLocal.SelectedItem as LocalEstoque;
             int visiveis = 0;
             foreach (DataGridViewRow linha in dgvMovimentacoes.Rows)
             {
                 DataRow operacao = linha.Tag as DataRow;
-                linha.Visible = Convert.ToString(linha.Cells[1].Value).IndexOf(
-                    txtProdutoMovimentacao.Text.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0 &&
-                    Convert.ToString(linha.Cells[1].Value).IndexOf(pesquisaExterna,
-                        StringComparison.CurrentCultureIgnoreCase) >= 0 &&
-                    (!incorporado || local != null) &&
-                    (cmbTipoMovimentacao.SelectedIndex <= 0 || operacao != null &&
-                        Convert.ToString(operacao["tipo"]) == tipos[cmbTipoMovimentacao.SelectedIndex]) &&
-                    MovimentoDoContexto(operacao) &&
-                    (local == null || operacao != null && (LerIdLocal(operacao, "id_origem") == local.IdLocalEstoque ||
-                        LerIdLocal(operacao, "id_destino") == local.IdLocalEstoque));
+                linha.Visible = Convert.ToString(linha.Cells[1].Value).IndexOf(txtProdutoMovimentacao.Text.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0 && Convert.ToString(linha.Cells[1].Value).IndexOf(pesquisaExterna, StringComparison.CurrentCultureIgnoreCase) >= 0 && (!incorporado || local != null) && (cmbTipoMovimentacao.SelectedIndex <= 0 || operacao != null && Convert.ToString(operacao["tipo"]) == tipos[cmbTipoMovimentacao.SelectedIndex]) && MovimentoDoContexto(operacao) && (local == null || operacao != null && (LerIdLocal(operacao, "id_origem") == local.IdLocalEstoque || LerIdLocal(operacao, "id_destino") == local.IdLocalEstoque));
                 if (!linha.Visible)
                     linha.Selected = false;
                 else
                     visiveis++;
             }
+
             lblListaMovimentacoes.Text = visiveis + " movimentação(ões)";
         }
 
@@ -336,18 +322,15 @@ movimento["responsavel"],
         {
             if (operacao == null)
                 return false;
-
             int origem = LerIdLocal(operacao, "id_origem");
             int destino = LerIdLocal(operacao, "id_destino");
-            if ((origem > 0 && !locaisOperacionaisPorId.ContainsKey(origem)) ||
-                (destino > 0 && !locaisOperacionaisPorId.ContainsKey(destino)))
+            if ((origem > 0 && !locaisOperacionaisPorId.ContainsKey(origem)) || (destino > 0 && !locaisOperacionaisPorId.ContainsKey(destino)))
             {
                 return false;
             }
 
             if (!filtrarPorEvento || eventoContexto == null)
                 return true;
-
             string tipo = Convert.ToString(operacao["tipo"]);
             if (string.Equals(tipo, "transferencia", StringComparison.OrdinalIgnoreCase))
                 return EhDoEvento(origem) || EhDoEvento(destino);
@@ -359,8 +342,7 @@ movimento["responsavel"],
         private bool EhDoEvento(int idLocal)
         {
             LocalEstoque local;
-            return idLocal > 0 && locaisOperacionaisPorId.TryGetValue(idLocal, out local) &&
-                local.IdEvento == eventoContexto.IdEvento;
+            return idLocal > 0 && locaisOperacionaisPorId.TryGetValue(idLocal, out local) && local.IdEvento == eventoContexto.IdEvento;
         }
 
         private static int LerIdLocal(DataRow operacao, string coluna)
@@ -374,6 +356,49 @@ movimento["responsavel"],
             VisualUtils.Arredondar(controle, controle is Panel ? 12 : 8);
             controle.Invalidate();
         }
+
+        private void btnNovaMovimentacao_Click(object s, EventArgs e)
+        {
+            CarregarMovimentacoes();
+            dgvMovimentacoes.ClearSelection();
+        }
+
+        private void txtProdutoMovimentacao_TextChanged(object s, EventArgs e)
+        {
+            FiltrarProduto();
+        }
+
+        private void cmbTipoMovimentacao_SelectedIndexChanged(object s, EventArgs e)
+        {
+            FiltrarProduto();
+        }
+
+        private void filtroLocal_SelectedIndexChanged(object s, EventArgs e)
+        {
+            FiltrarProduto();
+        }
+
+        private void dgvMovimentacoes_CellFormatting(object s, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.ColumnIndex == 2)
+            {
+                string valor = Convert.ToString(e.Value);
+                e.Value = valor == "transferencia" ? "Transferência" : valor == "entrada" ? "Entrada" : valor == "venda" ? "Venda" : valor == "perda" ? "Perda" : valor;
+            }
+        }
+
+        private void dgvMovimentacoes_CellMouseDown(object s, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+            {
+                dgvMovimentacoes.CurrentCell = dgvMovimentacoes.Rows[e.RowIndex].Cells[0];
+                dgvMovimentacoes.Rows[e.RowIndex].Selected = true;
+            }
+        }
+
+        private void Tela_SizeChanged(object s, EventArgs e)
+        {
+            AjustarLayoutHistorico();
+        }
     }
 }
-

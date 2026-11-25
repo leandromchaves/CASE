@@ -1,51 +1,99 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System;
+using CASE.Data;
 using CASE.Models;
 using CASE.Services;
 using MySql.Data.MySqlClient;
-using System;
 
 namespace CASE.Repositories
 {
     public class EventoRepository
     {
-
         private const string Colunas = "id_evento,id_instituicao,id_tipo_evento,nome,`local`,data_inicio,data_fim,id_responsavel,situacao,observacao,id_usuario_criacao,criado_em,versao";
 
         public List<Evento> ListarTodos()
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM evento ORDER BY data_inicio,id_evento",
-                ConverterLinha);
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM evento ORDER BY data_inicio,id_evento", conexaoBanco))
+                {
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Evento> resultadoBanco = new List<Evento>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<Evento> ListarPorInstituicao(int idInstituicao)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM evento WHERE id_instituicao=@id ORDER BY data_inicio,id_evento",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idInstituicao)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM evento WHERE id_instituicao=@id ORDER BY data_inicio,id_evento", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idInstituicao);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Evento> resultadoBanco = new List<Evento>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<Evento> ListarPorResponsavel(int idPessoaResponsavel)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM evento WHERE id_responsavel=@responsavel ORDER BY data_inicio,id_evento",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(
-                    comando,
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM evento WHERE id_responsavel=@responsavel ORDER BY data_inicio,id_evento", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(
+                    comandoBanco,
                     "@responsavel",
-                    idPessoaResponsavel)
-            );
+                    idPessoaResponsavel);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Evento> resultadoBanco = new List<Evento>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public Evento BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM evento WHERE id_evento=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM evento WHERE id_evento=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(Evento item)
@@ -55,37 +103,34 @@ namespace CASE.Repositories
                 throw new ArgumentNullException(nameof(item));
             }
 
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
-                        int idEvento = AcessoDados.Inserir(
-                            conexao,
-                            transacao,
-                            "INSERT INTO evento (id_instituicao,id_tipo_evento,nome,`local`,data_inicio,data_fim,id_responsavel,situacao,observacao,id_usuario_criacao,criado_em) " +
-                            "VALUES (@instituicao,@tipo,@nome,@local,@inicio,@fim,@responsavel,@situacao,@observacao,@usuarioCriacao,@criadoEm)",
-                            comando =>
-                            {
-                                Vincular(comando, item);
-                                AcessoDados.AdicionarParametro(comando, "@usuarioCriacao", item.IdUsuarioCriacao);
-                                AcessoDados.AdicionarParametro(comando, "@criadoEm", item.CriadoEm);
-                            });
+                        int resultadoBanco4;
+                        using (MySqlCommand comandoBanco4 = new MySqlCommand("INSERT INTO evento (id_instituicao,id_tipo_evento,nome,`local`,data_inicio,data_fim,id_responsavel,situacao,observacao,id_usuario_criacao,criado_em) " +
+                            "VALUES (@instituicao,@tipo,@nome,@local,@inicio,@fim,@responsavel,@situacao,@observacao,@usuarioCriacao,@criadoEm)", conexao, transacao))
+                        {
+                            Vincular(comandoBanco4, item);
+                            AcessoDados.AdicionarParametro(comandoBanco4, "@usuarioCriacao", item.IdUsuarioCriacao);
+                            AcessoDados.AdicionarParametro(comandoBanco4, "@criadoEm", item.CriadoEm);
+                            comandoBanco4.ExecuteNonQuery();
+                            resultadoBanco4 = Convert.ToInt32(comandoBanco4.LastInsertedId);
+                        }
+                        int idEvento = resultadoBanco4;
 
-                        AcessoDados.Executar(
-                            conexao,
-                            transacao,
-                            "INSERT INTO localestoque (id_instituicao_central,id_evento,nome,ativo,eh_geral_evento) " +
-                            "VALUES (NULL,@evento,@nome,1,1)",
-                            comando =>
-                            {
-                                AcessoDados.AdicionarParametro(comando, "@instituicao", item.IdInstituicao);
-                                AcessoDados.AdicionarParametro(comando, "@evento", idEvento);
-                                AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", "Estoque geral");
-                            });
+                        using (MySqlCommand comandoBanco5 = new MySqlCommand("INSERT INTO localestoque (id_instituicao_central,id_evento,nome,ativo,eh_geral_evento) " +
+                            "VALUES (NULL,@evento,@nome,1,1)", conexao, transacao))
+                        {
+                            AcessoDados.AdicionarParametro(comandoBanco5, "@instituicao", item.IdInstituicao);
+                            AcessoDados.AdicionarParametro(comandoBanco5, "@evento", idEvento);
+                            AcessoDados.AdicionarTextoObrigatorio(comandoBanco5, "@nome", "Estoque geral");
+                            comandoBanco5.ExecuteNonQuery();
+                        }
 
                         transacao.Commit();
                         return idEvento;
@@ -101,20 +146,25 @@ namespace CASE.Repositories
 
         public bool Atualizar(Evento item)
         {
-            return AcessoDados.Executar(
-                "UPDATE evento SET id_instituicao=@instituicao,id_tipo_evento=@tipo,nome=@nome,`local`=@local,data_inicio=@inicio,data_fim=@fim,id_responsavel=@responsavel,situacao=@situacao,observacao=@observacao,versao=versao+1 WHERE id_evento=@id AND versao=@versao",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("UPDATE evento SET id_instituicao=@instituicao,id_tipo_evento=@tipo,nome=@nome,`local`=@local,data_inicio=@inicio,data_fim=@fim,id_responsavel=@responsavel,situacao=@situacao,observacao=@observacao,versao=versao+1 WHERE id_evento=@id AND versao=@versao", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@id", item.IdEvento);
-                    AcessoDados.AdicionarParametro(comando, "@versao", item.Versao);
-                    Vincular(comando, item);
-                }) > 0;
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", item.IdEvento);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@versao", item.Versao);
+                    Vincular(comandoBanco, item);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco > 0;
 
         }
 
         public bool PossuiVendasOuPerdas(int idEvento)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
                 return PossuiVendasOuPerdas(conexao, null, idEvento);
@@ -123,7 +173,7 @@ namespace CASE.Repositories
 
         private static bool PossuiVendasOuPerdas(MySqlConnection conexao, MySqlTransaction transacao, int idEvento)
         {
-            using (var comando = new MySqlCommand(
+            using (MySqlCommand comando = new MySqlCommand(
                 "SELECT EXISTS(SELECT 1 FROM registro r JOIN escala e ON e.id_escala=r.id_escala " +
                 "JOIN equipeevento eq ON eq.id_equipe=e.id_equipe " +
                 "WHERE eq.id_evento=@evento AND r.tipo IN ('venda','perda'))", conexao, transacao))
@@ -141,18 +191,18 @@ namespace CASE.Repositories
             string situacaoAnterior,
             bool devolverSaldosSemLancamentos = false)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
                         string situacaoAtual;
                         uint versaoAtual;
 
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "SELECT situacao,versao FROM evento WHERE id_evento=@id FOR UPDATE",
                             conexao,
                             transacao))
@@ -191,7 +241,7 @@ namespace CASE.Repositories
                                         "Foram encontrados registros de venda ou perda. Confira os lançamentos antes de encerrar o evento.");
                                 DevolverSaldosAoCentral(conexao, transacao, idEvento, idUsuario);
                             }
-                            using (var comando = new MySqlCommand(
+                            using (MySqlCommand comando = new MySqlCommand(
                                 "SELECT COUNT(*) FROM estoque e " +
                                 "JOIN vw_localestoque le ON le.id_local_estoque=e.id_local_estoque " +
                                 "WHERE le.id_evento=@evento AND e.quantidade_atual<>0",
@@ -209,7 +259,7 @@ namespace CASE.Repositories
                             }
                         }
 
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "UPDATE evento SET situacao=@situacao,versao=versao+1 " +
                             "WHERE id_evento=@id AND versao=@versao",
                             conexao,
@@ -226,7 +276,7 @@ namespace CASE.Repositories
                             }
                         }
 
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "INSERT INTO historicoalteracaooperacao " +
                             "(entidade,id_entidade,id_usuario,justificativa,dados_anteriores,dados_novos) " +
                             "VALUES ('evento',@id,@usuario,'Alteração de situação'," +
@@ -255,15 +305,15 @@ namespace CASE.Repositories
         private static void DevolverSaldosAoCentral(MySqlConnection conexao, MySqlTransaction transacao,
             int idEvento, int idUsuario)
         {
-            var saldos = new List<Tuple<int, int, decimal>>();
-            using (var comando = new MySqlCommand(
+            List<Tuple<int, int, decimal>> saldos = new List<Tuple<int, int, decimal>>();
+            using (MySqlCommand comando = new MySqlCommand(
                 "SELECT e.id_local_estoque,e.id_produto,e.quantidade_atual FROM estoque e " +
                 "JOIN vw_localestoque l ON l.id_local_estoque=e.id_local_estoque " +
                 "WHERE l.id_evento=@evento AND e.quantidade_atual<>0 " +
                 "ORDER BY e.id_local_estoque,e.id_produto FOR UPDATE", conexao, transacao))
             {
                 comando.Parameters.AddWithValue("@evento", idEvento);
-                using (var leitor = comando.ExecuteReader())
+                using (MySqlDataReader leitor = comando.ExecuteReader())
                     while (leitor.Read())
                     {
                         decimal quantidade = leitor.GetDecimal("quantidade_atual");
@@ -277,13 +327,13 @@ namespace CASE.Repositories
                 return;
 
             int idCentral = 0;
-            using (var comando = new MySqlCommand(
+            using (MySqlCommand comando = new MySqlCommand(
                 "SELECT l.id_local_estoque FROM vw_localestoque l " +
                 "JOIN evento ev ON ev.id_instituicao=l.id_instituicao " +
                 "WHERE ev.id_evento=@evento AND l.eh_central=1 AND l.ativo=1 FOR UPDATE", conexao, transacao))
             {
                 comando.Parameters.AddWithValue("@evento", idEvento);
-                using (var leitor = comando.ExecuteReader())
+                using (MySqlDataReader leitor = comando.ExecuteReader())
                     while (leitor.Read())
                     {
                         if (idCentral != 0)
@@ -294,35 +344,37 @@ namespace CASE.Repositories
             if (idCentral == 0)
                 throw new InvalidOperationException("Inicialize o estoque central da instituição antes de encerrar o evento.");
 
-            var transferencias = new Dictionary<int, int>();
-            var ajustes = new List<Tuple<int, int, decimal>>();
+            Dictionary<int, int> transferencias = new Dictionary<int, int>();
+            List<Tuple<int, int, decimal>> ajustes = new List<Tuple<int, int, decimal>>();
             foreach (var saldo in saldos)
             {
                 int idTransferencia;
                 if (!transferencias.TryGetValue(saldo.Item1, out idTransferencia))
                 {
-                    idTransferencia = AcessoDados.Inserir(conexao, transacao,
-                        "INSERT INTO transferenciaestoque " +
+                    int resultadoBanco7;
+                    using (MySqlCommand comandoBanco7 = new MySqlCommand("INSERT INTO transferenciaestoque " +
                         "(id_local_origem,id_local_destino,id_usuario_responsavel,data_hora,observacao,chave_operacao,criado_em) " +
-                        "VALUES (@origem,@destino,@usuario,NOW(),@observacao,@chave,NOW())",
-                        comando =>
-                        {
-                            comando.Parameters.AddWithValue("@origem", saldo.Item1);
-                            comando.Parameters.AddWithValue("@destino", idCentral);
-                            comando.Parameters.AddWithValue("@usuario", idUsuario);
-                            comando.Parameters.AddWithValue("@observacao", "Devolução dos saldos ao encerrar evento sem vendas ou perdas registradas.");
-                            comando.Parameters.AddWithValue("@chave", Guid.NewGuid().ToString());
-                        });
+                        "VALUES (@origem,@destino,@usuario,NOW(),@observacao,@chave,NOW())", conexao, transacao))
+                    {
+                        comandoBanco7.Parameters.AddWithValue("@origem", saldo.Item1);
+                        comandoBanco7.Parameters.AddWithValue("@destino", idCentral);
+                        comandoBanco7.Parameters.AddWithValue("@usuario", idUsuario);
+                        comandoBanco7.Parameters.AddWithValue("@observacao", "Devolução dos saldos ao encerrar evento sem vendas ou perdas registradas.");
+                        comandoBanco7.Parameters.AddWithValue("@chave", Guid.NewGuid().ToString());
+                        comandoBanco7.ExecuteNonQuery();
+                        resultadoBanco7 = Convert.ToInt32(comandoBanco7.LastInsertedId);
+                    }
+                    idTransferencia = resultadoBanco7;
                     transferencias.Add(saldo.Item1, idTransferencia);
                 }
-                AcessoDados.Executar(conexao, transacao,
-                    "INSERT INTO transferenciaitem (id_transferencia,id_produto,quantidade) VALUES (@transferencia,@produto,@quantidade)",
-                    comando =>
-                    {
-                        comando.Parameters.AddWithValue("@transferencia", idTransferencia);
-                        comando.Parameters.AddWithValue("@produto", saldo.Item2);
-                        comando.Parameters.AddWithValue("@quantidade", saldo.Item3);
-                    });
+                using (MySqlCommand comandoBanco8 = new MySqlCommand("INSERT INTO transferenciaitem (id_transferencia,id_produto,quantidade) VALUES (@transferencia,@produto,@quantidade)", conexao, transacao))
+                {
+                    comandoBanco8.Parameters.AddWithValue("@transferencia", idTransferencia);
+                    comandoBanco8.Parameters.AddWithValue("@produto", saldo.Item2);
+                    comandoBanco8.Parameters.AddWithValue("@quantidade", saldo.Item3);
+                    comandoBanco8.ExecuteNonQuery();
+                }
+
                 ajustes.Add(Tuple.Create(saldo.Item1, saldo.Item2, -saldo.Item3));
                 ajustes.Add(Tuple.Create(idCentral, saldo.Item2, saldo.Item3));
             }
@@ -331,15 +383,15 @@ namespace CASE.Repositories
 
         public void ExcluirCancelado(int idEvento, uint versao)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "SELECT situacao,versao FROM evento WHERE id_evento=@id FOR UPDATE",
                             conexao,
                             transacao))
@@ -422,9 +474,6 @@ namespace CASE.Repositories
                         ExecutarExclusao(conexao, transacao,
                             "DELETE FROM despesa WHERE id_evento=@evento", idEvento);
                         ExecutarExclusao(conexao, transacao,
-                            "DELETE FROM apuracaototallegado WHERE id_apuracao IN (SELECT a.id_apuracao FROM apuracao a " +
-                            "JOIN jornadasetor j ON j.id_jornada=a.id_jornada JOIN setor s ON s.id_setor=j.id_setor WHERE s.id_evento=@evento)", idEvento);
-                        ExecutarExclusao(conexao, transacao,
                             "DELETE FROM apuracao WHERE id_jornada IN (SELECT j.id_jornada FROM jornadasetor j " +
                             "JOIN setor s ON s.id_setor=j.id_setor WHERE s.id_evento=@evento)", idEvento);
                         ExecutarExclusao(conexao, transacao,
@@ -445,7 +494,7 @@ namespace CASE.Repositories
                         ExecutarExclusao(conexao, transacao,
                             "DELETE FROM localestoque WHERE id_evento=@evento", idEvento);
 
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "DELETE FROM evento WHERE id_evento=@id AND situacao=@situacao AND versao=@versao",
                             conexao,
                             transacao))
@@ -474,7 +523,7 @@ namespace CASE.Repositories
             string sql,
             int idEvento)
         {
-            using (var comando = new MySqlCommand(sql, conexao, transacao))
+            using (MySqlCommand comando = new MySqlCommand(sql, conexao, transacao))
             {
                 comando.Parameters.AddWithValue("@evento", idEvento);
                 comando.ExecuteNonQuery();

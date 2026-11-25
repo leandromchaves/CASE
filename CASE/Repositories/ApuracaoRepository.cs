@@ -1,9 +1,9 @@
-using System;
+﻿using System.Collections.Generic;
 using System.Data;
-using System.Collections.Generic;
+using System;
 using CASE.Data;
-using CASE.Services;
 using CASE.Models;
+using CASE.Services;
 using MySql.Data.MySqlClient;
 
 namespace CASE.Repositories
@@ -16,16 +16,16 @@ namespace CASE.Repositories
         public int Cadastrar(Apuracao item, int? ultimaConferenciaEsperada = null)
         {
             // A conferência é sempre um novo registro; nunca substitui a anterior.
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
                         ValidarResponsavel(conexao, transacao, item);
                         int ultima = 0;
-                        using (var consulta = new MySqlCommand(
+                        using (MySqlCommand consulta = new MySqlCommand(
                             "SELECT id_apuracao FROM vw_apuracao WHERE id_jornada=@jornada " +
                             "ORDER BY id_apuracao DESC LIMIT 1 FOR UPDATE", conexao, transacao))
                         {
@@ -40,7 +40,7 @@ namespace CASE.Repositories
                         {
                             throw new InvalidOperationException("Outra conferência foi registrada. Atualize a jornada antes de conferir novamente.");
                         }
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "INSERT INTO apuracao (id_jornada,data_hora,id_usuario_responsavel," +
                             "observacao,valor_dinheiro,valor_pix,valor_cartao) " +
                             "VALUES (@jornada,NOW(),@usuario,@observacao,@dinheiro,@pix,@cartao)",
@@ -75,7 +75,7 @@ transacao))
             {
                 throw new UnauthorizedAccessException("A identidade da conferência não corresponde à sessão.");
             }
-            using (var comando = new MySqlCommand(
+            using (MySqlCommand comando = new MySqlCommand(
                 "SELECT ps.nome FROM usuario u JOIN perfilsistema ps ON ps.id_perfil_sistema=u.id_perfil_sistema " +
                 "WHERE u.id_usuario=@usuario AND u.id_pessoa=@pessoa AND u.id_perfil_sistema=@perfil " +
                 "AND u.situacao_conta='aprovado' FOR UPDATE",
@@ -112,7 +112,7 @@ transacao))
             {
                 throw new ArgumentException("Os valores da conferência são inválidos.");
             }
-            using (var comando = new MySqlCommand(
+            using (MySqlCommand comando = new MySqlCommand(
                 "SELECT COUNT(*) FROM registro r JOIN escala e ON e.id_escala=r.id_escala " +
                 "JOIN registroitem ri ON ri.id_registro=r.id_registro " +
                 "WHERE e.id_jornada=@jornada AND r.tipo='venda' AND " +
@@ -151,11 +151,11 @@ transacao))
 
         private static DataTable ConsultarJornada(string sql, int idJornada)
         {
-            using (var conexao = Conexao.CriarConexao())
-            using (var comando = new MySqlCommand(sql, conexao))
+            using (MySqlConnection conexao = Conexao.CriarConexao())
+            using (MySqlCommand comando = new MySqlCommand(sql, conexao))
             {
                 comando.Parameters.AddWithValue("@jornada", idJornada);
-                using (var adaptador = new MySqlDataAdapter(comando))
+                using (MySqlDataAdapter adaptador = new MySqlDataAdapter(comando))
                 {
                     DataTable tabela = new DataTable();
                     adaptador.Fill(tabela);
@@ -166,18 +166,43 @@ transacao))
 
         public List<Apuracao> ListarPorJornada(int idJornada)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM vw_apuracao WHERE id_jornada=@id ORDER BY id_apuracao",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idJornada));
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM vw_apuracao WHERE id_jornada=@id ORDER BY id_apuracao", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idJornada);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Apuracao> resultadoBanco = new List<Apuracao>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public Apuracao BuscarPorId(int idApuracao)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM vw_apuracao WHERE id_apuracao=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idApuracao));
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM vw_apuracao WHERE id_apuracao=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idApuracao);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         private static Apuracao ConverterLinha(MySqlDataReader leitor)

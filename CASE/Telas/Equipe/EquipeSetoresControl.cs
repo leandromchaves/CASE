@@ -1,6 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Drawing;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Repositories;
 using CASE.Services;
@@ -10,20 +14,19 @@ namespace CASE.Quermesse
 {
     public partial class EquipeSetoresControl : UserControl
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly Evento eventoSelecionado;
-        private readonly SetorService setorService = new SetorService();
-        private readonly EquipeEventoService equipeService = new EquipeEventoService();
-        private readonly EscalaService escalaService = new EscalaService();
-        private readonly JornadaSetorService jornadaService = new JornadaSetorService();
-        private readonly TurnoRepository turnoRepository = new TurnoRepository();
+        private Usuario usuarioAutenticado;
+        private Evento eventoSelecionado;
+        private SetorService setorService = new SetorService();
+        private EquipeEventoService equipeService = new EquipeEventoService();
+        private EscalaService escalaService = new EscalaService();
+        private JornadaSetorService jornadaService = new JornadaSetorService();
+        private TurnoRepository turnoRepository = new TurnoRepository();
         private bool podeAdministrarEvento;
         private bool eventoPermiteAlteracoes;
         private Setor setorEmEdicao;
         private TextBox pesquisa;
-        private readonly Button btnProdutosPrecosSetor = new Button();
-        private readonly Label lblAjudaProdutosPrecos = new Label();
-
+        private Button btnProdutosPrecosSetor = new Button();
+        private Label lblAjudaProdutosPrecos = new Label();
         public EquipeSetoresControl() : this(null, null)
         {
         }
@@ -31,12 +34,13 @@ namespace CASE.Quermesse
         public EquipeSetoresControl(Usuario usuario, Evento evento)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             FrontendTheme.Aplicar(this);
             VisualUtils.ExibirEstadoVazio(dgvSetores, "Este evento ainda não tem setores. Cadastre o primeiro setor nesta tela.");
             VisualUtils.ExibirEstadoVazio(dgvEquipe, "Este evento ainda não tem membros vinculados.");
             ConfigurarAcaoProdutosPrecos();
-            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarEquipe", "Pesquisar equipe ou setor",
-                texto => VisualUtils.FiltrarGrades(panelCorpo, texto));
+            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarEquipe", "Pesquisar equipe ou setor", Preparar_AdicionarPesquisa);
             // O painel superior não pode crescer sobre a seção de setores ao redimensionar.
             panelEquipe.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             panelSetores.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
@@ -47,10 +51,7 @@ namespace CASE.Quermesse
             txtNovoSetor.Enabled = false;
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
-            lblSubtitulo.Text = eventoSelecionado == null
-                ? "Selecione um evento na tela Eventos para consultar a equipe e os setores."
-                : "Evento: " + eventoSelecionado.Nome + " · Defina a equipe por setor, turno e perfil de acesso.";
-
+            lblSubtitulo.Text = eventoSelecionado == null ? "Selecione um evento na tela Eventos para consultar a equipe e os setores." : "Evento: " + eventoSelecionado.Nome + " · Defina a equipe por setor, turno e perfil de acesso.";
             if (usuarioAutenticado == null)
             {
                 labelAviso.Text = "Entre no sistema para consultar a equipe do evento.";
@@ -72,94 +73,37 @@ namespace CASE.Quermesse
             try
             {
                 string nomePerfil;
-                new AutorizacaoService().ValidarUsuarioEObterPerfil(
-                    usuarioAutenticado,
-                    out nomePerfil);
-                podeAdministrarEvento = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase) ||
-                    (string.Equals(
-                    nomePerfil,
-                    "Gerente",
-                    StringComparison.OrdinalIgnoreCase) &&
-                    eventoSelecionado.IdResponsavel == usuarioAutenticado.IdPessoa);
+                new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out nomePerfil);
+                podeAdministrarEvento = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase) || (string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase) && eventoSelecionado.IdResponsavel == usuarioAutenticado.IdPessoa);
             }
             catch (Exception)
             {
                 podeAdministrarEvento = false;
             }
 
-            eventoPermiteAlteracoes = string.Equals(
-                eventoSelecionado.Situacao,
-                SituacoesEvento.Planejado,
-                StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(
-                    eventoSelecionado.Situacao,
-                    SituacoesEvento.EmAndamento,
-                    StringComparison.OrdinalIgnoreCase);
-
+            eventoPermiteAlteracoes = string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Planejado, StringComparison.OrdinalIgnoreCase) || string.Equals(eventoSelecionado.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase);
             btnAdicionarSetor.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
             btnNovoFuncionario.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
             btnEditarFuncionario.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
             txtNovoSetor.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
             AtualizarAcaoProdutosPrecos();
-
             CarregarSetores();
             CarregarEquipe();
             ContextMenuStrip menuSetor = new ContextMenuStrip();
             ToolStripMenuItem renomear = new ToolStripMenuItem("Renomear setor selecionado");
             renomear.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes;
-            renomear.Click += (s, e) =>
-            {
-                if (dgvSetores.SelectedRows.Count == 0)
-                {
-                    labelAviso.Text = "Selecione o setor que deseja renomear.";
-                    return;
-                }
-                setorEmEdicao = dgvSetores.SelectedRows[0].Tag as Setor;
-                if (setorEmEdicao != null)
-                {
-                    txtNovoSetor.Text = setorEmEdicao.Nome;
-                    btnAdicionarSetor.Text = "Salvar setor";
-                    labelAviso.Text = "Edite o nome e salve. Pressione Esc no campo para cancelar.";
-                    txtNovoSetor.Focus();
-                    txtNovoSetor.SelectAll();
-                }
-            };
+            renomear.Click += renomear_Click;
             menuSetor.Items.Add(renomear);
             ToolStripMenuItem remover = new ToolStripMenuItem("Remover setor selecionado");
-            remover.Click += (s, e) => RemoverSetorSelecionado();
+            remover.Click += remover_Click;
             menuSetor.Items.Add(new ToolStripSeparator());
             menuSetor.Items.Add(remover);
-            menuSetor.Opening += (s, e) =>
-            {
-                bool setorSelecionado = dgvSetores.SelectedRows.Count > 0;
-                renomear.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes && setorSelecionado;
-                remover.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes && setorSelecionado;
-            };
-            Disposed += (s, e) => menuSetor.Dispose();
-            txtNovoSetor.KeyDown += (s, e) =>
-            {
-                if (e.KeyCode == Keys.Escape)
-                {
-                    setorEmEdicao = null;
-                    txtNovoSetor.Clear();
-                    btnAdicionarSetor.Text = "Adicionar setor";
-                    e.SuppressKeyPress = true;
-                }
-            };
+            menuSetor.Opening += Tratar_menuSetor_Opening;
+            Disposed += Tratar_Disposed;
+            txtNovoSetor.KeyDown += txtNovoSetor_KeyDown;
             dgvSetores.ContextMenuStrip = menuSetor;
-            dgvSetores.CellMouseDown += (s, e) =>
-            {
-                if (e.Button != MouseButtons.Right || e.RowIndex < 0)
-                {
-                    return;
-                }
-
-                dgvSetores.ClearSelection();
-                dgvSetores.Rows[e.RowIndex].Selected = true;
-                dgvSetores.CurrentCell = dgvSetores.Rows[e.RowIndex].Cells[0];
-            };
-            dgvSetores.SelectionChanged += (s, e) => AtualizarAcaoProdutosPrecos();
-
+            dgvSetores.CellMouseDown += dgvSetores_CellMouseDown;
+            dgvSetores.SelectionChanged += dgvSetores_SelectionChanged;
             if (string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase))
             {
                 labelAviso.Text = "Este evento foi cancelado. Os dados permanecem disponíveis para consulta, mas novos cadastros e alterações estão bloqueados.";
@@ -167,6 +111,18 @@ namespace CASE.Quermesse
             else if (!podeAdministrarEvento)
             {
                 labelAviso.Text = "Consulta administrativa. Equipes, setores e preços são gerenciados pelo gerente responsável pelo evento.";
+            }
+
+            void Tratar_menuSetor_Opening(object s, CancelEventArgs e)
+            {
+                bool setorSelecionado = dgvSetores.SelectedRows.Count > 0;
+                renomear.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes && setorSelecionado;
+                remover.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes && setorSelecionado;
+            }
+
+            void Tratar_Disposed(object s, EventArgs e)
+            {
+                menuSetor.Dispose();
             }
         }
 
@@ -176,21 +132,19 @@ namespace CASE.Quermesse
             btnProdutosPrecosSetor.Text = "Produtos e preços";
             btnProdutosPrecosSetor.SetBounds(24, 150, 235, 38);
             btnProdutosPrecosSetor.FlatStyle = FlatStyle.Flat;
-            btnProdutosPrecosSetor.BackColor = System.Drawing.Color.White;
+            btnProdutosPrecosSetor.BackColor = Color.White;
             btnProdutosPrecosSetor.ForeColor = VisualUtils.Texto;
             btnProdutosPrecosSetor.Enabled = false;
             btnProdutosPrecosSetor.CausesValidation = false;
-            btnProdutosPrecosSetor.AccessibleDescription =
-                "Configure quais produtos são vendidos no setor e o preço padrão de cada um.";
+            btnProdutosPrecosSetor.AccessibleDescription = "Configure quais produtos são vendidos no setor e o preço padrão de cada um.";
             VisualUtils.EstilizarBotao(btnProdutosPrecosSetor);
             VisualUtils.Arredondar(btnProdutosPrecosSetor, 8);
-            btnProdutosPrecosSetor.Click += (s, e) => ConfigurarProdutoDoSetor(s, null);
+            btnProdutosPrecosSetor.Click += btnProdutosPrecosSetor_Click;
             panelSetores.Controls.Add(btnProdutosPrecosSetor);
-
             lblAjudaProdutosPrecos.Name = "lblAjudaProdutosPrecosSetor";
             lblAjudaProdutosPrecos.Text = "Selecione um setor para configurar os produtos vendidos e seus preços.";
             lblAjudaProdutosPrecos.SetBounds(24, 192, 235, 34);
-            lblAjudaProdutosPrecos.Font = new System.Drawing.Font("Segoe UI", 8.5F);
+            lblAjudaProdutosPrecos.Font = new Font("Segoe UI", 8.5F);
             lblAjudaProdutosPrecos.ForeColor = VisualUtils.TextoSuave;
             lblAjudaProdutosPrecos.AutoEllipsis = true;
             panelSetores.Controls.Add(lblAjudaProdutosPrecos);
@@ -200,32 +154,19 @@ namespace CASE.Quermesse
         {
             if (btnProdutosPrecosSetor == null || dgvSetores == null)
                 return;
-
             bool setorSelecionado = dgvSetores.SelectedRows.Count > 0;
             btnProdutosPrecosSetor.Enabled = podeAdministrarEvento && eventoPermiteAlteracoes && setorSelecionado;
-            lblAjudaProdutosPrecos.Text = eventoSelecionado != null &&
-                    string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase)
-                ? "Evento cancelado: os produtos e preços existentes podem ser consultados, mas não alterados."
-                : !eventoPermiteAlteracoes
-                    ? "Evento encerrado: os produtos e preços existentes podem ser consultados, mas não alterados."
-                : !podeAdministrarEvento
-                ? "Os preços são configurados pelo administrador ou gerente responsável."
-                : setorSelecionado
-                    ? "Defina os produtos disponíveis e o preço padrão de venda deste setor."
-                    : "Selecione um setor para configurar os produtos vendidos e seus preços.";
+            lblAjudaProdutosPrecos.Text = eventoSelecionado != null && string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Cancelado, StringComparison.OrdinalIgnoreCase) ? "Evento cancelado: os produtos e preços existentes podem ser consultados, mas não alterados." : !eventoPermiteAlteracoes ? "Evento encerrado: os produtos e preços existentes podem ser consultados, mas não alterados." : !podeAdministrarEvento ? "Os preços são configurados pelo administrador ou gerente responsável." : setorSelecionado ? "Defina os produtos disponíveis e o preço padrão de venda deste setor." : "Selecione um setor para configurar os produtos vendidos e seus preços.";
         }
 
         private void btnNovoFuncionario_Click(object sender, EventArgs e)
         {
-
             AbrirFormularioMembro(null);
         }
 
         private void btnEditarFuncionario_Click(object sender, EventArgs e)
         {
-
             EquipeEvento vinculo = ObterVinculoSelecionado();
-
             if (vinculo != null)
             {
                 AbrirFormularioMembro(vinculo);
@@ -234,14 +175,12 @@ namespace CASE.Quermesse
 
         private void dgvEquipe_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-
             if (e.RowIndex < 0)
             {
                 return;
             }
 
             EquipeEvento vinculo = dgvEquipe.Rows[e.RowIndex].Tag as EquipeEvento;
-
             if (vinculo != null)
             {
                 AbrirFormularioMembro(vinculo);
@@ -264,27 +203,23 @@ namespace CASE.Quermesse
             if (!eventoPermiteAlteracoes)
             {
                 labelAviso.Text = "Este evento foi cancelado ou encerrado. Não é possível adicionar ou alterar membros.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Atencao);
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Atencao);
                 return;
             }
 
-            using (PessoaSetorForm formulario = new PessoaSetorForm(
-                usuarioAutenticado,
-                eventoSelecionado,
-                vinculo))
+            using (PessoaSetorForm formulario = new PessoaSetorForm(usuarioAutenticado, eventoSelecionado, vinculo))
             {
                 if (formulario.ShowDialog(this) == DialogResult.OK)
                 {
                     CarregarEquipe();
                     labelAviso.Text = "Equipe atualizada.";
-                    CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
+                    FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
                 }
             }
         }
 
         private void btnAdicionarSetor_Click(object sender, EventArgs e)
         {
-
             if (eventoSelecionado == null || usuarioAutenticado == null)
             {
                 labelAviso.Text = "Selecione um evento e autentique-se antes de criar um setor.";
@@ -293,9 +228,7 @@ namespace CASE.Quermesse
 
             if (!eventoPermiteAlteracoes)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this,
-                    new InvalidOperationException("Este evento foi cancelado ou encerrado. Não é possível adicionar ou alterar setores."),
-                    "Alterações indisponíveis", labelAviso);
+                FeedbackUsuario.ExibirErro(this, new InvalidOperationException("Este evento foi cancelado ou encerrado. Não é possível adicionar ou alterar setores."), "Alterações indisponíveis", labelAviso);
                 return;
             }
 
@@ -309,22 +242,21 @@ namespace CASE.Quermesse
             Setor setor = new Setor();
             setor.IdEvento = eventoSelecionado.IdEvento;
             setor.Nome = txtNovoSetor.Text.Trim();
-
             try
             {
                 if (setorEmEdicao == null)
                 {
                     setorService.Criar(usuarioAutenticado, setor);
                     labelAviso.Text = "Setor cadastrado e local de estoque criado.";
-                    CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
+                    FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
                 }
                 else
                 {
-                    setorService.Renomear(usuarioAutenticado, setorEmEdicao.IdSetor,
-                        setor.Nome, setorEmEdicao.Nome);
+                    setorService.Renomear(usuarioAutenticado, setorEmEdicao.IdSetor, setor.Nome, setorEmEdicao.Nome);
                     labelAviso.Text = "Nome do setor e do local atualizado. Saldos e vínculos preservados.";
-                    CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
+                    FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
                 }
+
                 setorEmEdicao = null;
                 btnAdicionarSetor.Text = "Adicionar setor";
                 txtNovoSetor.Clear();
@@ -333,21 +265,21 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar a equipe e os setores.", labelAviso);
+                FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar a equipe e os setores.", labelAviso);
             }
             catch (InvalidOperationException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar a equipe e os setores.", labelAviso);
+                FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar a equipe e os setores.", labelAviso);
             }
             catch (UnauthorizedAccessException)
             {
                 labelAviso.Text = "Sua conta não pode criar setores neste evento.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Erro);
             }
             catch (Exception)
             {
                 labelAviso.Text = "Não foi possível cadastrar o setor.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Erro);
             }
         }
 
@@ -355,35 +287,31 @@ namespace CASE.Quermesse
         {
             try
             {
-                List<Setor> setores = setorService.ListarPorEvento(
-                    usuarioAutenticado,
-                    eventoSelecionado.IdEvento);
+                List<Setor> setores = setorService.ListarPorEvento(usuarioAutenticado, eventoSelecionado.IdEvento);
                 ConsultaOperacionalService consultas = new ConsultaOperacionalService();
-                System.Data.DataTable escalas = consultas.Escalas(usuarioAutenticado, eventoSelecionado.IdEvento);
-                System.Data.DataTable registros = consultas.Registros(usuarioAutenticado, eventoSelecionado.IdEvento,
-                    eventoSelecionado.DataInicio, eventoSelecionado.DataFim);
-
+                DataTable escalas = consultas.Escalas(usuarioAutenticado, eventoSelecionado.IdEvento);
+                DataTable registros = consultas.Registros(usuarioAutenticado, eventoSelecionado.IdEvento, eventoSelecionado.DataInicio, eventoSelecionado.DataFim);
                 List<object[]> linhas = new List<object[]>();
                 foreach (Setor setor in setores)
                 {
                     HashSet<int> pessoas = new HashSet<int>();
                     HashSet<int> operacoes = new HashSet<int>();
-                    foreach (System.Data.DataRow escala in escalas.Rows)
+                    foreach (DataRow escala in escalas.Rows)
                     {
-                        if (Convert.ToInt32(escala["id_setor"]) == setor.IdSetor &&
-                            Convert.ToBoolean(escala["ativo"]) &&
-                            Convert.ToString(escala["situacao"]) != SituacoesEscala.Cancelada)
+                        if (Convert.ToInt32(escala["id_setor"]) == setor.IdSetor && Convert.ToBoolean(escala["ativo"]) && Convert.ToString(escala["situacao"]) != SituacoesEscala.Cancelada)
                         {
                             pessoas.Add(Convert.ToInt32(escala["id_pessoa"]));
                         }
                     }
-                    foreach (System.Data.DataRow registro in registros.Rows)
+
+                    foreach (DataRow registro in registros.Rows)
                     {
                         if (Convert.ToInt32(registro["id_setor"]) == setor.IdSetor)
                         {
                             operacoes.Add(Convert.ToInt32(registro["id_registro"]));
                         }
                     }
+
                     linhas.Add(new object[] { setor, setor.Nome, pessoas.Count, operacoes.Count });
                 }
 
@@ -401,12 +329,12 @@ namespace CASE.Quermesse
             catch (UnauthorizedAccessException)
             {
                 labelAviso.Text = "Sua conta não pode consultar os setores deste evento.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Erro);
             }
             catch (Exception)
             {
                 labelAviso.Text = "Não foi possível carregar os setores do evento.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Erro);
             }
         }
 
@@ -425,15 +353,7 @@ namespace CASE.Quermesse
                 return;
             }
 
-            DialogResult confirmar = MessageBox.Show(
-                this,
-                "Deseja remover o setor \"" + setor.Nome + "\"?\n\n" +
-                "As configurações de produtos e o saldo zerado vinculados a ele serão removidos. " +
-                "Setores com escalas, saldo ou movimentações não podem ser removidos, para preservar o histórico.",
-                "Remover setor",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning,
-                MessageBoxDefaultButton.Button2);
+            DialogResult confirmar = MessageBox.Show(this, "Deseja remover o setor \"" + setor.Nome + "\"?\n\n" + "As configurações de produtos e o saldo zerado vinculados a ele serão removidos. " + "Setores com escalas, saldo ou movimentações não podem ser removidos, para preservar o histórico.", "Remover setor", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
             if (confirmar != DialogResult.Yes)
             {
                 return;
@@ -461,34 +381,27 @@ namespace CASE.Quermesse
             }
             catch (InvalidOperationException ex)
             {
-                FeedbackUsuario.ExibirErro(
-                    this,
-                    ex,
-                    "Não foi possível remover o setor. As informações vinculadas foram preservadas.",
-                    labelAviso);
+                FeedbackUsuario.ExibirErro(this, ex, "Não foi possível remover o setor. As informações vinculadas foram preservadas.", labelAviso);
             }
             catch (Exception ex)
             {
-                FeedbackUsuario.ExibirErro(
-                    this,
-                    ex,
-                    "Não foi possível remover o setor. Tente novamente.",
-                    labelAviso);
+                FeedbackUsuario.ExibirErro(this, ex, "Não foi possível remover o setor. Tente novamente.", labelAviso);
             }
         }
 
         private void ConfigurarProdutoDoSetor(object sender, DataGridViewCellEventArgs e)
         {
-            if (!podeAdministrarEvento || !eventoPermiteAlteracoes || dgvSetores.SelectedRows.Count == 0 ||
-                (e != null && e.RowIndex < 0))
+            if (!podeAdministrarEvento || !eventoPermiteAlteracoes || dgvSetores.SelectedRows.Count == 0 || (e != null && e.RowIndex < 0))
             {
                 return;
             }
+
             Setor setor = dgvSetores.SelectedRows[0].Tag as Setor;
             if (setor == null)
             {
                 return;
             }
+
             try
             {
                 ProdutoService produtos = new ProdutoService();
@@ -504,7 +417,7 @@ namespace CASE.Quermesse
                     produto.Name = "cmbProdutoSetor";
                     preco.Name = "numPrecoSetor";
                     salvar.Name = "btnSalvarPrecoSetor";
-                    dialogo.ClientSize = new System.Drawing.Size(480, 190);
+                    dialogo.ClientSize = new Size(480, 190);
                     dialogo.StartPosition = FormStartPosition.CenterParent;
                     dialogo.FormBorderStyle = FormBorderStyle.FixedDialog;
                     dialogo.MaximizeBox = false;
@@ -518,10 +431,32 @@ namespace CASE.Quermesse
                             produto.Items.Add(item);
                         }
                     }
+
                     preco.DecimalPlaces = 2;
                     preco.Maximum = 99999999.99M;
                     preco.SetBounds(20, 113, 180, 28);
-                    produto.SelectedIndexChanged += (origem, argumentos) =>
+                    produto.SelectedIndexChanged += Tratar_produto_SelectedIndexChanged;
+                    salvar.Text = "Salvar preço";
+                    salvar.SetBounds(280, 110, 180, 36);
+                    salvar.Click += Tratar_salvar_Click;
+                    dialogo.Controls.Add(FrontendTheme.Legenda("Produto", new Rectangle(20, 15, 400, 22)));
+                    dialogo.Controls.Add(FrontendTheme.Legenda("Preço padrão de venda (R$)", new Rectangle(20, 84, 400, 22)));
+                    dialogo.Controls.Add(produto);
+                    dialogo.Controls.Add(preco);
+                    dialogo.Controls.Add(salvar);
+                    FrontendTheme.Aplicar(dialogo);
+                    if (produto.Items.Count > 0)
+                    {
+                        produto.SelectedIndex = 0;
+                    }
+
+                    if (dialogo.ShowDialog(this) == DialogResult.OK)
+                    {
+                        labelAviso.Text = "Produto vinculado ao setor e preço padrão salvo. Vendas anteriores foram preservadas.";
+                        FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
+                    }
+
+                    void Tratar_produto_SelectedIndexChanged(object origem, EventArgs argumentos)
                     {
                         preco.Value = 0;
                         Produto selecionado = produto.SelectedItem as Produto;
@@ -533,20 +468,19 @@ namespace CASE.Quermesse
                                 break;
                             }
                         }
-                    };
-                    salvar.Text = "Salvar preço";
-                    salvar.SetBounds(280, 110, 180, 36);
-                    salvar.Click += (origem, argumentos) =>
+                    }
+
+                    void Tratar_salvar_Click(object origem, EventArgs argumentos)
                     {
                         Produto selecionado = produto.SelectedItem as Produto;
                         if (selecionado == null)
                         {
                             return;
                         }
+
                         try
                         {
-                            produtos.ConfigurarNoSetor(usuarioAutenticado, setor.IdSetor,
-                                selecionado.IdProduto, preco.Value);
+                            produtos.ConfigurarNoSetor(usuarioAutenticado, setor.IdSetor, selecionado.IdProduto, preco.Value);
                             dialogo.DialogResult = DialogResult.OK;
                             dialogo.Close();
                         }
@@ -555,32 +489,18 @@ namespace CASE.Quermesse
                             string mensagem = "Não foi possível configurar o produto.";
                             if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
                             {
-                                mensagem = CASE.Utils.FeedbackUsuario.MensagemErro(erro, mensagem);
+                                mensagem = FeedbackUsuario.MensagemErro(erro, mensagem);
                             }
-                            CASE.Utils.FeedbackUsuario.ExibirErro(dialogo, erro, mensagem);
+
+                            FeedbackUsuario.ExibirErro(dialogo, erro, mensagem);
                         }
-                    };
-                    dialogo.Controls.Add(FrontendTheme.Legenda("Produto", new System.Drawing.Rectangle(20, 15, 400, 22)));
-                    dialogo.Controls.Add(FrontendTheme.Legenda("Preço padrão de venda (R$)", new System.Drawing.Rectangle(20, 84, 400, 22)));
-                    dialogo.Controls.Add(produto);
-                    dialogo.Controls.Add(preco);
-                    dialogo.Controls.Add(salvar);
-                    FrontendTheme.Aplicar(dialogo);
-                    if (produto.Items.Count > 0)
-                    {
-                        produto.SelectedIndex = 0;
-                    }
-                    if (dialogo.ShowDialog(this) == DialogResult.OK)
-                    {
-                        labelAviso.Text = "Produto vinculado ao setor e preço padrão salvo. Vendas anteriores foram preservadas.";
-                        CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Sucesso);
                     }
                 }
             }
             catch (Exception erro)
             {
                 labelAviso.Text = "Não foi possível carregar os produtos autorizados.";
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ConfigurarProdutoDoSetor");
+                Trace.WriteLine(erro.GetType().Name + " em ConfigurarProdutoDoSetor");
             }
         }
 
@@ -589,41 +509,28 @@ namespace CASE.Quermesse
             panelCorpo.Height = Math.Max(590, ClientSize.Height - 170);
             panelSetores.Height = Math.Max(230, panelCorpo.Height - panelSetores.Top);
             labelAviso.Top = panelCorpo.Bottom + 12;
-            AutoScrollMinSize = new System.Drawing.Size(970, labelAviso.Bottom + 16);
+            AutoScrollMinSize = new Size(970, labelAviso.Bottom + 16);
         }
 
         private void CarregarEquipe()
         {
             try
             {
-                List<EquipeEvento> equipe = equipeService.ListarPorEvento(
-                    usuarioAutenticado,
-                    eventoSelecionado.IdEvento);
-                List<Perfil> perfis = equipeService.ListarPerfis(
-                    usuarioAutenticado,
-                    eventoSelecionado.IdEvento);
-
+                List<EquipeEvento> equipe = equipeService.ListarPorEvento(usuarioAutenticado, eventoSelecionado.IdEvento);
+                List<Perfil> perfis = equipeService.ListarPerfis(usuarioAutenticado, eventoSelecionado.IdEvento);
                 List<object[]> linhas = new List<object[]>();
                 foreach (EquipeEvento membro in equipe)
                 {
-                    Pessoa pessoa = equipeService.BuscarPessoaVinculada(
-                        usuarioAutenticado,
-                        eventoSelecionado.IdEvento,
-                        membro.IdEquipe);
+                    Pessoa pessoa = equipeService.BuscarPessoaVinculada(usuarioAutenticado, eventoSelecionado.IdEvento, membro.IdEquipe);
                     string nomePessoa = "Pessoa " + membro.IdPessoa;
                     string login = string.Empty;
-
                     if (pessoa != null)
                     {
                         nomePessoa = pessoa.Nome;
-                        login = equipeService.BuscarLoginDaPessoaVinculada(
-                            usuarioAutenticado,
-                            eventoSelecionado.IdEvento,
-                            membro.IdEquipe);
+                        login = equipeService.BuscarLoginDaPessoaVinculada(usuarioAutenticado, eventoSelecionado.IdEvento, membro.IdEquipe);
                     }
 
                     string nomePerfil = "—";
-
                     foreach (Perfil perfil in perfis)
                     {
                         if (perfil.IdPerfil == membro.IdPerfil)
@@ -637,7 +544,6 @@ namespace CASE.Quermesse
                     string resumoTurnos;
                     MontarResumoEscala(membro, out resumoSetores, out resumoTurnos);
                     string situacao = "Inativo";
-
                     if (membro.Ativo)
                     {
                         situacao = "Ativo";
@@ -659,26 +565,20 @@ namespace CASE.Quermesse
             catch (UnauthorizedAccessException)
             {
                 labelAviso.Text = "Sua conta não pode consultar a equipe deste evento.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Erro);
             }
             catch (Exception)
             {
                 labelAviso.Text = "Não foi possível carregar a equipe do evento.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, labelAviso.Text, CASE.Utils.TipoFeedback.Erro);
+                FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Erro);
             }
         }
 
-        private void MontarResumoEscala(
-            EquipeEvento membro,
-            out string resumoSetores,
-            out string resumoTurnos)
+        private void MontarResumoEscala(EquipeEvento membro, out string resumoSetores, out string resumoTurnos)
         {
-            List<Escala> escalas = escalaService.ListarPorEquipe(
-                usuarioAutenticado,
-                membro.IdEquipe);
+            List<Escala> escalas = escalaService.ListarPorEquipe(usuarioAutenticado, membro.IdEquipe);
             List<string> nomesSetores = new List<string>();
             List<string> nomesTurnos = new List<string>();
-
             if (escalas.Count == 0)
             {
                 resumoSetores = "Sem escala";
@@ -688,20 +588,14 @@ namespace CASE.Quermesse
 
             foreach (Escala escala in escalas)
             {
-                JornadaSetor jornada = jornadaService.BuscarPorId(
-                    usuarioAutenticado,
-                    escala.IdJornada);
-
+                JornadaSetor jornada = jornadaService.BuscarPorId(usuarioAutenticado, escala.IdJornada);
                 if (jornada == null)
                 {
                     continue;
                 }
 
                 string nomeSetor = "Setor " + jornada.IdSetor;
-                List<Setor> setores = setorService.ListarPorEvento(
-                    usuarioAutenticado,
-                    eventoSelecionado.IdEvento);
-
+                List<Setor> setores = setorService.ListarPorEvento(usuarioAutenticado, eventoSelecionado.IdEvento);
                 foreach (Setor setor in setores)
                 {
                     if (setor.IdSetor == jornada.IdSetor)
@@ -713,7 +607,6 @@ namespace CASE.Quermesse
 
                 string nomeTurno = "Turno " + jornada.IdTurno;
                 List<Turno> turnos = turnoRepository.Listar();
-
                 foreach (Turno turno in turnos)
                 {
                     if (turno.IdTurno == jornada.IdTurno)
@@ -729,7 +622,6 @@ namespace CASE.Quermesse
 
             resumoSetores = string.Join(", ", nomesSetores);
             resumoTurnos = string.Join(", ", nomesTurnos);
-
             if (string.IsNullOrWhiteSpace(resumoSetores))
             {
                 resumoSetores = "Escala cadastrada";
@@ -747,6 +639,68 @@ namespace CASE.Quermesse
             {
                 valores.Add(valor);
             }
+        }
+
+        private void Preparar_AdicionarPesquisa(string texto)
+        {
+            VisualUtils.FiltrarGrades(panelCorpo, texto);
+        }
+
+        private void renomear_Click(object s, EventArgs e)
+        {
+            if (dgvSetores.SelectedRows.Count == 0)
+            {
+                labelAviso.Text = "Selecione o setor que deseja renomear.";
+                return;
+            }
+
+            setorEmEdicao = dgvSetores.SelectedRows[0].Tag as Setor;
+            if (setorEmEdicao != null)
+            {
+                txtNovoSetor.Text = setorEmEdicao.Nome;
+                btnAdicionarSetor.Text = "Salvar setor";
+                labelAviso.Text = "Edite o nome e salve. Pressione Esc no campo para cancelar.";
+                txtNovoSetor.Focus();
+                txtNovoSetor.SelectAll();
+            }
+        }
+
+        private void remover_Click(object s, EventArgs e)
+        {
+            RemoverSetorSelecionado();
+        }
+
+        private void txtNovoSetor_KeyDown(object s, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Escape)
+            {
+                setorEmEdicao = null;
+                txtNovoSetor.Clear();
+                btnAdicionarSetor.Text = "Adicionar setor";
+                e.SuppressKeyPress = true;
+            }
+        }
+
+        private void dgvSetores_CellMouseDown(object s, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Right || e.RowIndex < 0)
+            {
+                return;
+            }
+
+            dgvSetores.ClearSelection();
+            dgvSetores.Rows[e.RowIndex].Selected = true;
+            dgvSetores.CurrentCell = dgvSetores.Rows[e.RowIndex].Cells[0];
+        }
+
+        private void dgvSetores_SelectionChanged(object s, EventArgs e)
+        {
+            AtualizarAcaoProdutosPrecos();
+        }
+
+        private void btnProdutosPrecosSetor_Click(object s, EventArgs e)
+        {
+            ConfigurarProdutoDoSetor(s, null);
         }
     }
 }

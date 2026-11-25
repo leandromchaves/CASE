@@ -1,6 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -9,13 +11,12 @@ namespace CASE.Quermesse
 {
     public partial class PessoaSetorForm : Form
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly Evento evento;
-        private readonly EquipeEvento vinculo;
-        private readonly EquipeEventoService equipeService = new EquipeEventoService();
+        private Usuario usuarioAutenticado;
+        private Evento evento;
+        private EquipeEvento vinculo;
+        private EquipeEventoService equipeService = new EquipeEventoService();
         private ComboBox cmbMembroAprovado;
-        private readonly Label avisoListaVazia = new Label();
-
+        private Label avisoListaVazia = new Label();
         public PessoaSetorForm() : this(null, null, null)
         {
         }
@@ -23,15 +24,15 @@ namespace CASE.Quermesse
         public PessoaSetorForm(Usuario usuario, Evento evento, EquipeEvento item)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             IconoAplicacao.Aplicar(this);
             FrontendTheme.Aplicar(this);
-
             usuarioAutenticado = usuario;
             this.evento = evento;
             vinculo = item;
             labelAvisoFormulario.Text = string.Empty;
             txtNomeFuncionario.ReadOnly = true;
-
             lblPerfildeacesso.Text = "Perfil neste evento";
             lblSetorbarraca.Text = "Setor (definido nas escalas)";
             lblTurno.Text = "Turno (definido nas escalas)";
@@ -67,15 +68,16 @@ namespace CASE.Quermesse
             chkFuncionarioAtivo.Top = 360;
             var orientacao = new Label
             {
-                Name = "lblOrientacaoEscalas", Text = "O vínculo inclui a pessoa na equipe do evento.\n" +
-                    "Depois, use Escala de trabalho para definir setor, data e turno.",
-                ForeColor = VisualUtils.TextoSuave, BackColor = VisualUtils.Fundo,
-                Padding = new Padding(10), Font = new System.Drawing.Font("Segoe UI", 9F)
+                Name = "lblOrientacaoEscalas",
+                Text = "O vínculo inclui a pessoa na equipe do evento.\n" + "Depois, use Escala de trabalho para definir setor, data e turno.",
+                ForeColor = VisualUtils.TextoSuave,
+                BackColor = VisualUtils.Fundo,
+                Padding = new Padding(10),
+                Font = new Font("Segoe UI", 9F)
             };
             orientacao.SetBounds(28, 272, 550, 70);
             panelFormulario.Controls.Add(orientacao);
             VisualUtils.Arredondar(orientacao, 8);
-
             if (usuarioAutenticado == null || this.evento == null)
             {
                 btnSalvarFuncionario.Enabled = false;
@@ -84,11 +86,7 @@ namespace CASE.Quermesse
             }
 
             CarregarPerfis();
-            cmbPerfilFuncionario.SelectedIndexChanged += (s, e) =>
-                btnSalvarFuncionario.Enabled = cmbPerfilFuncionario.SelectedItem != null &&
-                    (vinculo != null || cmbMembroAprovado?.SelectedItem is Pessoa) &&
-                    !string.IsNullOrWhiteSpace(txtLoginFuncionario.Text);
-
+            cmbPerfilFuncionario.SelectedIndexChanged += cmbPerfilFuncionario_SelectedIndexChanged;
             if (vinculo == null)
             {
                 Text = lblTitulo.Text = "Vincular membro ao evento";
@@ -106,11 +104,11 @@ namespace CASE.Quermesse
             lblNomecompleto.Text = "Membro aprovado para adicionar à equipe";
             txtNomeFuncionario.Visible = false;
             Panel contornoNome = txtNomeFuncionario.Parent as Panel;
-            if (contornoNome != null && contornoNome.Controls.Count == 1 &&
-                contornoNome.Controls.Contains(txtNomeFuncionario))
+            if (contornoNome != null && contornoNome.Controls.Count == 1 && contornoNome.Controls.Contains(txtNomeFuncionario))
             {
                 contornoNome.Visible = false;
             }
+
             txtLoginFuncionario.ReadOnly = true;
             chkFuncionarioAtivo.Checked = true;
             chkFuncionarioAtivo.Enabled = false;
@@ -125,56 +123,33 @@ namespace CASE.Quermesse
                 AccessibleName = "Membros aprovados disponíveis",
                 TabIndex = txtNomeFuncionario.TabIndex
             };
-            cmbMembroAprovado.Format += (s, e) =>
-            {
-                Pessoa pessoa = e.ListItem as Pessoa;
-                e.Value = pessoa == null ? Convert.ToString(e.ListItem) : pessoa.Nome;
-            };
+            cmbMembroAprovado.Format += cmbMembroAprovado_Format;
             cmbMembroAprovado.SetBounds(28, 94, 440, 38);
             panelFormulario.Controls.Add(cmbMembroAprovado);
             VisualUtils.EstilizarSelecao(cmbMembroAprovado);
             cmbMembroAprovado.FlatStyle = FlatStyle.Standard;
-            cmbMembroAprovado.BackColor = System.Drawing.Color.White;
+            cmbMembroAprovado.BackColor = Color.White;
             avisoListaVazia.Name = "lblSemMembrosDisponiveis";
             avisoListaVazia.Text = "Nenhum membro disponível para adicionar";
             avisoListaVazia.BackColor = panelFormulario.BackColor;
             avisoListaVazia.ForeColor = VisualUtils.TextoSuave;
-            avisoListaVazia.Font = new System.Drawing.Font("Segoe UI", 9F);
+            avisoListaVazia.Font = new Font("Segoe UI", 9F);
             avisoListaVazia.SetBounds(28, 94, 440, 38);
             avisoListaVazia.Visible = false;
             panelFormulario.Controls.Add(avisoListaVazia);
             var atualizar = new Button
             {
-                Name = "btnAtualizarMembrosDisponiveis", Text = "Atualizar",
-                BackColor = System.Drawing.Color.White, ForeColor = VisualUtils.Azul
+                Name = "btnAtualizarMembrosDisponiveis",
+                Text = "Atualizar",
+                BackColor = Color.White,
+                ForeColor = VisualUtils.Azul
             };
             atualizar.SetBounds(478, 94, 100, 38);
             panelFormulario.Controls.Add(atualizar);
             VisualUtils.EstilizarBotao(atualizar);
             VisualUtils.Arredondar(atualizar, 8);
-            atualizar.Click += (s, e) => CarregarMembrosAprovados();
-            cmbMembroAprovado.SelectedIndexChanged += (s, e) =>
-            {
-                txtNomeFuncionario.Clear();
-                txtLoginFuncionario.Clear();
-                btnSalvarFuncionario.Enabled = false;
-                Pessoa pessoa = cmbMembroAprovado.SelectedItem as Pessoa;
-                if (pessoa == null)
-                    return;
-                try
-                {
-                    txtLoginFuncionario.Text = equipeService.BuscarLoginDaPessoaDisponivel(
-                        usuarioAutenticado, evento.IdEvento, pessoa.IdPessoa);
-                    txtNomeFuncionario.Text = pessoa.Nome;
-                    labelAvisoFormulario.Text = "Membro selecionado. Confira o perfil e clique em Salvar vínculo.";
-                    btnSalvarFuncionario.Enabled = cmbPerfilFuncionario.SelectedItem != null;
-                }
-                catch (Exception erro)
-                {
-                    btnSalvarFuncionario.Enabled = false;
-                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar o membro selecionado.", labelAvisoFormulario);
-                }
-            };
+            atualizar.Click += atualizar_Click;
+            cmbMembroAprovado.SelectedIndexChanged += cmbMembroAprovado_SelectedIndexChanged;
             CarregarMembrosAprovados();
         }
 
@@ -203,15 +178,13 @@ namespace CASE.Quermesse
                     cmbMembroAprovado.SelectedIndex = 0;
                     cmbMembroAprovado.BringToFront();
                 }
-                labelAvisoFormulario.Text = !disponiveis
-                    ? "Nenhum novo membro disponível. Quem já está na equipe deve ser alterado em Editar vínculo. " +
-                        "Novas contas precisam estar aprovadas com perfil Membro."
-                    : "Selecione um membro aprovado. O nome e o usuário serão preenchidos automaticamente.";
+
+                labelAvisoFormulario.Text = !disponiveis ? "Nenhum novo membro disponível. Quem já está na equipe deve ser alterado em Editar vínculo. " + "Novas contas precisam estar aprovadas com perfil Membro." : "Selecione um membro aprovado. O nome e o usuário serão preenchidos automaticamente.";
             }
             catch (Exception erro)
             {
                 avisoListaVazia.Text = "Lista indisponível. Clique em Atualizar.";
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível carregar os membros aprovados. Clique em Atualizar para tentar novamente.", labelAvisoFormulario);
+                FeedbackUsuario.ExibirErro(this, erro, "Não foi possível carregar os membros aprovados. Clique em Atualizar para tentar novamente.", labelAvisoFormulario);
             }
         }
 
@@ -219,10 +192,7 @@ namespace CASE.Quermesse
         {
             try
             {
-                List<Perfil> perfis = equipeService.ListarPerfis(
-                    usuarioAutenticado,
-                    evento.IdEvento);
-
+                List<Perfil> perfis = equipeService.ListarPerfis(usuarioAutenticado, evento.IdEvento);
                 foreach (Perfil perfil in perfis)
                 {
                     cmbPerfilFuncionario.Items.Add(perfil);
@@ -231,7 +201,6 @@ namespace CASE.Quermesse
                 cmbPerfilFuncionario.DisplayMember = "Nome";
                 if (cmbPerfilFuncionario.Items.Count > 0)
                     cmbPerfilFuncionario.SelectedIndex = 0;
-
                 if (cmbPerfilFuncionario.Items.Count == 0)
                 {
                     btnSalvarFuncionario.Enabled = false;
@@ -249,11 +218,7 @@ namespace CASE.Quermesse
         {
             try
             {
-                Pessoa pessoa = equipeService.BuscarPessoaVinculada(
-                    usuarioAutenticado,
-                    evento.IdEvento,
-                    vinculo.IdEquipe);
-
+                Pessoa pessoa = equipeService.BuscarPessoaVinculada(usuarioAutenticado, evento.IdEvento, vinculo.IdEquipe);
                 if (pessoa == null)
                 {
                     btnSalvarFuncionario.Enabled = false;
@@ -262,13 +227,9 @@ namespace CASE.Quermesse
                 }
 
                 txtNomeFuncionario.Text = pessoa.Nome;
-                txtLoginFuncionario.Text = equipeService.BuscarLoginDaPessoaVinculada(
-                    usuarioAutenticado,
-                    evento.IdEvento,
-                    vinculo.IdEquipe);
+                txtLoginFuncionario.Text = equipeService.BuscarLoginDaPessoaVinculada(usuarioAutenticado, evento.IdEvento, vinculo.IdEquipe);
                 txtLoginFuncionario.ReadOnly = true;
                 chkFuncionarioAtivo.Checked = vinculo.Ativo;
-
                 foreach (Perfil perfil in cmbPerfilFuncionario.Items)
                 {
                     if (perfil.IdPerfil == vinculo.IdPerfil)
@@ -297,11 +258,7 @@ namespace CASE.Quermesse
 
             try
             {
-                Pessoa pessoa = equipeService.BuscarPessoaDisponivelPorLogin(
-                    usuarioAutenticado,
-                    evento.IdEvento,
-                    txtLoginFuncionario.Text.Trim());
-
+                Pessoa pessoa = equipeService.BuscarPessoaDisponivelPorLogin(usuarioAutenticado, evento.IdEvento, txtLoginFuncionario.Text.Trim());
                 if (pessoa == null)
                 {
                     txtNomeFuncionario.Clear();
@@ -321,7 +278,6 @@ namespace CASE.Quermesse
 
         private void btnSalvarFuncionario_Click(object sender, EventArgs e)
         {
-
             if (cmbPerfilFuncionario.SelectedItem == null)
             {
                 labelAvisoFormulario.Text = "Selecione o perfil do membro neste evento.";
@@ -330,7 +286,6 @@ namespace CASE.Quermesse
             }
 
             Perfil perfil = (Perfil)cmbPerfilFuncionario.SelectedItem;
-
             try
             {
                 if (vinculo == null)
@@ -341,6 +296,7 @@ namespace CASE.Quermesse
                         txtLoginFuncionario.Focus();
                         return;
                     }
+
                     // Reconsulta o membro caso Salvar seja acionado sem sair do login.
                     txtLoginFuncionario_Leave(txtLoginFuncionario, EventArgs.Empty);
                     if (string.IsNullOrWhiteSpace(txtNomeFuncionario.Text))
@@ -348,11 +304,7 @@ namespace CASE.Quermesse
                         return;
                     }
 
-                    equipeService.VincularMembro(
-                        usuarioAutenticado,
-                        evento.IdEvento,
-                        txtLoginFuncionario.Text.Trim(),
-                        perfil.IdPerfil);
+                    equipeService.VincularMembro(usuarioAutenticado, evento.IdEvento, txtLoginFuncionario.Text.Trim(), perfil.IdPerfil);
                 }
                 else
                 {
@@ -366,11 +318,11 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do vínculo e tente novamente.", labelAvisoFormulario);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do vínculo e tente novamente.", labelAvisoFormulario);
             }
             catch (InvalidOperationException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do vínculo e tente novamente.", labelAvisoFormulario);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do vínculo e tente novamente.", labelAvisoFormulario);
             }
             catch (UnauthorizedAccessException)
             {
@@ -379,6 +331,44 @@ namespace CASE.Quermesse
             catch (Exception)
             {
                 labelAvisoFormulario.Text = "Não foi possível salvar o vínculo.";
+            }
+        }
+
+        private void cmbPerfilFuncionario_SelectedIndexChanged(object s, EventArgs e)
+        {
+            btnSalvarFuncionario.Enabled = cmbPerfilFuncionario.SelectedItem != null && (vinculo != null || cmbMembroAprovado?.SelectedItem is Pessoa) && !string.IsNullOrWhiteSpace(txtLoginFuncionario.Text);
+        }
+
+        private void cmbMembroAprovado_Format(object s, ListControlConvertEventArgs e)
+        {
+            Pessoa pessoa = e.ListItem as Pessoa;
+            e.Value = pessoa == null ? Convert.ToString(e.ListItem) : pessoa.Nome;
+        }
+
+        private void atualizar_Click(object s, EventArgs e)
+        {
+            CarregarMembrosAprovados();
+        }
+
+        private void cmbMembroAprovado_SelectedIndexChanged(object s, EventArgs e)
+        {
+            txtNomeFuncionario.Clear();
+            txtLoginFuncionario.Clear();
+            btnSalvarFuncionario.Enabled = false;
+            Pessoa pessoa = cmbMembroAprovado.SelectedItem as Pessoa;
+            if (pessoa == null)
+                return;
+            try
+            {
+                txtLoginFuncionario.Text = equipeService.BuscarLoginDaPessoaDisponivel(usuarioAutenticado, evento.IdEvento, pessoa.IdPessoa);
+                txtNomeFuncionario.Text = pessoa.Nome;
+                labelAvisoFormulario.Text = "Membro selecionado. Confira o perfil e clique em Salvar vínculo.";
+                btnSalvarFuncionario.Enabled = cmbPerfilFuncionario.SelectedItem != null;
+            }
+            catch (Exception erro)
+            {
+                btnSalvarFuncionario.Enabled = false;
+                FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar o membro selecionado.", labelAvisoFormulario);
             }
         }
     }

@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Data;
+using System;
+using CASE.Data;
 using CASE.Models;
 using MySql.Data.MySqlClient;
-using System;
 
 namespace CASE.Repositories
 {
@@ -9,14 +11,14 @@ namespace CASE.Repositories
     {
         public int SalvarUnica(Instituicao item)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction(System.Data.IsolationLevel.Serializable))
+                using (var transacao = conexao.BeginTransaction(IsolationLevel.Serializable))
                 {
                     int existente = 0;
-                    using (var comando = new MySqlCommand("SELECT id_instituicao FROM instituicao FOR UPDATE", conexao, transacao))
-                    using (var leitor = comando.ExecuteReader())
+                    using (MySqlCommand comando = new MySqlCommand("SELECT id_instituicao FROM instituicao FOR UPDATE", conexao, transacao))
+                    using (MySqlDataReader leitor = comando.ExecuteReader())
                     {
                         while (leitor.Read())
                         {
@@ -36,7 +38,7 @@ namespace CASE.Repositories
                     {
                         sql = "UPDATE instituicao SET nome=@nome,documento=@documento,telefone=@telefone,email=@email WHERE id_instituicao=@id";
                     }
-                    using (var comando = new MySqlCommand(sql, conexao, transacao))
+                    using (MySqlCommand comando = new MySqlCommand(sql, conexao, transacao))
                     {
                         comando.Parameters.AddWithValue("@id", existente);
                         AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", item.Nome);
@@ -57,47 +59,81 @@ namespace CASE.Repositories
 
         public List<Instituicao> Listar()
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT id_instituicao,nome,documento,telefone,email FROM instituicao ORDER BY id_instituicao",
-                ConverterLinha
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_instituicao,nome,documento,telefone,email FROM instituicao ORDER BY id_instituicao", conexaoBanco))
+                {
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Instituicao> resultadoBanco = new List<Instituicao>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public Instituicao BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT id_instituicao,nome,documento,telefone,email FROM instituicao WHERE id_instituicao=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_instituicao,nome,documento,telefone,email FROM instituicao WHERE id_instituicao=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(Instituicao item)
         {
-            return AcessoDados.Inserir(
-                "INSERT INTO instituicao (nome,documento,telefone,email) VALUES (@nome,@documento,@telefone,@email)",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("INSERT INTO instituicao (nome,documento,telefone,email) VALUES (@nome,@documento,@telefone,@email)", conexaoBanco))
                 {
-                    AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", item.Nome);
-                    AcessoDados.AdicionarTextoOpcional(comando, "@documento", item.Documento);
-                    AcessoDados.AdicionarTextoOpcional(comando, "@telefone", item.Telefone);
-                    AcessoDados.AdicionarTextoOpcional(comando, "@email", item.Email);
-                });
+                    AcessoDados.AdicionarTextoObrigatorio(comandoBanco, "@nome", item.Nome);
+                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@documento", item.Documento);
+                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@telefone", item.Telefone);
+                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@email", item.Email);
+                    comandoBanco.ExecuteNonQuery();
+                    resultadoBanco = Convert.ToInt32(comandoBanco.LastInsertedId);
+                }
+            }
+            return resultadoBanco;
 
         }
 
         public bool Atualizar(Instituicao item)
         {
-            return AcessoDados.Executar(
-                "UPDATE instituicao SET nome=@nome,documento=@documento,telefone=@telefone,email=@email WHERE id_instituicao=@id",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("UPDATE instituicao SET nome=@nome,documento=@documento,telefone=@telefone,email=@email WHERE id_instituicao=@id", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@id", item.IdInstituicao);
-                    AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", item.Nome);
-                    AcessoDados.AdicionarTextoOpcional(comando, "@documento", item.Documento);
-                    AcessoDados.AdicionarTextoOpcional(comando, "@telefone", item.Telefone);
-                    AcessoDados.AdicionarTextoOpcional(comando, "@email", item.Email);
-                }) > 0;
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", item.IdInstituicao);
+                    AcessoDados.AdicionarTextoObrigatorio(comandoBanco, "@nome", item.Nome);
+                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@documento", item.Documento);
+                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@telefone", item.Telefone);
+                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@email", item.Email);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco > 0;
 
         }
 

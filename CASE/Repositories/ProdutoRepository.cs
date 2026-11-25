@@ -1,34 +1,44 @@
 ﻿using System.Collections.Generic;
-using CASE.Models;
-using MySql.Data.MySqlClient;
-
 using System;
 using CASE.Data;
+using CASE.Models;
+using MySql.Data.MySqlClient;
 
 namespace CASE.Repositories
 {
     public class ProdutoRepository
     {
-
         private const string Colunas = "id_produto,id_categoria,nome,descricao,unidade_medida,ativo,imagem";
 
         public List<Produto> Listar()
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM produto ORDER BY nome,id_produto",
-                ConverterLinha
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM produto ORDER BY nome,id_produto", conexaoBanco))
+                {
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Produto> resultadoBanco = new List<Produto>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public int Contar()
         {
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
                 string sql = "SELECT COUNT(*) FROM produto";
 
-                using (var comando = new MySqlCommand(sql, conexao))
+                using (MySqlCommand comando = new MySqlCommand(sql, conexao))
                 {
                     return Convert.ToInt32(comando.ExecuteScalar());
                 }
@@ -37,42 +47,71 @@ namespace CASE.Repositories
 
         public Produto BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM produto WHERE id_produto=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM produto WHERE id_produto=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(Produto item)
         {
-            return AcessoDados.Inserir(
-                "INSERT INTO produto (id_categoria,nome,descricao,unidade_medida,ativo,imagem) VALUES (@categoria,@nome,@descricao,@unidade,@ativo,@imagem)",
-                comando => Vincular(comando, item)
-            );
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("INSERT INTO produto (id_categoria,nome,descricao,unidade_medida,ativo,imagem) VALUES (@categoria,@nome,@descricao,@unidade,@ativo,@imagem)", conexaoBanco))
+                {
+                    Vincular(comandoBanco, item);
+                    comandoBanco.ExecuteNonQuery();
+                    resultadoBanco = Convert.ToInt32(comandoBanco.LastInsertedId);
+                }
+            }
+            return resultadoBanco;
         }
 
         public bool Atualizar(Produto item)
         {
-            return AcessoDados.Executar(
-                "UPDATE produto SET id_categoria=@categoria,nome=@nome,descricao=@descricao,unidade_medida=@unidade,ativo=@ativo,imagem=@imagem WHERE id_produto=@id",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("UPDATE produto SET id_categoria=@categoria,nome=@nome,descricao=@descricao,unidade_medida=@unidade,ativo=@ativo,imagem=@imagem WHERE id_produto=@id", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@id", item.IdProduto);
-                    Vincular(comando, item);
-                }) > 0;
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", item.IdProduto);
+                    Vincular(comandoBanco, item);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco > 0;
 
         }
 
         public bool AlterarAtivo(int idProduto, bool ativo)
         {
-            return AcessoDados.Executar(
-                "UPDATE produto SET ativo=@ativo WHERE id_produto=@id",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("UPDATE produto SET ativo=@ativo WHERE id_produto=@id", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@id", idProduto);
-                    AcessoDados.AdicionarParametro(comando, "@ativo", ativo);
-                }) > 0;
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idProduto);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@ativo", ativo);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco > 0;
         }
 
         private static void Vincular(MySqlCommand comando, Produto item)

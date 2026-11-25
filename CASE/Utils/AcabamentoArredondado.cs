@@ -1,26 +1,22 @@
-using System;
+﻿using System.Drawing.Drawing2D;
 using System.Drawing;
-using System.Drawing.Drawing2D;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
+using System;
 
 namespace CASE.Utils
 {
     internal sealed class AcabamentoArredondado
     {
-        private static readonly ConditionalWeakTable<Control, AcabamentoArredondado> acabamentos =
-            new ConditionalWeakTable<Control, AcabamentoArredondado>();
-
-        private readonly Control controle;
+        private static ConditionalWeakTable<Control, AcabamentoArredondado> acabamentos = new ConditionalWeakTable<Control, AcabamentoArredondado>();
+        private Control controle;
         private int raio;
         private bool borda;
-
         private AcabamentoArredondado(Control controle)
         {
             this.controle = controle;
-            typeof(Control).GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)
-                .SetValue(controle, true, null);
+            typeof(Control).GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(controle, true, null);
             controle.Paint += Pintar;
             controle.SizeChanged += Invalidar;
             controle.BackColorChanged += Invalidar;
@@ -30,18 +26,18 @@ namespace CASE.Utils
 
         public static void Aplicar(Control controle, int raio)
         {
-            var acabamento = acabamentos.GetValue(controle, c => new AcabamentoArredondado(c));
+            var acabamento = acabamentos.GetValue(controle, Aplicar_GetValue);
             acabamento.raio = Math.Max(0, raio);
             var regiao = controle.Region;
             controle.Region = null;
             regiao?.Dispose();
-
             var botao = controle as Button;
             if (botao != null && botao.FlatAppearance.BorderSize > 0)
             {
                 acabamento.borda = true;
                 botao.FlatAppearance.BorderSize = 0;
             }
+
             controle.Invalidate();
         }
 
@@ -51,8 +47,9 @@ namespace CASE.Utils
             if (!acabamentos.TryGetValue(controle, out acabamento))
             {
                 Aplicar(controle, 12);
-                acabamento = acabamentos.GetValue(controle, c => new AcabamentoArredondado(c));
+                acabamento = acabamentos.GetValue(controle, DefinirBorda_GetValue);
             }
+
             acabamento.borda = visivel;
             controle.Invalidate();
         }
@@ -65,14 +62,15 @@ namespace CASE.Utils
         private Color CorDoFundo()
         {
             for (Control pai = controle.Parent; pai != null; pai = pai.Parent)
-                if (pai.BackColor.A == 255) return pai.BackColor;
+                if (pai.BackColor.A == 255)
+                    return pai.BackColor;
             return SystemColors.Control;
         }
 
         private void Pintar(object sender, PaintEventArgs e)
         {
-            if (controle.Width < 2 || controle.Height < 2 || raio == 0) return;
-
+            if (controle.Width < 2 || controle.Height < 2 || raio == 0)
+                return;
             GraphicsState estado = e.Graphics.Save();
             try
             {
@@ -101,6 +99,16 @@ namespace CASE.Utils
             {
                 e.Graphics.Restore(estado);
             }
+        }
+
+        private static AcabamentoArredondado Aplicar_GetValue(Control c)
+        {
+            return new AcabamentoArredondado(c);
+        }
+
+        private static AcabamentoArredondado DefinirBorda_GetValue(Control c)
+        {
+            return new AcabamentoArredondado(c);
         }
     }
 }

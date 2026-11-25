@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,19 +7,19 @@ namespace CASE.Services
 {
     public class SolicitacaoService
     {
-        private readonly SolicitacaoRepository solicitacaoRepository = new SolicitacaoRepository();
-        private readonly SolicitacaoItemRepository solicitacaoItemRepository = new SolicitacaoItemRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
-        private readonly EscalaRepository escalaRepository = new EscalaRepository();
-        private readonly JornadaSetorRepository jornadaRepository = new JornadaSetorRepository();
-        private readonly SetorRepository setorRepository = new SetorRepository();
-        private readonly ProdutoSetorRepository produtoSetorRepository = new ProdutoSetorRepository();
-        private readonly ProdutoRepository produtoRepository = new ProdutoRepository();
-        private readonly EstoqueRepository estoqueRepository = new EstoqueRepository();
-        private readonly EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
-        private readonly LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
-        private readonly UsuarioRepository usuarioRepository = new UsuarioRepository();
+        private SolicitacaoRepository solicitacaoRepository = new SolicitacaoRepository();
+        private SolicitacaoItemRepository solicitacaoItemRepository = new SolicitacaoItemRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private EventoRepository eventoRepository = new EventoRepository();
+        private EscalaRepository escalaRepository = new EscalaRepository();
+        private JornadaSetorRepository jornadaRepository = new JornadaSetorRepository();
+        private SetorRepository setorRepository = new SetorRepository();
+        private ProdutoSetorRepository produtoSetorRepository = new ProdutoSetorRepository();
+        private ProdutoRepository produtoRepository = new ProdutoRepository();
+        private EstoqueRepository estoqueRepository = new EstoqueRepository();
+        private EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
+        private LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
+        private UsuarioRepository usuarioRepository = new UsuarioRepository();
 
         public class ProdutoSolicitacaoOpcao
         {

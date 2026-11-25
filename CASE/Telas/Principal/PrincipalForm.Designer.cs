@@ -1,4 +1,4 @@
-namespace CASE
+﻿namespace CASE
 {
     partial class PrincipalForm
     {
@@ -489,7 +489,7 @@ namespace CASE
             // 
             // pictureNotificacoes
             // 
-            this.pictureNotificacoes.Image = global::CASE.Properties.Resources.LucideNotificacoes;
+            this.pictureNotificacoes.Image = global::CASE.Properties.Resources.IconeNotificacoes;
             this.pictureNotificacoes.Location = new System.Drawing.Point(35, 23);
             this.pictureNotificacoes.Name = "pictureNotificacoes";
             this.pictureNotificacoes.Size = new System.Drawing.Size(24, 24);
@@ -499,7 +499,7 @@ namespace CASE
             // 
             // pictureUsuario
             // 
-            this.pictureUsuario.Image = global::CASE.Properties.Resources.LucideUsuario;
+            this.pictureUsuario.Image = global::CASE.Properties.Resources.IconeUsuario;
             this.pictureUsuario.Location = new System.Drawing.Point(82, 17);
             this.pictureUsuario.Name = "pictureUsuario";
             this.pictureUsuario.Size = new System.Drawing.Size(36, 36);
@@ -509,7 +509,7 @@ namespace CASE
             // 
             // picturePesquisa
             // 
-            this.picturePesquisa.Image = global::CASE.Properties.Resources.LucidePesquisa;
+            this.picturePesquisa.Image = global::CASE.Properties.Resources.IconePesquisa;
             this.picturePesquisa.Location = new System.Drawing.Point(12, 10);
             this.picturePesquisa.Name = "picturePesquisa";
             this.picturePesquisa.Size = new System.Drawing.Size(20, 20);
@@ -521,7 +521,7 @@ namespace CASE
             // 
             this.pictureIconeSair.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeSair.Enabled = false;
-            this.pictureIconeSair.Image = global::CASE.Properties.Resources.LucideSair;
+            this.pictureIconeSair.Image = global::CASE.Properties.Resources.IconeSair;
             this.pictureIconeSair.Location = new System.Drawing.Point(8, 11);
             this.pictureIconeSair.Name = "pictureIconeSair";
             this.pictureIconeSair.Size = new System.Drawing.Size(20, 20);
@@ -533,7 +533,7 @@ namespace CASE
             // 
             this.pictureIconeConfiguracoes.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeConfiguracoes.Enabled = false;
-            this.pictureIconeConfiguracoes.Image = global::CASE.Properties.Resources.LucideConfiguracoes;
+            this.pictureIconeConfiguracoes.Image = global::CASE.Properties.Resources.IconeConfiguracoes;
             this.pictureIconeConfiguracoes.Location = new System.Drawing.Point(8, 11);
             this.pictureIconeConfiguracoes.Name = "pictureIconeConfiguracoes";
             this.pictureIconeConfiguracoes.Size = new System.Drawing.Size(20, 20);
@@ -555,7 +555,7 @@ namespace CASE
             // 
             this.pictureIconeDashboard.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeDashboard.Enabled = false;
-            this.pictureIconeDashboard.Image = global::CASE.Properties.Resources.LucideDashboard;
+            this.pictureIconeDashboard.Image = global::CASE.Properties.Resources.IconeDashboard;
             this.pictureIconeDashboard.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeDashboard.Name = "pictureIconeDashboard";
             this.pictureIconeDashboard.Size = new System.Drawing.Size(20, 20);
@@ -567,7 +567,7 @@ namespace CASE
             // 
             this.pictureIconeQuermesses.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeQuermesses.Enabled = false;
-            this.pictureIconeQuermesses.Image = global::CASE.Properties.Resources.LucideQuermesses;
+            this.pictureIconeQuermesses.Image = global::CASE.Properties.Resources.IconeQuermesses;
             this.pictureIconeQuermesses.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeQuermesses.Name = "pictureIconeQuermesses";
             this.pictureIconeQuermesses.Size = new System.Drawing.Size(20, 20);
@@ -579,7 +579,7 @@ namespace CASE
             // 
             this.pictureIconeEquipeSetores.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeEquipeSetores.Enabled = false;
-            this.pictureIconeEquipeSetores.Image = global::CASE.Properties.Resources.LucideEquipe;
+            this.pictureIconeEquipeSetores.Image = global::CASE.Properties.Resources.IconeEquipe;
             this.pictureIconeEquipeSetores.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeEquipeSetores.Name = "pictureIconeEquipeSetores";
             this.pictureIconeEquipeSetores.Size = new System.Drawing.Size(20, 20);
@@ -591,7 +591,7 @@ namespace CASE
             // 
             this.pictureIconeEscala.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeEscala.Enabled = false;
-            this.pictureIconeEscala.Image = global::CASE.Properties.Resources.LucideEscala;
+            this.pictureIconeEscala.Image = global::CASE.Properties.Resources.IconeEscala;
             this.pictureIconeEscala.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeEscala.Name = "pictureIconeEscala";
             this.pictureIconeEscala.Size = new System.Drawing.Size(20, 20);
@@ -603,7 +603,7 @@ namespace CASE
             // 
             this.pictureIconeMovimentacoes.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeMovimentacoes.Enabled = false;
-            this.pictureIconeMovimentacoes.Image = global::CASE.Properties.Resources.LucideRegistros;
+            this.pictureIconeMovimentacoes.Image = global::CASE.Properties.Resources.IconeRegistros;
             this.pictureIconeMovimentacoes.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeMovimentacoes.Name = "pictureIconeMovimentacoes";
             this.pictureIconeMovimentacoes.Size = new System.Drawing.Size(20, 20);
@@ -615,7 +615,7 @@ namespace CASE
             // 
             this.pictureIconeSolicitacoes.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeSolicitacoes.Enabled = false;
-            this.pictureIconeSolicitacoes.Image = global::CASE.Properties.Resources.LucideSolicitacoes;
+            this.pictureIconeSolicitacoes.Image = global::CASE.Properties.Resources.IconeSolicitacoes;
             this.pictureIconeSolicitacoes.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeSolicitacoes.Name = "pictureIconeSolicitacoes";
             this.pictureIconeSolicitacoes.Size = new System.Drawing.Size(20, 20);
@@ -627,7 +627,7 @@ namespace CASE
             // 
             this.pictureIconeProdutos.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeProdutos.Enabled = false;
-            this.pictureIconeProdutos.Image = global::CASE.Properties.Resources.LucideProdutos;
+            this.pictureIconeProdutos.Image = global::CASE.Properties.Resources.IconeProdutos;
             this.pictureIconeProdutos.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeProdutos.Name = "pictureIconeProdutos";
             this.pictureIconeProdutos.Size = new System.Drawing.Size(20, 20);
@@ -639,7 +639,7 @@ namespace CASE
             // 
             this.pictureIconeEstoque.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeEstoque.Enabled = false;
-            this.pictureIconeEstoque.Image = global::CASE.Properties.Resources.LucideEstoque;
+            this.pictureIconeEstoque.Image = global::CASE.Properties.Resources.IconeEstoque;
             this.pictureIconeEstoque.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeEstoque.Name = "pictureIconeEstoque";
             this.pictureIconeEstoque.Size = new System.Drawing.Size(20, 20);
@@ -651,7 +651,7 @@ namespace CASE
             // 
             this.pictureIconeFinanceiro.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeFinanceiro.Enabled = false;
-            this.pictureIconeFinanceiro.Image = global::CASE.Properties.Resources.LucideFinanceiro;
+            this.pictureIconeFinanceiro.Image = global::CASE.Properties.Resources.IconeFinanceiro;
             this.pictureIconeFinanceiro.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeFinanceiro.Name = "pictureIconeFinanceiro";
             this.pictureIconeFinanceiro.Size = new System.Drawing.Size(20, 20);
@@ -663,7 +663,7 @@ namespace CASE
             // 
             this.pictureIconeRelatorios.BackColor = System.Drawing.Color.Transparent;
             this.pictureIconeRelatorios.Enabled = false;
-            this.pictureIconeRelatorios.Image = global::CASE.Properties.Resources.LucideApuracao;
+            this.pictureIconeRelatorios.Image = global::CASE.Properties.Resources.IconeApuracao;
             this.pictureIconeRelatorios.Location = new System.Drawing.Point(8, 9);
             this.pictureIconeRelatorios.Name = "pictureIconeRelatorios";
             this.pictureIconeRelatorios.Size = new System.Drawing.Size(20, 20);

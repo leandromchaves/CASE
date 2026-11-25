@@ -1,6 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Repositories;
 using CASE.Services;
@@ -10,18 +12,17 @@ namespace CASE.Quermesse
 {
     public partial class EscalaControl : UserControl
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly Evento eventoSelecionado;
-        private readonly EscalaService escalaService = new EscalaService();
-        private readonly EquipeEventoService equipeService = new EquipeEventoService();
-        private readonly JornadaSetorService jornadaService = new JornadaSetorService();
-        private readonly SetorService setorService = new SetorService();
-        private readonly TurnoRepository turnoRepository = new TurnoRepository();
-        private readonly Button btnRemoverEscala = new Button();
+        private Usuario usuarioAutenticado;
+        private Evento eventoSelecionado;
+        private EscalaService escalaService = new EscalaService();
+        private EquipeEventoService equipeService = new EquipeEventoService();
+        private JornadaSetorService jornadaService = new JornadaSetorService();
+        private SetorService setorService = new SetorService();
+        private TurnoRepository turnoRepository = new TurnoRepository();
+        private Button btnRemoverEscala = new Button();
         private bool podeAdministrarEscalas;
         private bool usuarioEhMembro;
         private TextBox pesquisa;
-
         public EscalaControl() : this(null, null)
         {
         }
@@ -29,19 +30,19 @@ namespace CASE.Quermesse
         public EscalaControl(Usuario usuario, Evento evento)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             FrontendTheme.Aplicar(this);
             ConfigurarAcaoRemoverEscala();
-            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarEscala", "Pesquisar escala ou funcionário",
-                texto => AplicarFiltros());
+            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarEscala", "Pesquisar escala ou funcionário", Preparar_AdicionarPesquisa);
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
             cmbFiltroEscala.Items.Clear();
             cmbFiltroTurnoEscala.Items.Clear();
             dgvEscala.CellDoubleClick += dgvEscala_CellDoubleClick;
-            dgvEscala.SelectionChanged += (s, e) => AtualizarAcaoRemoverEscala();
-            panelFiltrosEscala.SizeChanged += (s, e) => AjustarAcoesEscala();
+            dgvEscala.SelectionChanged += dgvEscala_SelectionChanged;
+            panelFiltrosEscala.SizeChanged += panelFiltrosEscala_SizeChanged;
             AjustarAcoesEscala();
-
             if (usuarioAutenticado == null)
             {
                 btnNovaAlocacao.Enabled = false;
@@ -52,27 +53,14 @@ namespace CASE.Quermesse
             try
             {
                 string nomePerfil;
-                new AutorizacaoService().ValidarUsuarioEObterPerfil(
-                    usuarioAutenticado,
-                    out nomePerfil);
-                usuarioEhMembro = string.Equals(
-                    nomePerfil,
-                    "Membro",
-                    StringComparison.OrdinalIgnoreCase);
+                new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out nomePerfil);
+                usuarioEhMembro = string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase);
                 bool administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
-                podeAdministrarEscalas = administrador || string.Equals(
-                    nomePerfil,
-                    "Gerente",
-                    StringComparison.OrdinalIgnoreCase);
-
+                podeAdministrarEscalas = administrador || string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase);
                 if (podeAdministrarEscalas && eventoSelecionado != null)
                 {
-                    Evento eventoAutorizado = new EventoService().BuscarPorId(
-                        usuarioAutenticado,
-                        eventoSelecionado.IdEvento);
-
-                    podeAdministrarEscalas = eventoAutorizado != null &&
-                        (administrador || eventoAutorizado.IdResponsavel == usuarioAutenticado.IdPessoa);
+                    Evento eventoAutorizado = new EventoService().BuscarPorId(usuarioAutenticado, eventoSelecionado.IdEvento);
+                    podeAdministrarEscalas = eventoAutorizado != null && (administrador || eventoAutorizado.IdResponsavel == usuarioAutenticado.IdPessoa);
                 }
             }
             catch (Exception)
@@ -83,7 +71,6 @@ namespace CASE.Quermesse
             btnNovaAlocacao.Enabled = podeAdministrarEscalas && EventoPermiteAlteracoes();
             btnRemoverEscala.Visible = podeAdministrarEscalas && eventoSelecionado != null;
             AtualizarAcaoRemoverEscala();
-
             if (eventoSelecionado == null && !usuarioEhMembro)
             {
                 labelAviso.Text = "Abra Eventos e selecione um evento antes de alocar funcionários.";
@@ -102,10 +89,10 @@ namespace CASE.Quermesse
         {
             btnRemoverEscala.Name = "btnRemoverEscalaSelecionada";
             btnRemoverEscala.Text = "Remover escala";
-            btnRemoverEscala.Size = new System.Drawing.Size(175, 40);
-            btnRemoverEscala.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
-            btnRemoverEscala.BackColor = System.Drawing.Color.White;
-            btnRemoverEscala.ForeColor = System.Drawing.Color.FromArgb(180, 55, 65);
+            btnRemoverEscala.Size = new Size(175, 40);
+            btnRemoverEscala.Font = new Font("Segoe UI", 9.5F, FontStyle.Regular);
+            btnRemoverEscala.BackColor = Color.White;
+            btnRemoverEscala.ForeColor = Color.FromArgb(180, 55, 65);
             btnRemoverEscala.FlatStyle = FlatStyle.Flat;
             btnRemoverEscala.FlatAppearance.BorderSize = 1;
             btnRemoverEscala.FlatAppearance.BorderColor = VisualUtils.Borda;
@@ -122,7 +109,6 @@ namespace CASE.Quermesse
         {
             if (panelFiltrosEscala == null || btnNovaAlocacao == null || btnRemoverEscala == null)
                 return;
-
             int direita = panelFiltrosEscala.ClientSize.Width - 20;
             btnNovaAlocacao.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnNovaAlocacao.SetBounds(direita - 235, 34, 235, 40);
@@ -132,18 +118,14 @@ namespace CASE.Quermesse
 
         private bool EventoPermiteAlteracoes()
         {
-            return eventoSelecionado != null &&
-                (string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Planejado, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(eventoSelecionado.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase));
+            return eventoSelecionado != null && (string.Equals(eventoSelecionado.Situacao, SituacoesEvento.Planejado, StringComparison.OrdinalIgnoreCase) || string.Equals(eventoSelecionado.Situacao, SituacoesEvento.EmAndamento, StringComparison.OrdinalIgnoreCase));
         }
 
         private void AtualizarAcaoRemoverEscala()
         {
             if (btnRemoverEscala == null || dgvEscala == null)
                 return;
-
-            btnRemoverEscala.Enabled = podeAdministrarEscalas && EventoPermiteAlteracoes() &&
-                dgvEscala.SelectedRows.Count > 0;
+            btnRemoverEscala.Enabled = podeAdministrarEscalas && EventoPermiteAlteracoes() && dgvEscala.SelectedRows.Count > 0;
         }
 
         private void RemoverEscalaSelecionada(object sender, EventArgs e)
@@ -164,17 +146,9 @@ namespace CASE.Quermesse
             string funcionario = Convert.ToString(dgvEscala.SelectedRows[0].Cells[0].Value);
             string setor = Convert.ToString(dgvEscala.SelectedRows[0].Cells[1].Value);
             string data = Convert.ToString(dgvEscala.SelectedRows[0].Cells[2].Value);
-            DialogResult confirmar = MessageBox.Show(
-                this,
-                "Remover a escala de " + funcionario + " em " + setor + " no dia " + data + "?\n\n" +
-                "Escalas com vendas, perdas ou solicitações vinculadas não podem ser removidas, para preservar o histórico.",
-                "Remover escala",
-                MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning,
-                MessageBoxDefaultButton.Button2);
+            DialogResult confirmar = MessageBox.Show(this, "Remover a escala de " + funcionario + " em " + setor + " no dia " + data + "?\n\n" + "Escalas com vendas, perdas ou solicitações vinculadas não podem ser removidas, para preservar o histórico.", "Remover escala", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
             if (confirmar != DialogResult.Yes)
                 return;
-
             try
             {
                 escalaService.Remover(usuarioAutenticado, escala.IdEscala);
@@ -184,22 +158,15 @@ namespace CASE.Quermesse
             }
             catch (Exception erro)
             {
-                FeedbackUsuario.ExibirErro(
-                    this,
-                    erro,
-                    "Não foi possível remover a escala. Atualize a lista e tente novamente.",
-                    labelAviso);
+                FeedbackUsuario.ExibirErro(this, erro, "Não foi possível remover a escala. Atualize a lista e tente novamente.", labelAviso);
             }
         }
 
         private void btnNovaAlocacao_Click(object sender, EventArgs e)
         {
-
             if (!podeAdministrarEscalas || !EventoPermiteAlteracoes())
             {
-                labelAviso.Text = eventoSelecionado == null
-                    ? "Selecione um evento e entre como administrador ou gerente responsável para alocar funcionários."
-                    : "Este evento está encerrado. Não é possível criar ou alterar escalas.";
+                labelAviso.Text = eventoSelecionado == null ? "Selecione um evento e entre como administrador ou gerente responsável para alocar funcionários." : "Este evento está encerrado. Não é possível criar ou alterar escalas.";
                 return;
             }
 
@@ -208,14 +175,12 @@ namespace CASE.Quermesse
 
         private void dgvEscala_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-
             if (e.RowIndex < 0 || !podeAdministrarEscalas || !EventoPermiteAlteracoes())
             {
                 return;
             }
 
             Escala escala = dgvEscala.Rows[e.RowIndex].Tag as Escala;
-
             if (escala != null)
             {
                 AbrirFormulario(escala);
@@ -224,10 +189,7 @@ namespace CASE.Quermesse
 
         private void AbrirFormulario(Escala escala)
         {
-            using (EscalaForm formulario = new EscalaForm(
-                usuarioAutenticado,
-                eventoSelecionado,
-                escala))
+            using (EscalaForm formulario = new EscalaForm(usuarioAutenticado, eventoSelecionado, escala))
             {
                 if (formulario.ShowDialog(this) == DialogResult.OK)
                 {
@@ -248,8 +210,10 @@ namespace CASE.Quermesse
             CarregarEscalas();
             int indiceSetor = cmbFiltroEscala.FindStringExact(setor);
             int indiceTurno = cmbFiltroTurnoEscala.FindStringExact(turno);
-            if (indiceSetor >= 0) cmbFiltroEscala.SelectedIndex = indiceSetor;
-            if (indiceTurno >= 0) cmbFiltroTurnoEscala.SelectedIndex = indiceTurno;
+            if (indiceSetor >= 0)
+                cmbFiltroEscala.SelectedIndex = indiceSetor;
+            if (indiceTurno >= 0)
+                cmbFiltroTurnoEscala.SelectedIndex = indiceTurno;
         }
 
         private void CarregarEscalas()
@@ -270,18 +234,12 @@ namespace CASE.Quermesse
 
             try
             {
-                List<Escala> escalas = escalaService.ListarPorEvento(
-                    usuarioAutenticado,
-                    eventoSelecionado.IdEvento);
-
+                List<Escala> escalas = escalaService.ListarPorEvento(usuarioAutenticado, eventoSelecionado.IdEvento);
                 SubstituirEscalas(escalas);
-
                 PreencherFiltros();
                 AplicarFiltros();
                 AtualizarAcaoRemoverEscala();
-                labelAviso.Text = EventoPermiteAlteracoes()
-                    ? escalas.Count + " escala(s) carregada(s)."
-                    : "Este evento está encerrado. As escalas existentes podem ser consultadas, mas não alteradas.";
+                labelAviso.Text = EventoPermiteAlteracoes() ? escalas.Count + " escala(s) carregada(s)." : "Este evento está encerrado. As escalas existentes podem ser consultadas, mas não alteradas.";
                 if (!podeAdministrarEscalas && EventoPermiteAlteracoes())
                 {
                     labelAviso.Text += " A alocação é feita pelo gerente responsável pelo evento.";
@@ -304,9 +262,7 @@ namespace CASE.Quermesse
             try
             {
                 List<Escala> escalas = escalaService.ListarMinhas(usuarioAutenticado);
-
                 SubstituirEscalas(escalas);
-
                 PreencherFiltros();
                 AplicarFiltros();
                 btnNovaAlocacao.Enabled = false;
@@ -333,37 +289,26 @@ namespace CASE.Quermesse
                 if (linha != null)
                     linhas.Add(linha);
             }
+
             dgvEscala.Rows.Clear();
             dgvEscala.Rows.AddRange(linhas.ToArray());
         }
 
         private DataGridViewRow CriarLinha(Escala escala)
         {
-            EquipeEvento equipe = equipeService.BuscarPorId(
-                usuarioAutenticado,
-                escala.IdEquipe);
-            JornadaSetor jornada = jornadaService.BuscarPorId(
-                usuarioAutenticado,
-                escala.IdJornada);
-
+            EquipeEvento equipe = equipeService.BuscarPorId(usuarioAutenticado, escala.IdEquipe);
+            JornadaSetor jornada = jornadaService.BuscarPorId(usuarioAutenticado, escala.IdJornada);
             if (equipe == null || jornada == null)
             {
                 return null;
             }
 
-            Pessoa pessoa = equipeService.BuscarPessoaVinculada(
-                usuarioAutenticado,
-                equipe.IdEvento,
-                equipe.IdEquipe);
-            Setor setor = setorService.BuscarPorId(
-                usuarioAutenticado,
-                jornada.IdSetor);
+            Pessoa pessoa = equipeService.BuscarPessoaVinculada(usuarioAutenticado, equipe.IdEvento, equipe.IdEquipe);
+            Setor setor = setorService.BuscarPorId(usuarioAutenticado, jornada.IdSetor);
             Turno turno = turnoRepository.BuscarPorId(jornada.IdTurno);
-
             string nomePessoa = "Pessoa " + equipe.IdPessoa;
             string nomeSetor = "Setor " + jornada.IdSetor;
             string nomeTurno = "Turno " + jornada.IdTurno;
-
             if (pessoa != null)
             {
                 nomePessoa = pessoa.Nome;
@@ -380,14 +325,7 @@ namespace CASE.Quermesse
             }
 
             var linha = new DataGridViewRow();
-            linha.CreateCells(dgvEscala,
-                nomePessoa,
-                nomeSetor,
-                jornada.Data.ToString("dd/MM/yyyy"),
-                nomeTurno,
-                escala.EntradaPrevista.ToString(@"hh\:mm"),
-                escala.SaidaPrevista.ToString(@"hh\:mm"),
-                CASE.Utils.TextoInterface.FormatarValorBanco(escala.Situacao));
+            linha.CreateCells(dgvEscala, nomePessoa, nomeSetor, jornada.Data.ToString("dd/MM/yyyy"), nomeTurno, escala.EntradaPrevista.ToString(@"hh\:mm"), escala.SaidaPrevista.ToString(@"hh\:mm"), TextoInterface.FormatarValorBanco(escala.Situacao));
             linha.Height = 50;
             linha.Tag = escala;
             return linha;
@@ -397,12 +335,10 @@ namespace CASE.Quermesse
         {
             string setorSelecionado = cmbFiltroEscala.Text;
             string turnoSelecionado = cmbFiltroTurnoEscala.Text;
-
             cmbFiltroEscala.Items.Clear();
             cmbFiltroTurnoEscala.Items.Clear();
             cmbFiltroEscala.Items.Add("Todos os setores");
             cmbFiltroTurnoEscala.Items.Add("Todos os turnos");
-
             foreach (DataGridViewRow linha in dgvEscala.Rows)
             {
                 AdicionarFiltroSeAusente(cmbFiltroEscala, Convert.ToString(linha.Cells[1].Value));
@@ -429,7 +365,6 @@ namespace CASE.Quermesse
         private static void SelecionarFiltro(ComboBox combo, string valor, string padrao)
         {
             int indice = combo.Items.IndexOf(valor);
-
             if (indice < 0)
             {
                 indice = combo.Items.IndexOf(padrao);
@@ -450,15 +385,27 @@ namespace CASE.Quermesse
 
             foreach (DataGridViewRow linha in dgvEscala.Rows)
             {
-                bool setorCorresponde = cmbFiltroEscala.SelectedIndex == 0 ||
-                    Convert.ToString(linha.Cells[1].Value) == cmbFiltroEscala.Text;
-                bool turnoCorresponde = cmbFiltroTurnoEscala.SelectedIndex == 0 ||
-                    Convert.ToString(linha.Cells[3].Value) == cmbFiltroTurnoEscala.Text;
-                linha.Visible = setorCorresponde && turnoCorresponde &&
-                    VisualUtils.LinhaCorrespondePesquisa(linha, pesquisa.Text.Trim());
+                bool setorCorresponde = cmbFiltroEscala.SelectedIndex == 0 || Convert.ToString(linha.Cells[1].Value) == cmbFiltroEscala.Text;
+                bool turnoCorresponde = cmbFiltroTurnoEscala.SelectedIndex == 0 || Convert.ToString(linha.Cells[3].Value) == cmbFiltroTurnoEscala.Text;
+                linha.Visible = setorCorresponde && turnoCorresponde && VisualUtils.LinhaCorrespondePesquisa(linha, pesquisa.Text.Trim());
             }
 
             dgvEscala.ClearSelection();
+        }
+
+        private void Preparar_AdicionarPesquisa(string texto)
+        {
+            AplicarFiltros();
+        }
+
+        private void dgvEscala_SelectionChanged(object s, EventArgs e)
+        {
+            AtualizarAcaoRemoverEscala();
+        }
+
+        private void panelFiltrosEscala_SizeChanged(object s, EventArgs e)
+        {
+            AjustarAcoesEscala();
         }
     }
 }

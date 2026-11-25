@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,7 +7,7 @@ namespace CASE.Services
 {
     public class ConfiguracaoInstitucionalService
     {
-        private readonly AutorizacaoService autorizacao = new AutorizacaoService();
+        private AutorizacaoService autorizacao = new AutorizacaoService();
 
         public Instituicao ObterInstituicao(Usuario usuario)
         {

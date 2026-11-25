@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Services;
@@ -16,7 +16,7 @@ namespace CASE.Repositories
             {
                 throw new UnauthorizedAccessException("A identidade da correção não corresponde à sessão.");
             }
-            using (var comando = new MySqlCommand(
+            using (MySqlCommand comando = new MySqlCommand(
                 "SELECT ps.nome FROM usuario u JOIN perfilsistema ps ON ps.id_perfil_sistema=u.id_perfil_sistema " +
                 "WHERE u.id_usuario=@id AND u.id_pessoa=@pessoa AND u.id_perfil_sistema=@perfil " +
                 "AND u.situacao_conta='aprovado' FOR UPDATE", conexao, transacao))
@@ -51,11 +51,11 @@ namespace CASE.Repositories
         internal static void ValidarEvento(MySqlConnection conexao, MySqlTransaction transacao,
             int idEvento, string perfil, bool registro, int idAutor)
         {
-            using (var comando = new MySqlCommand(
+            using (MySqlCommand comando = new MySqlCommand(
                 "SELECT situacao,id_responsavel FROM evento WHERE id_evento=@id FOR UPDATE", conexao, transacao))
             {
                 comando.Parameters.AddWithValue("@id", idEvento);
-                using (var leitor = comando.ExecuteReader())
+                using (MySqlDataReader leitor = comando.ExecuteReader())
                 {
                     if (!leitor.Read())
                     {
@@ -82,10 +82,10 @@ namespace CASE.Repositories
             string sql, int idOperacao, int quantidadeEsperada)
         {
             Dictionary<int, int> itens = new Dictionary<int, int>();
-            using (var comando = new MySqlCommand(sql, conexao, transacao))
+            using (MySqlCommand comando = new MySqlCommand(sql, conexao, transacao))
             {
                 comando.Parameters.AddWithValue("@id", idOperacao);
-                using (var leitor = comando.ExecuteReader())
+                using (MySqlDataReader leitor = comando.ExecuteReader())
                 {
                     while (leitor.Read())
                     {

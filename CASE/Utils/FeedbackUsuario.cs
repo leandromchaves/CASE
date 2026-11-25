@@ -1,7 +1,7 @@
-using System;
-using System.Drawing;
+﻿using System.Drawing;
 using System.Runtime.CompilerServices;
 using System.Windows.Forms;
+using System;
 using MySql.Data.MySqlClient;
 
 namespace CASE.Utils
@@ -21,34 +21,32 @@ namespace CASE.Utils
     /// </summary>
     public static class FeedbackUsuario
     {
-        private static readonly ConditionalWeakTable<Form, AvisoFlutuante> Avisos =
-            new ConditionalWeakTable<Form, AvisoFlutuante>();
-
+        private static ConditionalWeakTable<Form, AvisoFlutuante> Avisos = new ConditionalWeakTable<Form, AvisoFlutuante>();
         public static void Exibir(Control contexto, string mensagem, TipoFeedback tipo = TipoFeedback.Informacao)
         {
             if (string.IsNullOrWhiteSpace(mensagem))
                 return;
-
             Form janela = contexto as Form ?? contexto?.FindForm();
             if (janela == null || janela.IsDisposed || !janela.IsHandleCreated)
             {
-                MessageBox.Show(contexto, mensagem, "CASE", MessageBoxButtons.OK,
-                    tipo == TipoFeedback.Erro || tipo == TipoFeedback.Atencao
-                        ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
+                MessageBox.Show(contexto, mensagem, "CASE", MessageBoxButtons.OK, tipo == TipoFeedback.Erro || tipo == TipoFeedback.Atencao ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
                 return;
             }
 
             if (janela.InvokeRequired)
             {
-                janela.BeginInvoke(new Action(() => Exibir(janela, mensagem, tipo)));
+                janela.BeginInvoke(new Action(Tratar_Exibir_BeginInvoke));
                 return;
+                void Tratar_Exibir_BeginInvoke()
+                {
+                    Exibir(janela, mensagem, tipo);
+                }
             }
 
             // Avisos flutuantes ficam restritos às telas principais. Em diálogos
             // modais, a mensagem local do formulário evita cobrir o conteúdo.
             if (EhDialogo(janela))
                 return;
-
             AvisoFlutuante aviso;
             if (!Avisos.TryGetValue(janela, out aviso) || aviso.IsDisposed)
             {
@@ -56,11 +54,11 @@ namespace CASE.Utils
                 aviso = new AvisoFlutuante(janela);
                 Avisos.Add(janela, aviso);
             }
+
             aviso.Mostrar(mensagem, tipo);
         }
 
-        public static void ExibirErro(Control contexto, Exception erro, string mensagemPadrao,
-            Label mensagemInline = null)
+        public static void ExibirErro(Control contexto, Exception erro, string mensagemPadrao, Label mensagemInline = null)
         {
             string mensagem = MensagemErro(erro, mensagemPadrao);
             Form janela = contexto as Form ?? contexto?.FindForm();
@@ -77,6 +75,7 @@ namespace CASE.Utils
                     MessageBox.Show(janela, mensagem, "CASE", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
+
             Exibir(contexto, mensagem, TipoFeedback.Erro);
         }
 
@@ -84,18 +83,12 @@ namespace CASE.Utils
         {
             if (janela == null)
                 return false;
-
-            return janela.Modal || janela.FormBorderStyle == FormBorderStyle.FixedDialog ||
-                janela.FormBorderStyle == FormBorderStyle.FixedSingle ||
-                janela.FormBorderStyle == FormBorderStyle.FixedToolWindow;
+            return janela.Modal || janela.FormBorderStyle == FormBorderStyle.FixedDialog || janela.FormBorderStyle == FormBorderStyle.FixedSingle || janela.FormBorderStyle == FormBorderStyle.FixedToolWindow;
         }
 
         public static string MensagemErro(Exception erro, string mensagemPadrao)
         {
-            string padrao = string.IsNullOrWhiteSpace(mensagemPadrao)
-                ? "Não foi possível concluir a operação. Confira os dados e tente novamente."
-                : mensagemPadrao;
-
+            string padrao = string.IsNullOrWhiteSpace(mensagemPadrao) ? "Não foi possível concluir a operação. Confira os dados e tente novamente." : mensagemPadrao;
             MySqlException erroBanco = erro as MySqlException;
             if (erroBanco != null)
             {
@@ -124,11 +117,8 @@ namespace CASE.Utils
             string mensagemSegura = erro?.Message?.Trim();
             if (string.IsNullOrWhiteSpace(mensagemSegura) || ContemDetalheTecnico(mensagemSegura))
                 return padrao;
-
-            if ((erro is ArgumentException || erro is InvalidOperationException ||
-                erro is UnauthorizedAccessException) && !ContemDetalheTecnico(mensagemSegura))
+            if ((erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException) && !ContemDetalheTecnico(mensagemSegura))
                 return mensagemSegura;
-
             return padrao;
         }
 
@@ -136,14 +126,42 @@ namespace CASE.Utils
         {
             string[] termos =
             {
-                "mysql", "sqlstate", "sql error", "constraint", "foreign key", "duplicate entry",
-                "unknown column", "unknown table", "connection string", "stack trace", " at line ",
-                "inner exception", "timeout expired", "data source", "access denied for user",
-                "object reference", "nullreferenceexception", "invalid column", "index was outside",
-                "cannot convert", "input string", "specified cast", "parameter is not",
-                "disposed object", "collection was modified", "sequence contains", "at system.",
-                "connection", "not open", "unable to", "failed to", "parameter name:",
-                "value cannot be null", "was out of range", "file not found", "path is invalid"
+                "mysql",
+                "sqlstate",
+                "sql error",
+                "constraint",
+                "foreign key",
+                "duplicate entry",
+                "unknown column",
+                "unknown table",
+                "connection string",
+                "stack trace",
+                " at line ",
+                "inner exception",
+                "timeout expired",
+                "data source",
+                "access denied for user",
+                "object reference",
+                "nullreferenceexception",
+                "invalid column",
+                "index was outside",
+                "cannot convert",
+                "input string",
+                "specified cast",
+                "parameter is not",
+                "disposed object",
+                "collection was modified",
+                "sequence contains",
+                "at system.",
+                "connection",
+                "not open",
+                "unable to",
+                "failed to",
+                "parameter name:",
+                "value cannot be null",
+                "was out of range",
+                "file not found",
+                "path is invalid"
             };
             foreach (string termo in termos)
                 if (mensagem.IndexOf(termo, StringComparison.OrdinalIgnoreCase) >= 0)
@@ -153,11 +171,10 @@ namespace CASE.Utils
 
         private sealed class AvisoFlutuante : Form
         {
-            private readonly Form proprietaria;
-            private readonly Panel faixa = new Panel();
-            private readonly Label texto = new Label();
-            private readonly Timer temporizador = new Timer();
-
+            private Form proprietaria;
+            private Panel faixa = new Panel();
+            private Label texto = new Label();
+            private Timer temporizador = new Timer();
             public AvisoFlutuante(Form proprietaria)
             {
                 this.proprietaria = proprietaria;
@@ -169,7 +186,6 @@ namespace CASE.Utils
                 BackColor = Color.White;
                 Padding = Padding.Empty;
                 Cursor = Cursors.Hand;
-
                 faixa.Dock = DockStyle.Left;
                 faixa.Width = 7;
                 Controls.Add(faixa);
@@ -182,25 +198,28 @@ namespace CASE.Utils
                 texto.Cursor = Cursors.Hand;
                 Controls.Add(texto);
                 texto.BringToFront();
-
                 temporizador.Interval = 8000;
-                temporizador.Tick += (s, e) => Close();
-                SizeChanged += (s, e) => VisualUtils.Arredondar(this, 10);
-                Click += (s, e) => Close();
-                texto.Click += (s, e) => Close();
-                faixa.Click += (s, e) => Close();
+                temporizador.Tick += temporizador_Tick;
+                SizeChanged += Tela_SizeChanged;
+                Click += Tela_Click;
+                texto.Click += texto_Click;
+                faixa.Click += faixa_Click;
                 proprietaria.LocationChanged += ProprietariaAlterada;
                 proprietaria.SizeChanged += ProprietariaAlterada;
-                FormClosed += (s, e) =>
+                FormClosed += Tratar_FormClosed;
+                void Tratar_FormClosed(object s, FormClosedEventArgs e)
                 {
                     temporizador.Stop();
                     temporizador.Dispose();
                     proprietaria.LocationChanged -= ProprietariaAlterada;
                     proprietaria.SizeChanged -= ProprietariaAlterada;
-                };
+                }
             }
 
-            protected override bool ShowWithoutActivation => true;
+            protected override bool ShowWithoutActivation
+            {
+                get { return true; }
+            }
 
             protected override CreateParams CreateParams
             {
@@ -249,6 +268,31 @@ namespace CASE.Utils
                 int largura = Math.Min(520, Math.Max(320, area.Width - 40));
                 Size = new Size(largura, 76);
                 Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + 18);
+            }
+
+            private void temporizador_Tick(object s, EventArgs e)
+            {
+                Close();
+            }
+
+            private void Tela_SizeChanged(object s, EventArgs e)
+            {
+                VisualUtils.Arredondar(this, 10);
+            }
+
+            private void Tela_Click(object s, EventArgs e)
+            {
+                Close();
+            }
+
+            private void texto_Click(object s, EventArgs e)
+            {
+                Close();
+            }
+
+            private void faixa_Click(object s, EventArgs e)
+            {
+                Close();
             }
         }
     }

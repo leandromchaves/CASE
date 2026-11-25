@@ -1,4 +1,4 @@
-namespace CASE.Quermesse
+﻿namespace CASE.Quermesse
 {
     partial class EquipeSetoresControl
     {
@@ -48,42 +48,42 @@ namespace CASE.Quermesse
             this.pictureIconeTela.Name = "pictureIconeTela";
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Size = new System.Drawing.Size(36, 36);
-            this.pictureIconeTela.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.pictureIconeTela.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.pictureIconeTela.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.pictureIconeTela.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.pictureIconeTela.BackColor = System.Drawing.Color.FromArgb(255, 232, 240, 252);
             this.pictureIconeTela.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.pictureIconeTela.TabIndex = 0;
             this.pictureIconeTela.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulEquipe;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulEquipe;
             this.pictureIconeTela.TabStop = false;
             // lblTitulo
             this.lblTitulo.Name = "lblTitulo";
             this.lblTitulo.Location = new System.Drawing.Point(80, 22);
             this.lblTitulo.Size = new System.Drawing.Size(850, 42);
-            this.lblTitulo.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 20F, (System.Drawing.FontStyle)1);
+            this.lblTitulo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.lblTitulo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.lblTitulo.ForeColor = System.Drawing.Color.FromArgb(255, 16, 43, 73);
             this.lblTitulo.TabIndex = 1;
             this.lblTitulo.Text = "Equipes e setores";
-            this.lblTitulo.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblTitulo.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // lblSubtitulo
             this.lblSubtitulo.Name = "lblSubtitulo";
             this.lblSubtitulo.Location = new System.Drawing.Point(82, 66);
             this.lblSubtitulo.Size = new System.Drawing.Size(880, 24);
-            this.lblSubtitulo.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblSubtitulo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblSubtitulo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.lblSubtitulo.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblSubtitulo.TabIndex = 2;
             this.lblSubtitulo.Text = "Defina a equipe por setor, turno e perfil de acesso";
-            this.lblSubtitulo.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblSubtitulo.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // panelCorpo
             this.panelCorpo.Name = "panelCorpo";
             this.panelCorpo.Location = new System.Drawing.Point(30, 112);
             this.panelCorpo.Size = new System.Drawing.Size(990, 530);
-            this.panelCorpo.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelCorpo.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelCorpo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelCorpo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelCorpo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.panelCorpo.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelCorpo.TabIndex = 3;
@@ -91,8 +91,8 @@ namespace CASE.Quermesse
             this.panelEquipe.Name = "panelEquipe";
             this.panelEquipe.Location = new System.Drawing.Point(0, 0);
             this.panelEquipe.Size = new System.Drawing.Size(990, 315);
-            this.panelEquipe.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelEquipe.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelEquipe.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelEquipe.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelEquipe.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelEquipe.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelEquipe.TabIndex = 0;
@@ -100,19 +100,19 @@ namespace CASE.Quermesse
             this.lblFuncionariosdaquermesse.Name = "lblFuncionariosdaquermesse";
             this.lblFuncionariosdaquermesse.Location = new System.Drawing.Point(18, 18);
             this.lblFuncionariosdaquermesse.Size = new System.Drawing.Size(400, 28);
-            this.lblFuncionariosdaquermesse.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblFuncionariosdaquermesse.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)1);
+            this.lblFuncionariosdaquermesse.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblFuncionariosdaquermesse.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblFuncionariosdaquermesse.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblFuncionariosdaquermesse.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.lblFuncionariosdaquermesse.TabIndex = 0;
             this.lblFuncionariosdaquermesse.Text = "Equipe do evento";
-            this.lblFuncionariosdaquermesse.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblFuncionariosdaquermesse.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // btnNovoFuncionario
             this.btnNovoFuncionario.Name = "btnNovoFuncionario";
             this.btnNovoFuncionario.Location = new System.Drawing.Point(604, 12);
             this.btnNovoFuncionario.Size = new System.Drawing.Size(175, 38);
-            this.btnNovoFuncionario.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.btnNovoFuncionario.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)1);
+            this.btnNovoFuncionario.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnNovoFuncionario.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnNovoFuncionario.BackColor = System.Drawing.Color.FromArgb(255, 23, 105, 210);
             this.btnNovoFuncionario.ForeColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.btnNovoFuncionario.TabIndex = 1;
@@ -122,13 +122,13 @@ namespace CASE.Quermesse
             this.btnNovoFuncionario.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(255, 228, 234, 242);
             this.btnNovoFuncionario.UseVisualStyleBackColor = false;
             this.btnNovoFuncionario.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnNovoFuncionario.DialogResult = (System.Windows.Forms.DialogResult)0;
+            this.btnNovoFuncionario.DialogResult = System.Windows.Forms.DialogResult.None;
             // btnEditarFuncionario
             this.btnEditarFuncionario.Name = "btnEditarFuncionario";
             this.btnEditarFuncionario.Location = new System.Drawing.Point(795, 12);
             this.btnEditarFuncionario.Size = new System.Drawing.Size(175, 38);
-            this.btnEditarFuncionario.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.btnEditarFuncionario.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.btnEditarFuncionario.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnEditarFuncionario.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.btnEditarFuncionario.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.btnEditarFuncionario.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.btnEditarFuncionario.TabIndex = 2;
@@ -138,13 +138,13 @@ namespace CASE.Quermesse
             this.btnEditarFuncionario.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(255, 228, 234, 242);
             this.btnEditarFuncionario.UseVisualStyleBackColor = false;
             this.btnEditarFuncionario.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnEditarFuncionario.DialogResult = (System.Windows.Forms.DialogResult)0;
+            this.btnEditarFuncionario.DialogResult = System.Windows.Forms.DialogResult.None;
             // dgvEquipe
             this.dgvEquipe.Name = "dgvEquipe";
             this.dgvEquipe.Location = new System.Drawing.Point(12, 66);
             this.dgvEquipe.Size = new System.Drawing.Size(966, 235);
-            this.dgvEquipe.Anchor = (System.Windows.Forms.AnchorStyles)15;
-            this.dgvEquipe.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.dgvEquipe.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.dgvEquipe.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.dgvEquipe.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.dgvEquipe.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.dgvEquipe.TabIndex = 3;
@@ -188,8 +188,8 @@ namespace CASE.Quermesse
             this.panelSetores.Name = "panelSetores";
             this.panelSetores.Location = new System.Drawing.Point(0, 333);
             this.panelSetores.Size = new System.Drawing.Size(990, 197);
-            this.panelSetores.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelSetores.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelSetores.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelSetores.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelSetores.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelSetores.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelSetores.TabIndex = 1;
@@ -197,19 +197,19 @@ namespace CASE.Quermesse
             this.lblSetoresbarracas.Name = "lblSetoresbarracas";
             this.lblSetoresbarracas.Location = new System.Drawing.Point(18, 12);
             this.lblSetoresbarracas.Size = new System.Drawing.Size(400, 25);
-            this.lblSetoresbarracas.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblSetoresbarracas.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)1);
+            this.lblSetoresbarracas.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblSetoresbarracas.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.lblSetoresbarracas.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblSetoresbarracas.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.lblSetoresbarracas.TabIndex = 0;
             this.lblSetoresbarracas.Text = "Setores";
-            this.lblSetoresbarracas.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblSetoresbarracas.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // txtNovoSetor
             this.txtNovoSetor.Name = "txtNovoSetor";
             this.txtNovoSetor.Location = new System.Drawing.Point(24, 55);
             this.txtNovoSetor.Size = new System.Drawing.Size(235, 25);
-            this.txtNovoSetor.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.txtNovoSetor.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.txtNovoSetor.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.txtNovoSetor.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.txtNovoSetor.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.txtNovoSetor.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.txtNovoSetor.TabIndex = 1;
@@ -221,8 +221,8 @@ namespace CASE.Quermesse
             this.btnAdicionarSetor.Name = "btnAdicionarSetor";
             this.btnAdicionarSetor.Location = new System.Drawing.Point(24, 100);
             this.btnAdicionarSetor.Size = new System.Drawing.Size(235, 38);
-            this.btnAdicionarSetor.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.btnAdicionarSetor.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)1);
+            this.btnAdicionarSetor.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnAdicionarSetor.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnAdicionarSetor.BackColor = System.Drawing.Color.FromArgb(255, 23, 105, 210);
             this.btnAdicionarSetor.ForeColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.btnAdicionarSetor.TabIndex = 2;
@@ -232,13 +232,13 @@ namespace CASE.Quermesse
             this.btnAdicionarSetor.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(255, 228, 234, 242);
             this.btnAdicionarSetor.UseVisualStyleBackColor = false;
             this.btnAdicionarSetor.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnAdicionarSetor.DialogResult = (System.Windows.Forms.DialogResult)0;
+            this.btnAdicionarSetor.DialogResult = System.Windows.Forms.DialogResult.None;
             // dgvSetores
             this.dgvSetores.Name = "dgvSetores";
             this.dgvSetores.Location = new System.Drawing.Point(290, 16);
             this.dgvSetores.Size = new System.Drawing.Size(680, 163);
-            this.dgvSetores.Anchor = (System.Windows.Forms.AnchorStyles)15;
-            this.dgvSetores.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.dgvSetores.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.dgvSetores.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.dgvSetores.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.dgvSetores.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.dgvSetores.TabIndex = 3;
@@ -273,13 +273,13 @@ namespace CASE.Quermesse
             this.labelAviso.Name = "labelAviso";
             this.labelAviso.Location = new System.Drawing.Point(32, 652);
             this.labelAviso.Size = new System.Drawing.Size(900, 28);
-            this.labelAviso.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.labelAviso.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.labelAviso.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.labelAviso.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.labelAviso.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.labelAviso.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.labelAviso.TabIndex = 4;
             this.labelAviso.Text = "";
-            this.labelAviso.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.labelAviso.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             this.Controls.Add(this.pictureIconeTela);
             this.Controls.Add(this.lblTitulo);
             this.Controls.Add(this.lblSubtitulo);
@@ -296,7 +296,7 @@ namespace CASE.Quermesse
             this.panelSetores.Controls.Add(this.dgvSetores);
             this.Controls.Add(this.labelAviso);
             this.Name = "EquipeSetoresControl";
-            this.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;

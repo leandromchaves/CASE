@@ -7,17 +7,17 @@ namespace CASE.Services
 {
     public class TransferenciaEstoqueService
     {
-        private readonly TransferenciaEstoqueRepository transferenciaRepository = new TransferenciaEstoqueRepository();
-        private readonly TransferenciaItemRepository transferenciaItemRepository = new TransferenciaItemRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
-        private readonly SolicitacaoRepository solicitacaoRepository = new SolicitacaoRepository();
-        private readonly LocalEstoqueRepository localRepository = new LocalEstoqueRepository();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
-        private readonly SolicitacaoItemRepository solicitacaoItemRepository = new SolicitacaoItemRepository();
-        private readonly EscalaRepository escalaRepository = new EscalaRepository();
-        private readonly JornadaSetorRepository jornadaRepository = new JornadaSetorRepository();
-        private readonly SetorRepository setorRepository = new SetorRepository();
-        private readonly EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
+        private TransferenciaEstoqueRepository transferenciaRepository = new TransferenciaEstoqueRepository();
+        private TransferenciaItemRepository transferenciaItemRepository = new TransferenciaItemRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private SolicitacaoRepository solicitacaoRepository = new SolicitacaoRepository();
+        private LocalEstoqueRepository localRepository = new LocalEstoqueRepository();
+        private EventoRepository eventoRepository = new EventoRepository();
+        private SolicitacaoItemRepository solicitacaoItemRepository = new SolicitacaoItemRepository();
+        private EscalaRepository escalaRepository = new EscalaRepository();
+        private JornadaSetorRepository jornadaRepository = new JornadaSetorRepository();
+        private SetorRepository setorRepository = new SetorRepository();
+        private EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
 
         public int AtenderSolicitacaoMembro(Usuario usuario, int idSolicitacao)
         {

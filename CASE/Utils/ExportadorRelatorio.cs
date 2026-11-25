@@ -1,10 +1,11 @@
-using System;
+﻿using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
+using System.Text;
+using System;
 using ClosedXML.Excel;
 using MigraDoc.DocumentObjectModel;
 using MigraDoc.Rendering;
@@ -22,18 +23,12 @@ namespace CASE.Utils
 
     public static class ExportadorRelatorio
     {
-        private static readonly CultureInfo Cultura = CultureInfo.GetCultureInfo("pt-BR");
-
+        private static CultureInfo Cultura = CultureInfo.GetCultureInfo("pt-BR");
         private static DataTable Preparar(DataTable dados, string caminho)
         {
             if (dados == null || dados.Columns.Count == 0 || string.IsNullOrWhiteSpace(caminho))
                 throw new ArgumentException("Selecione dados e um arquivo de destino.");
-            string[] colunas = dados.Columns.Cast<DataColumn>().Where(c =>
-                !c.ColumnName.StartsWith("id_", StringComparison.OrdinalIgnoreCase) &&
-                c.ColumnName != "entidade" &&
-                c.ColumnName.IndexOf("hash", StringComparison.OrdinalIgnoreCase) < 0 &&
-                c.ColumnName.IndexOf("senha", StringComparison.OrdinalIgnoreCase) < 0 &&
-                c.DataType != typeof(byte[])).Select(c => c.ColumnName).ToArray();
+            string[] colunas = dados.Columns.Cast<DataColumn>().Where(Preparar_Where).Select(Preparar_Select).ToArray();
             if (colunas.Length == 0)
                 throw new ArgumentException("Não há colunas publicáveis no relatório.");
             return dados.DefaultView.ToTable(false, colunas);
@@ -58,15 +53,14 @@ namespace CASE.Utils
                 case "reposicao_minima":
                     return "Falta para o mínimo";
             }
+
             return Cultura.TextInfo.ToTitleCase(coluna.ColumnName.Replace('_', ' '));
         }
 
         private static bool Monetaria(DataColumn c)
         {
             string n = c.ColumnName;
-            return n == "valor" || n == "total" || n == "esperado_atual" ||
-                n.StartsWith("valor_") || n.StartsWith("preco_") || n.StartsWith("custo_") ||
-                n.StartsWith("diferenca_");
+            return n == "valor" || n == "total" || n == "esperado_atual" || n.StartsWith("valor_") || n.StartsWith("preco_") || n.StartsWith("custo_") || n.StartsWith("diferenca_");
         }
 
         private static string Formatar(object valor, DataColumn coluna)
@@ -83,15 +77,21 @@ namespace CASE.Utils
         // Preços unitários, saldos e conferências sucessivas não são receitas somáveis.
         private static bool Totalizavel(DataTable dados, DataColumn c, ContextoRelatorio contexto)
         {
-            return (c.ColumnName == "valor" || c.ColumnName == "total") &&
-                contexto.Titulo != "Apurações" && c.DataType != typeof(string);
+            return (c.ColumnName == "valor" || c.ColumnName == "total") && contexto.Titulo != "Apurações" && c.DataType != typeof(string);
         }
 
         private static decimal Somar(DataTable dados, DataColumn c)
         {
-            return dados.Rows.Cast<DataRow>().Where(r => r[c] != DBNull.Value &&
-                (!dados.Columns.Contains("tipo") || Convert.ToString(r["tipo"]) != "perda"))
-                .Sum(r => Convert.ToDecimal(r[c], Cultura));
+            return dados.Rows.Cast<DataRow>().Where(Tratar_Somar_Where).Sum(Tratar_Somar_Sum);
+            bool Tratar_Somar_Where(DataRow r)
+            {
+                return r[c] != DBNull.Value && (!dados.Columns.Contains("tipo") || Convert.ToString(r["tipo"]) != "perda");
+            }
+
+            decimal Tratar_Somar_Sum(DataRow r)
+            {
+                return Convert.ToDecimal(r[c], Cultura);
+            }
         }
 
         public static void ExportarCsv(DataTable dados, string caminho)
@@ -99,17 +99,21 @@ namespace CASE.Utils
             DataTable tabela = Preparar(dados, caminho);
             using (var escritor = new StreamWriter(caminho, false, new UTF8Encoding(true)))
             {
-                escritor.WriteLine(string.Join(";", tabela.Columns.Cast<DataColumn>().Select(c => CampoCsv(Cabecalho(c)))));
+                escritor.WriteLine(string.Join(";", tabela.Columns.Cast<DataColumn>().Select(ExportarCsv_Select)));
                 foreach (DataRow linha in tabela.Rows)
-                    escritor.WriteLine(string.Join(";", tabela.Columns.Cast<DataColumn>().Select(c => CampoCsv(Formatar(linha[c], c)))));
+                {
+                    List<string> campos = new List<string>();
+                    foreach (DataColumn coluna in tabela.Columns)
+                        campos.Add(CampoCsv(Formatar(linha[coluna], coluna)));
+                    escritor.WriteLine(string.Join(";", campos));
+                }
             }
         }
 
         private static string CampoCsv(string valor)
         {
             string inicio = valor.TrimStart();
-            if (inicio.StartsWith("=") || inicio.StartsWith("+") || inicio.StartsWith("-") ||
-                inicio.StartsWith("@") || valor.StartsWith("\t") || valor.StartsWith("\r"))
+            if (inicio.StartsWith("=") || inicio.StartsWith("+") || inicio.StartsWith("-") || inicio.StartsWith("@") || valor.StartsWith("\t") || valor.StartsWith("\r"))
                 valor = "'" + valor;
             return "\"" + valor.Replace("\"", "\"\"") + "\"";
         }
@@ -147,13 +151,14 @@ namespace CASE.Utils
                         else
                             celula.Value = TextoInterface.FormatarColunaBanco(coluna.ColumnName, valor);
                     }
+
                     folha.Column(c + 1).Style.Alignment.Vertical = XLAlignmentVerticalValues.Top;
                     if (Monetaria(coluna))
                         folha.Column(c + 1).Style.NumberFormat.Format = "\"R$\" #,##0.00;[Red]-\"R$\" #,##0.00";
                     else if (coluna.DataType == typeof(DateTime))
-                        folha.Column(c + 1).Style.NumberFormat.Format =
-                        coluna.ColumnName.Contains("hora") ? "dd/mm/yyyy hh:mm" : "dd/mm/yyyy";
+                        folha.Column(c + 1).Style.NumberFormat.Format = coluna.ColumnName.Contains("hora") ? "dd/mm/yyyy hh:mm" : "dd/mm/yyyy";
                 }
+
                 var cabecalho = folha.Range(6, 1, 6, quantidade);
                 cabecalho.Style.Fill.BackgroundColor = XLColor.FromHtml("#1764C0");
                 cabecalho.Style.Font.FontColor = XLColor.White;
@@ -165,6 +170,7 @@ namespace CASE.Utils
                     intervalo.Style.Border.BottomBorder = XLBorderStyleValues.Hair;
                     intervalo.Style.Border.BottomBorderColor = XLColor.LightGray;
                 }
+
                 folha.SheetView.FreezeRows(6);
                 folha.Columns(1, quantidade).AdjustToContents(6, Math.Min(tabela.Rows.Count + 6, 206));
                 foreach (var coluna in folha.Columns(1, quantidade))
@@ -172,6 +178,7 @@ namespace CASE.Utils
                     coluna.Width = Math.Max(15, Math.Min(45, coluna.Width + 2));
                     coluna.Style.Alignment.WrapText = true;
                 }
+
                 if (tabela.Rows.Count > 0)
                     folha.Rows(7, tabela.Rows.Count + 6).AdjustToContents();
                 int rodape = tabela.Rows.Count + 8;
@@ -184,6 +191,7 @@ namespace CASE.Utils
                         if (c.Ordinal > 0)
                             folha.Cell(rodape + 1, 1).Value = "Total";
                     }
+
                 if (tabela.Rows.Count == 0)
                     folha.Cell(7, 1).Value = "Nenhum registro encontrado.";
                 if (!string.IsNullOrWhiteSpace(contexto.TipoGrafico))
@@ -201,12 +209,13 @@ namespace CASE.Utils
                     {
                         folha.Cell(31 + i, inicioResumo).Value = Convert.ToString(resumo.Valores.Rows[i][0]);
                         folha.Cell(31 + i, inicioResumo + 1).Value = Convert.ToDouble(resumo.Valores.Rows[i][1]);
-                        folha.Cell(31 + i, inicioResumo + 1).Style.NumberFormat.Format =
-                            resumo.Monetario ? "\"R$\" #,##0.00" : "0.###";
+                        folha.Cell(31 + i, inicioResumo + 1).Style.NumberFormat.Format = resumo.Monetario ? "\"R$\" #,##0.00" : "0.###";
                     }
+
                     folha.Column(inicioResumo).Width = 45;
                     folha.Column(inicioResumo + 1).Width = 20;
                 }
+
                 livro.SaveAs(caminho);
             }
         }
@@ -251,6 +260,7 @@ namespace CASE.Utils
                 instituicao.Format.SpaceAfter = Unit.FromMillimeter(1);
                 instituicao.Format.KeepWithNext = true;
             }
+
             var titulo = secao.AddParagraph(contexto.Titulo);
             titulo.Format.Font.Size = 20;
             titulo.Format.Font.Bold = true;
@@ -289,6 +299,7 @@ namespace CASE.Utils
                     total.Format.SpaceAfter = Unit.FromMillimeter(2);
                     total.Format.KeepWithNext = true;
                 }
+
             var grade = secao.AddTable();
             grade.Borders.Color = Color.FromRgb(220, 228, 237);
             grade.Borders.Width = 0;
@@ -323,9 +334,13 @@ namespace CASE.Utils
                         linha.Cells[c].Format.Alignment = ParagraphAlignment.Right;
                 }
             }
+
             if (tabela.Rows.Count == 0)
                 secao.AddParagraph("Nenhum registro encontrado.");
-            var renderizador = new PdfDocumentRenderer { Document = documento };
+            var renderizador = new PdfDocumentRenderer
+            {
+                Document = documento
+            };
             renderizador.RenderDocument();
             renderizador.PdfDocument.Save(caminho);
             renderizador.PdfDocument.Dispose();
@@ -343,6 +358,7 @@ namespace CASE.Utils
                 secao.AddParagraph("Sem valores para representar no gráfico.");
                 return;
             }
+
             var composicao = secao.AddTable();
             composicao.AddColumn(Unit.FromCentimeter(largura * 0.38));
             composicao.AddColumn(Unit.FromCentimeter(largura * 0.62));
@@ -359,7 +375,7 @@ namespace CASE.Utils
             cabecalho.Cells[1].AddParagraph(resumo.Monetario ? "Valor (R$)" : "Quantidade");
             cabecalho.Cells[2].AddParagraph("Percentual");
             valores.TopPadding = valores.BottomPadding = Unit.FromMillimeter(1.4);
-            decimal soma = resumo.Valores.Rows.Cast<DataRow>().Sum(r => Convert.ToDecimal(r[1]));
+            decimal soma = resumo.Valores.Rows.Cast<DataRow>().Sum(AdicionarGraficoPdf_Sum);
             int indiceResumo = 0;
             foreach (DataRow item in resumo.Valores.Rows.Cast<DataRow>().Take(8))
             {
@@ -372,6 +388,7 @@ namespace CASE.Utils
                 registro.Cells[2].AddParagraph(soma == 0 ? "—" : (Convert.ToDecimal(item[1]) / soma).ToString("P1", Cultura));
                 registro.Cells[2].Format.Alignment = ParagraphAlignment.Right;
             }
+
             if (resumo.Valores.Rows.Count > 8)
                 linha.Cells[0].AddParagraph("Primeiros 8 grupos. O gráfico considera todos os grupos.");
             byte[] imagem = GraficoRelatorio.CriarImagem(dados, contexto.Titulo, contexto.TipoGrafico, true);
@@ -402,6 +419,26 @@ namespace CASE.Utils
             if (nome.Contains("observacao") || nome.Contains("descricao"))
                 return 2.2;
             return 1.2;
+        }
+
+        private static bool Preparar_Where(DataColumn c)
+        {
+            return !c.ColumnName.StartsWith("id_", StringComparison.OrdinalIgnoreCase) && c.ColumnName != "entidade" && c.ColumnName.IndexOf("hash", StringComparison.OrdinalIgnoreCase) < 0 && c.ColumnName.IndexOf("senha", StringComparison.OrdinalIgnoreCase) < 0 && c.DataType != typeof(byte[]);
+        }
+
+        private static string Preparar_Select(DataColumn c)
+        {
+            return c.ColumnName;
+        }
+
+        private static string ExportarCsv_Select(DataColumn c)
+        {
+            return CampoCsv(Cabecalho(c));
+        }
+
+        private static decimal AdicionarGraficoPdf_Sum(DataRow r)
+        {
+            return Convert.ToDecimal(r[1]);
         }
     }
 }

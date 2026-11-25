@@ -1,54 +1,101 @@
 ﻿using System.Collections.Generic;
+using System;
+using CASE.Data;
 using CASE.Models;
+using CASE.Services;
 using MySql.Data.MySqlClient;
 
 namespace CASE.Repositories
 {
     public class TurnoRepository
     {
-
         public List<Turno> Listar()
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT id_turno,nome FROM turno ORDER BY id_turno",
-                ConverterLinha
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_turno,nome FROM turno ORDER BY id_turno", conexaoBanco))
+                {
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Turno> resultadoBanco = new List<Turno>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public Turno BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT id_turno,nome FROM turno WHERE id_turno=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_turno,nome FROM turno WHERE id_turno=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(Turno item)
         {
-            return AcessoDados.Inserir(
-                "INSERT INTO turno (nome) VALUES (@nome)",
-                comando => AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", item.Nome)
-            );
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("INSERT INTO turno (nome) VALUES (@nome)", conexaoBanco))
+                {
+                    AcessoDados.AdicionarTextoObrigatorio(comandoBanco, "@nome", item.Nome);
+                    comandoBanco.ExecuteNonQuery();
+                    resultadoBanco = Convert.ToInt32(comandoBanco.LastInsertedId);
+                }
+            }
+            return resultadoBanco;
         }
 
         public bool Atualizar(Turno item)
         {
-            return AcessoDados.Executar(
-                "UPDATE turno SET nome=@nome WHERE id_turno=@id",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("UPDATE turno SET nome=@nome WHERE id_turno=@id", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@id", item.IdTurno);
-                    AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", item.Nome);
-                }) > 0;
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", item.IdTurno);
+                    AcessoDados.AdicionarTextoObrigatorio(comandoBanco, "@nome", item.Nome);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco > 0;
 
         }
 
         public bool Excluir(int id)
         {
-            new CASE.Services.AutorizacaoService().ExigirAdministrador(CASE.Services.SessaoUsuario.ObterUsuarioAtual());
-            return AcessoDados.Executar("DELETE FROM turno WHERE id_turno=@id",
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)) == 1;
+            new AutorizacaoService().ExigirAdministrador(SessaoUsuario.ObterUsuarioAtual());
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("DELETE FROM turno WHERE id_turno=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco == 1;
         }
 
         private static Turno ConverterLinha(MySqlDataReader leitor)

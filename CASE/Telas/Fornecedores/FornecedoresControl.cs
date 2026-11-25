@@ -1,7 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -10,42 +12,37 @@ namespace CASE
 {
     public partial class FornecedoresControl : UserControl
     {
-        private readonly FornecedorService fornecedorService = new FornecedorService();
+        private FornecedorService fornecedorService = new FornecedorService();
         private List<Fornecedor> fornecedores = new List<Fornecedor>();
         private Fornecedor fornecedorSelecionado;
-        private readonly Usuario usuarioAutenticado;
-        private readonly ToolTip dicasCampos = new ToolTip();
+        private Usuario usuarioAutenticado;
+        private ToolTip dicasCampos = new ToolTip();
         private bool salvando;
         private Form formularioFornecedor;
-        private readonly Button btnEditarFornecedor = new Button();
-
-        public FornecedoresControl()
-            : this(null)
+        private Button btnEditarFornecedor = new Button();
+        public FornecedoresControl() : this(null)
         {
         }
 
         public FornecedoresControl(Usuario usuario)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             usuarioAutenticado = usuario;
-
-            if (System.ComponentModel.LicenseManager.UsageMode ==
-                System.ComponentModel.LicenseUsageMode.Designtime)
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
             {
                 return;
             }
 
             FrontendTheme.Aplicar(this);
             ConfigurarJanelaFornecedor();
-            VisualUtils.ExibirEstadoVazio(
-                dgvFornecedores,
-                "Nenhum fornecedor encontrado. Altere a busca ou cadastre um novo.");
-
+            VisualUtils.ExibirEstadoVazio(dgvFornecedores, "Nenhum fornecedor encontrado. Altere a busca ou cadastre um novo.");
             dicasCampos.SetToolTip(txtNome, "Exemplo: Mercado São José ou João da Silva");
             dicasCampos.SetToolTip(txtDocumento, "Opcional. Exemplo: CPF ou CNPJ do fornecedor");
             dicasCampos.SetToolTip(txtTelefone, "Opcional. Exemplo: (11) 3333-4444");
             dicasCampos.SetToolTip(txtEmail, "Opcional. Exemplo: contato@fornecedor.com.br");
-            Disposed += (s, e) => dicasCampos.Dispose();
+            Disposed += Tela_Disposed;
             txtNome.MaxLength = 150;
             txtDocumento.MaxLength = 18;
             txtTelefone.MaxLength = 20;
@@ -54,20 +51,14 @@ namespace CASE
             pictureIconeTela.AccessibleName = "Ícone de fornecedores";
             lblSubtitulo.Text = "Cadastro compartilhado da instituição. Use Novo fornecedor ou selecione uma linha e clique em Editar.";
             lblBusca.Text = "Buscar por nome, documento, e-mail ou telefone";
-
             txtBusca.TextChanged += TxtBusca_TextChanged;
             VisualUtils.EstilizarPesquisa(txtBusca, "Pesquisar nome, documento, e-mail ou telefone").Top = 28;
             lblBusca.Visible = false;
             btnNovo.Click += BtnNovo_Click;
             dgvFornecedores.SelectionChanged += DgvFornecedores_SelectionChanged;
-            dgvFornecedores.CellDoubleClick += (s, e) =>
-            {
-                if (e.RowIndex >= 0)
-                    AbrirJanelaFornecedor(true);
-            };
+            dgvFornecedores.CellDoubleClick += dgvFornecedores_CellDoubleClick;
             btnSalvar.Click += BtnSalvar_Click;
             ConfigurarExclusao();
-
             if (usuarioAutenticado == null)
             {
                 btnNovo.Enabled = false;
@@ -116,11 +107,11 @@ namespace CASE
             btnEditarFornecedor.BackColor = btnNovo.BackColor;
             btnEditarFornecedor.ForeColor = btnNovo.ForeColor;
             btnEditarFornecedor.TabIndex = btnNovo.TabIndex + 1;
-            btnEditarFornecedor.Click += (s, e) => AbrirJanelaFornecedor(true);
+            btnEditarFornecedor.Click += btnEditarFornecedor_Click;
             panelBusca.Controls.Add(btnEditarFornecedor);
             FrontendTheme.Aplicar(panelBusca);
-            SizeChanged += (s, e) => AjustarListagemFornecedores();
-            panelBusca.SizeChanged += (s, e) => AjustarListagemFornecedores();
+            SizeChanged += Tela_SizeChanged;
+            panelBusca.SizeChanged += panelBusca_SizeChanged;
             AjustarListagemFornecedores();
         }
 
@@ -128,9 +119,7 @@ namespace CASE
         {
             btnEditarFornecedor.SetBounds(Math.Max(220, panelBusca.ClientSize.Width - 194), 28, 170, 40);
             btnNovo.SetBounds(btnEditarFornecedor.Left - 196, 28, 184, 40);
-            Control areaBusca = txtBusca.Parent.Name == "panelPesquisa_" + txtBusca.Name
-                ? txtBusca.Parent
-                : txtBusca;
+            Control areaBusca = txtBusca.Parent.Name == "panelPesquisa_" + txtBusca.Name ? txtBusca.Parent : txtBusca;
             areaBusca.Width = Math.Max(120, btnNovo.Left - areaBusca.Left - 20);
             lblBusca.Width = areaBusca.Width;
             panelLista.Height = Math.Max(150, ClientSize.Height - panelLista.Top - 72);
@@ -143,6 +132,7 @@ namespace CASE
                 formularioFornecedor.Activate();
                 return;
             }
+
             try
             {
                 new AutorizacaoService().ExigirAdministradorOuGerente(usuarioAutenticado);
@@ -150,7 +140,7 @@ namespace CASE
             catch (UnauthorizedAccessException)
             {
                 lblMensagem.Text = "Seu perfil não pode cadastrar ou editar fornecedores.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
+                FeedbackUsuario.Exibir(this, lblMensagem.Text, TipoFeedback.Erro);
                 return;
             }
             catch (Exception)
@@ -158,6 +148,7 @@ namespace CASE
                 lblMensagem.Text = "Não foi possível validar sua conta. Tente novamente.";
                 return;
             }
+
             if (editar)
             {
                 if (dgvFornecedores.SelectedRows.Count == 0)
@@ -165,13 +156,13 @@ namespace CASE
                     lblMensagem.Text = "Selecione o fornecedor que deseja editar.";
                     return;
                 }
+
                 SelecionarFornecedor();
                 if (fornecedorSelecionado == null)
                     return;
             }
             else
                 LimparCampos();
-
             Rectangle limitesPainel = panelEdicao.Bounds;
             Rectangle limitesMensagem = lblMensagem.Bounds;
             AnchorStyles ancoraPainel = panelEdicao.Anchor;
@@ -190,7 +181,12 @@ namespace CASE
                 janela.MinimizeBox = false;
                 janela.ShowInTaskbar = false;
                 IconoAplicacao.Aplicar(janela);
-                Label titulo = new Label { Text = janela.Text, Font = new Font("Segoe UI", 20, FontStyle.Bold), AutoSize = true };
+                Label titulo = new Label
+                {
+                    Text = janela.Text,
+                    Font = new Font("Segoe UI", 20, FontStyle.Bold),
+                    AutoSize = true
+                };
                 titulo.SetBounds(24, 18, 600, 40);
                 janela.Controls.Add(titulo);
                 janela.Controls.Add(panelEdicao);
@@ -228,7 +224,7 @@ namespace CASE
                 VisualUtils.EstilizarCampo(txtDocumento);
                 VisualUtils.EstilizarCampo(txtTelefone);
                 VisualUtils.EstilizarCampo(txtEmail);
-                janela.Shown += (s, e) => txtNome.Focus();
+                janela.Shown += janela_Shown;
                 formularioFornecedor = janela;
                 DialogResult resultado;
                 try
@@ -247,6 +243,7 @@ namespace CASE
                     lblMensagem.Bounds = limitesMensagem;
                     lblMensagem.Anchor = ancoraMensagem;
                 }
+
                 if (resultado == DialogResult.OK)
                 {
                     CarregarFornecedores();
@@ -261,13 +258,11 @@ namespace CASE
         {
             Panel painel = campo.Parent as Panel;
             bool reutilizarPainel = painel != null && painel.Parent == panelEdicao;
-
             if (!reutilizarPainel)
             {
                 Control paiAnterior = campo.Parent;
                 if (paiAnterior != null)
                     paiAnterior.Controls.Remove(campo);
-
                 painel = new Panel
                 {
                     Name = "painel" + campo.Name,
@@ -295,13 +290,18 @@ namespace CASE
             excluir.Name = "menuExcluirFornecedor";
             excluir.Click += ExcluirFornecedor_Click;
             menu.Items.Add(excluir);
-            menu.Opening += (s, e) =>
+            menu.Opening += Tratar_menu_Opening;
+            dgvFornecedores.ContextMenuStrip = menu;
+            dgvFornecedores.CellMouseDown += dgvFornecedores_CellMouseDown;
+            Disposed += Tratar_Disposed;
+            void Tratar_menu_Opening(object s, CancelEventArgs e)
             {
                 excluir.Enabled = false;
                 if (usuarioAutenticado == null || dgvFornecedores.SelectedRows.Count == 0)
                 {
                     return;
                 }
+
                 try
                 {
                     string perfil;
@@ -310,19 +310,14 @@ namespace CASE
                 }
                 catch (Exception erro)
                 {
-                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em MenuExcluirFornecedor");
+                    Trace.WriteLine(erro.GetType().Name + " em MenuExcluirFornecedor");
                 }
-            };
-            dgvFornecedores.ContextMenuStrip = menu;
-            dgvFornecedores.CellMouseDown += (s, e) =>
+            }
+
+            void Tratar_Disposed(object s, EventArgs e)
             {
-                if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
-                {
-                    dgvFornecedores.CurrentCell = dgvFornecedores.Rows[e.RowIndex].Cells[0];
-                    dgvFornecedores.Rows[e.RowIndex].Selected = true;
-                }
-            };
-            Disposed += (s, e) => menu.Dispose();
+                menu.Dispose();
+            }
         }
 
         private void ExcluirFornecedor_Click(object sender, EventArgs e)
@@ -332,18 +327,18 @@ namespace CASE
                 lblMensagem.Text = "Selecione um fornecedor para excluir.";
                 return;
             }
+
             Fornecedor fornecedor = dgvFornecedores.SelectedRows[0].Tag as Fornecedor;
             if (fornecedor == null)
             {
                 return;
             }
-            if (MessageBox.Show(this,
-                "Excluir definitivamente o fornecedor selecionado? A exclusão só é permitida sem vínculos.",
-                "Excluir fornecedor", MessageBoxButtons.YesNo, MessageBoxIcon.Warning,
-                MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+
+            if (MessageBox.Show(this, "Excluir definitivamente o fornecedor selecionado? A exclusão só é permitida sem vínculos.", "Excluir fornecedor", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2) != DialogResult.Yes)
             {
                 return;
             }
+
             try
             {
                 bool excluido = fornecedorService.Excluir(usuarioAutenticado, fornecedor.IdFornecedor);
@@ -352,7 +347,7 @@ namespace CASE
                 if (excluido)
                 {
                     lblMensagem.Text = "Fornecedor excluído.";
-                    CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Sucesso);
+                    FeedbackUsuario.Exibir(this, lblMensagem.Text, TipoFeedback.Sucesso);
                 }
                 else
                 {
@@ -363,14 +358,15 @@ namespace CASE
             {
                 if (erro is ArgumentException || erro is InvalidOperationException || erro is UnauthorizedAccessException)
                 {
-                    lblMensagem.Text = CASE.Utils.FeedbackUsuario.MensagemErro(erro, "Não foi possível excluir o fornecedor.");
+                    lblMensagem.Text = FeedbackUsuario.MensagemErro(erro, "Não foi possível excluir o fornecedor.");
                 }
                 else
                 {
                     lblMensagem.Text = "Não foi possível excluir o fornecedor. Tente novamente.";
-                    CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
+                    FeedbackUsuario.Exibir(this, lblMensagem.Text, TipoFeedback.Erro);
                 }
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExcluirFornecedor: " + erro.StackTrace);
+
+                Trace.WriteLine(erro.GetType().Name + " em ExcluirFornecedor: " + erro.StackTrace);
             }
         }
 
@@ -397,11 +393,9 @@ namespace CASE
         {
             dgvFornecedores.Rows.Clear();
             string textoBusca = txtBusca.Text.Trim();
-
             foreach (Fornecedor fornecedor in fornecedores)
             {
                 string textoFornecedor = fornecedor.Nome;
-
                 if (fornecedor.Documento != null)
                 {
                     textoFornecedor += " " + fornecedor.Documento;
@@ -411,26 +405,19 @@ namespace CASE
                 {
                     textoFornecedor += " " + fornecedor.Email;
                 }
+
                 if (fornecedor.Telefone != null)
                 {
                     textoFornecedor += " " + fornecedor.Telefone;
                 }
 
-                bool correspondeBusca = textoFornecedor.IndexOf(
-                    textoBusca,
-                    StringComparison.CurrentCultureIgnoreCase) >= 0;
-
+                bool correspondeBusca = textoFornecedor.IndexOf(textoBusca, StringComparison.CurrentCultureIgnoreCase) >= 0;
                 if (!correspondeBusca)
                 {
                     continue;
                 }
 
-                int indiceLinha = dgvFornecedores.Rows.Add(
-                    fornecedor.Nome,
-                    fornecedor.Documento,
-                    fornecedor.Email,
-                    fornecedor.Telefone);
-
+                int indiceLinha = dgvFornecedores.Rows.Add(fornecedor.Nome, fornecedor.Documento, fornecedor.Email, fornecedor.Telefone);
                 dgvFornecedores.Rows[indiceLinha].Tag = fornecedor;
             }
 
@@ -457,7 +444,6 @@ namespace CASE
             }
 
             fornecedorSelecionado = dgvFornecedores.SelectedRows[0].Tag as Fornecedor;
-
             if (fornecedorSelecionado == null)
             {
                 return;
@@ -477,6 +463,7 @@ namespace CASE
             {
                 return;
             }
+
             if (string.IsNullOrWhiteSpace(txtNome.Text))
             {
                 lblMensagem.Text = "Informe o nome do fornecedor.";
@@ -485,7 +472,6 @@ namespace CASE
 
             Fornecedor fornecedor = new Fornecedor();
             bool novoFornecedor = fornecedorSelecionado == null;
-
             if (novoFornecedor)
             {
                 fornecedor = new Fornecedor();
@@ -499,7 +485,6 @@ namespace CASE
             fornecedor.Documento = txtDocumento.Text.Trim();
             fornecedor.Email = txtEmail.Text.Trim();
             fornecedor.Telefone = txtTelefone.Text.Trim();
-
             try
             {
                 salvando = true;
@@ -519,7 +504,7 @@ namespace CASE
             }
             catch (ArgumentException erro)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Confira os dados do fornecedor e tente novamente.", lblMensagem);
+                FeedbackUsuario.ExibirErro(this, erro, "Confira os dados do fornecedor e tente novamente.", lblMensagem);
             }
             catch (UnauthorizedAccessException)
             {
@@ -527,12 +512,12 @@ namespace CASE
             }
             catch (InvalidOperationException erro)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível salvar o fornecedor.", lblMensagem);
+                FeedbackUsuario.ExibirErro(this, erro, "Não foi possível salvar o fornecedor.", lblMensagem);
             }
             catch (Exception)
             {
                 lblMensagem.Text = "Não foi possível salvar o fornecedor.";
-                CASE.Utils.FeedbackUsuario.Exibir(this, lblMensagem.Text, CASE.Utils.TipoFeedback.Erro);
+                FeedbackUsuario.Exibir(this, lblMensagem.Text, TipoFeedback.Erro);
             }
             finally
             {
@@ -577,6 +562,46 @@ namespace CASE
         private void BtnSalvar_Click(object sender, EventArgs e)
         {
             SalvarFornecedor();
+        }
+
+        private void Tela_Disposed(object s, EventArgs e)
+        {
+            dicasCampos.Dispose();
+        }
+
+        private void dgvFornecedores_CellDoubleClick(object s, DataGridViewCellEventArgs e)
+        {
+            if (e.RowIndex >= 0)
+                AbrirJanelaFornecedor(true);
+        }
+
+        private void btnEditarFornecedor_Click(object s, EventArgs e)
+        {
+            AbrirJanelaFornecedor(true);
+        }
+
+        private void Tela_SizeChanged(object s, EventArgs e)
+        {
+            AjustarListagemFornecedores();
+        }
+
+        private void panelBusca_SizeChanged(object s, EventArgs e)
+        {
+            AjustarListagemFornecedores();
+        }
+
+        private void janela_Shown(object s, EventArgs e)
+        {
+            txtNome.Focus();
+        }
+
+        private void dgvFornecedores_CellMouseDown(object s, DataGridViewCellMouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right && e.RowIndex >= 0)
+            {
+                dgvFornecedores.CurrentCell = dgvFornecedores.Rows[e.RowIndex].Cells[0];
+                dgvFornecedores.Rows[e.RowIndex].Selected = true;
+            }
         }
     }
 }

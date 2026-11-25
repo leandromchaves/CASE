@@ -1,122 +1,42 @@
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Drawing;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
+using CASE.Utils;
 
 namespace CASE.Quermesse
 {
-    public class SolicitacaoEstoqueCentralForm : Form
+    public partial class SolicitacaoEstoqueCentralForm : Form
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly Evento eventoSelecionado;
-        private readonly SolicitacaoEstoqueCentralService solicitacaoService =
+        private Usuario usuarioAutenticado;
+        private Evento eventoSelecionado;
+        private SolicitacaoEstoqueCentralService solicitacaoService =
             new SolicitacaoEstoqueCentralService();
-        private readonly ProdutoService produtoService = new ProdutoService();
-        private readonly ComboBox cmbTipo = new ComboBox();
-        private readonly DataGridView dgvItens = new DataGridView();
-        private readonly Button btnAdicionarItem = new Button();
-        private readonly Button btnRemoverItem = new Button();
-        private readonly Button btnEnviar = new Button();
-        private readonly Button btnCancelar = new Button();
-        private readonly Label lblAviso = new Label();
+        private ProdutoService produtoService = new ProdutoService();
         private List<Produto> produtos = new List<Produto>();
 
-        public SolicitacaoEstoqueCentralForm(Usuario usuario, Evento evento)
+        public SolicitacaoEstoqueCentralForm()
+        {
+            InitializeComponent();
+        }
+
+        public SolicitacaoEstoqueCentralForm(Usuario usuario, Evento evento) : this()
         {
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
-            ConfigurarFormulario();
             CarregarProdutos();
-            dgvItens.BackgroundColor = System.Drawing.Color.White;
+            dgvItens.BackgroundColor = Color.White;
             dgvItens.EnableHeadersVisualStyles = false;
-            CASE.Utils.FrontendTheme.Aplicar(this);
-            CASE.Utils.IconoAplicacao.Aplicar(this);
+            FrontendTheme.Aplicar(this);
+            IconoAplicacao.Aplicar(this);
         }
 
-        private void ConfigurarFormulario()
+        private void dgvItens_DataError(object sender, DataGridViewDataErrorEventArgs e)
         {
-            Name = "SolicitacaoEstoqueCentralForm";
-            cmbTipo.Name = "cmbTipoPedidoCentral";
-            dgvItens.Name = "dgvItensPedidoCentral";
-            btnAdicionarItem.Name = "btnAdicionarItemCentral";
-            btnRemoverItem.Name = "btnRemoverItemCentral";
-            btnEnviar.Name = "btnEnviarPedidoCentral";
-            btnCancelar.Name = "btnCancelarPedidoCentral";
-            lblAviso.Name = "lblAvisoPedidoCentral";
-            Text = "Solicitação ao estoque central";
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            MinimizeBox = false;
-            MaximizeBox = false;
-            ClientSize = new System.Drawing.Size(660, 470);
-            Font = new System.Drawing.Font("Segoe UI", 9F);
-            BackColor = System.Drawing.Color.White;
-
-            Label lblTipo = new Label();
-            lblTipo.Text = "Tipo do pedido";
-            lblTipo.SetBounds(20, 18, 150, 22);
-
-            cmbTipo.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbTipo.Items.Add("Liberação do estoque central");
-            cmbTipo.Items.Add("Devolução ao estoque central");
-            cmbTipo.SelectedIndex = 0;
-            cmbTipo.SetBounds(20, 42, 610, 30);
-
-            dgvItens.SetBounds(20, 88, 610, 280);
-            dgvItens.AllowUserToAddRows = false;
-            dgvItens.AllowUserToDeleteRows = false;
-            dgvItens.MultiSelect = false;
-            dgvItens.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            dgvItens.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            dgvItens.RowHeadersVisible = false;
-            dgvItens.DataError += (s, e) =>
-            {
-                e.ThrowException = false;
-                lblAviso.Text = "Selecione um produto válido na lista e revise a quantidade.";
-            };
-            dgvItens.Columns.Add(new DataGridViewComboBoxColumn
-            {
-                Name = "produto",
-                HeaderText = "Produto",
-                FillWeight = 75
-            });
-            dgvItens.Columns.Add(new DataGridViewTextBoxColumn
-            {
-                Name = "quantidade",
-                HeaderText = "Quantidade",
-                FillWeight = 25
-            });
-
-            btnAdicionarItem.Text = "Adicionar produto";
-            btnAdicionarItem.SetBounds(20, 378, 140, 32);
-            btnAdicionarItem.Click += btnAdicionarItem_Click;
-
-            btnRemoverItem.Text = "Remover linha";
-            btnRemoverItem.SetBounds(170, 378, 120, 32);
-            btnRemoverItem.Click += btnRemoverItem_Click;
-
-            lblAviso.SetBounds(20, 416, 390, 36);
-            lblAviso.ForeColor = System.Drawing.Color.FromArgb(100, 116, 139);
-
-            btnEnviar.Text = "Enviar pedido";
-            btnEnviar.SetBounds(415, 420, 105, 32);
-            btnEnviar.Click += btnEnviar_Click;
-
-            btnCancelar.Text = "Cancelar";
-            btnCancelar.SetBounds(530, 420, 100, 32);
-            btnCancelar.DialogResult = DialogResult.Cancel;
-
-            Controls.Add(lblTipo);
-            Controls.Add(cmbTipo);
-            Controls.Add(dgvItens);
-            Controls.Add(btnAdicionarItem);
-            Controls.Add(btnRemoverItem);
-            Controls.Add(lblAviso);
-            Controls.Add(btnEnviar);
-            Controls.Add(btnCancelar);
-            AcceptButton = btnEnviar;
-            CancelButton = btnCancelar;
+            e.ThrowException = false;
+            lblAviso.Text = "Selecione um produto válido na lista e revise a quantidade.";
         }
 
         private void CarregarProdutos()
@@ -214,11 +134,11 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", lblAviso);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", lblAviso);
             }
             catch (InvalidOperationException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", lblAviso);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", lblAviso);
             }
             catch (UnauthorizedAccessException)
             {

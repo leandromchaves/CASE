@@ -1,4 +1,4 @@
-namespace CASE
+﻿namespace CASE
 {
     partial class FornecedoresControl
     {
@@ -251,7 +251,7 @@ namespace CASE
             // pictureIconeTela
             // 
             this.pictureIconeTela.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(234)))), ((int)(((byte)(242)))), ((int)(((byte)(254)))));
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulFornecedores;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulFornecedores;
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Name = "pictureIconeTela";
             this.pictureIconeTela.Padding = new System.Windows.Forms.Padding(6);

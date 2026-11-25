@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System;
+using CASE.Data;
 using CASE.Models;
 using MySql.Data.MySqlClient;
 
@@ -6,40 +8,68 @@ namespace CASE.Repositories
 {
     public class DespesaRepository
     {
-
         private const string Colunas = "id_despesa,id_evento,id_fornecedor,descricao,`data`,valor,id_usuario_responsavel";
 
         public List<Despesa> ListarPorEvento(int idEvento)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM despesa WHERE id_evento=@id ORDER BY `data` DESC,id_despesa DESC",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idEvento)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM despesa WHERE id_evento=@id ORDER BY `data` DESC,id_despesa DESC", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idEvento);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Despesa> resultadoBanco = new List<Despesa>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public Despesa BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM despesa WHERE id_despesa=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM despesa WHERE id_despesa=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(Despesa item)
         {
-            return AcessoDados.Inserir(
-                "INSERT INTO despesa (id_evento,id_fornecedor,descricao,`data`,valor,id_usuario_responsavel) VALUES (@evento,@fornecedor,@descricao,@data,@valor,@usuario)",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("INSERT INTO despesa (id_evento,id_fornecedor,descricao,`data`,valor,id_usuario_responsavel) VALUES (@evento,@fornecedor,@descricao,@data,@valor,@usuario)", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@evento", item.IdEvento);
-                    AcessoDados.AdicionarParametro(comando, "@fornecedor", item.IdFornecedor);
-                    AcessoDados.AdicionarTextoObrigatorio(comando, "@descricao", item.Descricao);
-                    AcessoDados.AdicionarParametro(comando, "@data", item.Data);
-                    AcessoDados.AdicionarParametro(comando, "@valor", item.Valor);
-                    AcessoDados.AdicionarParametro(comando, "@usuario", item.IdUsuarioResponsavel);
-                });
+                    AcessoDados.AdicionarParametro(comandoBanco, "@evento", item.IdEvento);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@fornecedor", item.IdFornecedor);
+                    AcessoDados.AdicionarTextoObrigatorio(comandoBanco, "@descricao", item.Descricao);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@data", item.Data);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@valor", item.Valor);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@usuario", item.IdUsuarioResponsavel);
+                    comandoBanco.ExecuteNonQuery();
+                    resultadoBanco = Convert.ToInt32(comandoBanco.LastInsertedId);
+                }
+            }
+            return resultadoBanco;
 
         }
 

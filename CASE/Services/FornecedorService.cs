@@ -1,14 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Net.Mail;
+using System;
 using CASE.Models;
 using CASE.Repositories;
+using MySql.Data.MySqlClient;
 
 namespace CASE.Services
 {
     public class FornecedorService
     {
-        private readonly FornecedorRepository fornecedorRepository = new FornecedorRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private FornecedorRepository fornecedorRepository = new FornecedorRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public List<Fornecedor> Listar()
         {
@@ -97,7 +99,7 @@ namespace CASE.Services
                 // As FKs impedem remover fornecedores utilizados, inclusive sob concorrência.
                 return fornecedorRepository.Excluir(idFornecedor);
             }
-            catch (MySql.Data.MySqlClient.MySqlException erro)
+            catch (MySqlException erro)
             {
                 if (erro.Number == 1451)
                 {
@@ -132,7 +134,7 @@ namespace CASE.Services
                 }
                 try
                 {
-                    var endereco = new System.Net.Mail.MailAddress(email);
+                    var endereco = new MailAddress(email);
                     if (endereco.Address != email)
                     {
                         throw new ArgumentException("Informe um endereço de e-mail válido.");

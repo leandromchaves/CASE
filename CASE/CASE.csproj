@@ -280,7 +280,6 @@
     <Compile Include="Services\SolicitacaoEstoqueCentralService.cs" />
     <Compile Include="Services\SenhaService.cs" />
     <Compile Include="Services\SessaoUsuario.cs" />
-    <Compile Include="Services\PrimeiroAdministradorService.cs" />
     <Compile Include="Services\TipoEventoService.cs" />
     <Compile Include="Services\TransferenciaEstoqueService.cs" />
     <Compile Include="Services\UsuarioService.cs" />
@@ -295,6 +294,12 @@
     <Compile Include="Telas\Principal\TodosEventosControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="Telas\Principal\TodosEventosControl.Designer.cs">
+      <DependentUpon>TodosEventosControl.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="Telas\Principal\TodosEventosControl.resx">
+      <DependentUpon>TodosEventosControl.cs</DependentUpon>
+    </EmbeddedResource>
     <Compile Include="Telas\Dashboard\DashboardControl.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -331,6 +336,12 @@
     <Compile Include="Telas\Estoque\CorrecaoOperacaoForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Telas\Estoque\CorrecaoOperacaoForm.Designer.cs">
+      <DependentUpon>CorrecaoOperacaoForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="Telas\Estoque\CorrecaoOperacaoForm.resx">
+      <DependentUpon>CorrecaoOperacaoForm.cs</DependentUpon>
+    </EmbeddedResource>
     <Compile Include="Telas\Estoque\MovimentacoesControl.Designer.cs">
       <DependentUpon>MovimentacoesControl.cs</DependentUpon>
     </Compile>
@@ -412,15 +423,33 @@
     <Compile Include="Telas\Solicitacoes\DetalhesReposicaoForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Telas\Solicitacoes\DetalhesReposicaoForm.Designer.cs">
+      <DependentUpon>DetalhesReposicaoForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="Telas\Solicitacoes\DetalhesReposicaoForm.resx">
+      <DependentUpon>DetalhesReposicaoForm.cs</DependentUpon>
+    </EmbeddedResource>
     <Compile Include="Telas\Solicitacoes\DetalhesPedidoCentralForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Telas\Solicitacoes\DetalhesPedidoCentralForm.Designer.cs">
+      <DependentUpon>DetalhesPedidoCentralForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="Telas\Solicitacoes\DetalhesPedidoCentralForm.resx">
+      <DependentUpon>DetalhesPedidoCentralForm.cs</DependentUpon>
+    </EmbeddedResource>
     <Compile Include="Telas\Solicitacoes\SolicitacaoForm.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Telas\Solicitacoes\SolicitacaoEstoqueCentralForm.cs">
       <SubType>Form</SubType>
     </Compile>
+    <Compile Include="Telas\Solicitacoes\SolicitacaoEstoqueCentralForm.Designer.cs">
+      <DependentUpon>SolicitacaoEstoqueCentralForm.cs</DependentUpon>
+    </Compile>
+    <EmbeddedResource Include="Telas\Solicitacoes\SolicitacaoEstoqueCentralForm.resx">
+      <DependentUpon>SolicitacaoEstoqueCentralForm.cs</DependentUpon>
+    </EmbeddedResource>
     <Compile Include="Telas\Escalas\EscalaForm.Designer.cs">
       <DependentUpon>EscalaForm.cs</DependentUpon>
     </Compile>
@@ -581,11 +610,68 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\Lucide\*.svg" />
-    <None Include="Resources\Lucide\*.png" />
-    <Content Include="Resources\Lucide\LICENSE.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
+    <None Include="Resources\arrow-right-left.svg" />
+    <None Include="Resources\bell.svg" />
+    <None Include="Resources\calculator.svg" />
+    <None Include="Resources\calendar-clock.svg" />
+    <None Include="Resources\circle-user-round.svg" />
+    <None Include="Resources\clipboard-list.svg" />
+    <None Include="Resources\image-plus.svg" />
+    <None Include="Resources\layout-dashboard.svg" />
+    <None Include="Resources\log-out.svg" />
+    <None Include="Resources\messages-square.svg" />
+    <None Include="Resources\package-minus.svg" />
+    <None Include="Resources\package-plus.svg" />
+    <None Include="Resources\package.svg" />
+    <None Include="Resources\search.svg" />
+    <None Include="Resources\settings.svg" />
+    <None Include="Resources\shield-check.svg" />
+    <None Include="Resources\tent.svg" />
+    <None Include="Resources\triangle-alert.svg" />
+    <None Include="Resources\truck.svg" />
+    <None Include="Resources\users-round.svg" />
+    <None Include="Resources\wallet.svg" />
+    <None Include="Resources\warehouse.svg" />
+    <None Include="Resources\arrow-right-left-acao.png" />
+    <None Include="Resources\arrow-right-left-azul.png" />
+    <None Include="Resources\bell.png" />
+    <None Include="Resources\calculator-azul.png" />
+    <None Include="Resources\calculator.png" />
+    <None Include="Resources\calendar-clock-azul.png" />
+    <None Include="Resources\calendar-clock.png" />
+    <None Include="Resources\circle-user-round-azul.png" />
+    <None Include="Resources\circle-user-round.png" />
+    <None Include="Resources\clipboard-list-azul.png" />
+    <None Include="Resources\clipboard-list.png" />
+    <None Include="Resources\image-plus-azul.png" />
+    <None Include="Resources\layout-dashboard-azul.png" />
+    <None Include="Resources\layout-dashboard.png" />
+    <None Include="Resources\log-out.png" />
+    <None Include="Resources\messages-square-azul.png" />
+    <None Include="Resources\messages-square.png" />
+    <None Include="Resources\package-azul.png" />
+    <None Include="Resources\package-minus-azul.png" />
+    <None Include="Resources\package-plus-azul.png" />
+    <None Include="Resources\package-plus-branco.png" />
+    <None Include="Resources\package.png" />
+    <None Include="Resources\search.png" />
+    <None Include="Resources\settings-azul.png" />
+    <None Include="Resources\settings.png" />
+    <None Include="Resources\shield-check-acao.png" />
+    <None Include="Resources\shield-check-azul.png" />
+    <None Include="Resources\shield-check-menu.png" />
+    <None Include="Resources\tent-azul.png" />
+    <None Include="Resources\tent.png" />
+    <None Include="Resources\triangle-alert-azul.png" />
+    <None Include="Resources\truck-acao.png" />
+    <None Include="Resources\truck-azul.png" />
+    <None Include="Resources\truck-menu.png" />
+    <None Include="Resources\users-round-azul.png" />
+    <None Include="Resources\users-round.png" />
+    <None Include="Resources\wallet-azul.png" />
+    <None Include="Resources\wallet.png" />
+    <None Include="Resources\warehouse-azul.png" />
+    <None Include="Resources\warehouse.png" />
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

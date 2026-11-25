@@ -1,4 +1,4 @@
-namespace CASE.Models
+﻿namespace CASE.Models
 {
     public class LocalEstoque
     {
@@ -7,6 +7,7 @@ namespace CASE.Models
         public int? IdEvento { get; set; }
         public string Nome { get; set; }
         public string EventoNome { get; set; }
+
         // Identifica o evento na exibição, sem alterar o nome salvo.
         public string Descricao
         {
@@ -17,12 +18,11 @@ namespace CASE.Models
                     return Nome;
                 }
 
-                string evento = string.IsNullOrWhiteSpace(EventoNome)
-                    ? "evento " + IdEvento.Value
-                    : EventoNome;
+                string evento = string.IsNullOrWhiteSpace(EventoNome) ? "evento " + IdEvento.Value : EventoNome;
                 return Nome + " · " + evento;
             }
         }
+
         public bool Ativo { get; set; }
         public bool EhCentral { get; set; }
         public bool EhGeralEvento { get; set; }

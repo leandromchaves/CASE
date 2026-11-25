@@ -1,5 +1,6 @@
+﻿using System.Collections.Generic;
 using System;
-using System.Collections.Generic;
+using CASE.Data;
 using CASE.Models;
 using CASE.Services;
 using MySql.Data.MySqlClient;
@@ -8,32 +9,54 @@ namespace CASE.Repositories
 {
     public class TransferenciaEstoqueRepository
     {
-
         private const string Colunas = "id_transferencia,id_local_origem,id_local_destino,id_solicitacao,id_solicitacao_estoque_central,id_usuario_responsavel,data_hora,observacao,chave_operacao,criado_em,id_usuario_alteracao,atualizado_em,versao";
 
         public List<TransferenciaEstoque> ListarPorLocalOrigem(int idLocal)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM transferenciaestoque WHERE id_local_origem=@id ORDER BY data_hora DESC,id_transferencia DESC",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idLocal)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM transferenciaestoque WHERE id_local_origem=@id ORDER BY data_hora DESC,id_transferencia DESC", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idLocal);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<TransferenciaEstoque> resultadoBanco = new List<TransferenciaEstoque>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public TransferenciaEstoque BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM transferenciaestoque WHERE id_transferencia=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM transferenciaestoque WHERE id_transferencia=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int AtenderSolicitacaoEstoqueCentral(
             int idSolicitacao,
             int idUsuarioResponsavel)
         {
-            using (MySqlConnection conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
@@ -145,76 +168,73 @@ namespace CASE.Repositories
                                 "A solicitação aprovada não possui itens.");
                         }
 
-                        int idTransferencia = AcessoDados.Inserir(
-                            conexao,
-                            transacao,
-                            "INSERT INTO transferenciaestoque " +
+                        int resultadoBanco2;
+                        using (MySqlCommand comandoBanco2 = new MySqlCommand("INSERT INTO transferenciaestoque " +
                             "(id_local_origem,id_local_destino,id_solicitacao_estoque_central," +
                             "id_usuario_responsavel,data_hora,observacao,chave_operacao,criado_em) " +
                             "VALUES (@origem,@destino,@solicitacao,@usuario,@data," +
-                            "@observacao,@chave,@criadoEm)",
-                            comando =>
-                            {
-                                AcessoDados.AdicionarParametro(
-                                    comando,
-                                    "@origem",
-                                    transferencia.IdLocalOrigem);
-                                AcessoDados.AdicionarParametro(
-                                    comando,
-                                    "@destino",
-                                    transferencia.IdLocalDestino);
-                                AcessoDados.AdicionarParametro(
-                                    comando,
-                                    "@solicitacao",
-                                    idSolicitacao);
-                                AcessoDados.AdicionarParametro(
-                                    comando,
-                                    "@usuario",
-                                    idUsuarioResponsavel);
-                                AcessoDados.AdicionarParametro(
-                                    comando,
-                                    "@data",
-                                    transferencia.DataHora);
-                                AcessoDados.AdicionarTextoOpcional(
-                                    comando,
-                                    "@observacao",
-                                    transferencia.Observacao);
-                                AcessoDados.AdicionarTextoObrigatorio(
-                                    comando,
-                                    "@chave",
-                                    transferencia.ChaveOperacao);
-                                AcessoDados.AdicionarParametro(
-                                    comando,
-                                    "@criadoEm",
-                                    transferencia.CriadoEm);
-                            });
+                            "@observacao,@chave,@criadoEm)", conexao, transacao))
+                        {
+                            AcessoDados.AdicionarParametro(
+                            comandoBanco2,
+                            "@origem",
+                            transferencia.IdLocalOrigem);
+                            AcessoDados.AdicionarParametro(
+                            comandoBanco2,
+                            "@destino",
+                            transferencia.IdLocalDestino);
+                            AcessoDados.AdicionarParametro(
+                            comandoBanco2,
+                            "@solicitacao",
+                            idSolicitacao);
+                            AcessoDados.AdicionarParametro(
+                            comandoBanco2,
+                            "@usuario",
+                            idUsuarioResponsavel);
+                            AcessoDados.AdicionarParametro(
+                            comandoBanco2,
+                            "@data",
+                            transferencia.DataHora);
+                            AcessoDados.AdicionarTextoOpcional(
+                            comandoBanco2,
+                            "@observacao",
+                            transferencia.Observacao);
+                            AcessoDados.AdicionarTextoObrigatorio(
+                            comandoBanco2,
+                            "@chave",
+                            transferencia.ChaveOperacao);
+                            AcessoDados.AdicionarParametro(
+                            comandoBanco2,
+                            "@criadoEm",
+                            transferencia.CriadoEm);
+                            comandoBanco2.ExecuteNonQuery();
+                            resultadoBanco2 = Convert.ToInt32(comandoBanco2.LastInsertedId);
+                        }
+                        int idTransferencia = resultadoBanco2;
 
                         List<Tuple<int, int, decimal>> ajustesSaldo =
                             new List<Tuple<int, int, decimal>>();
 
                         foreach (TransferenciaItem item in itens)
                         {
-                            AcessoDados.Executar(
-                                conexao,
-                                transacao,
-                                "INSERT INTO transferenciaitem " +
+                            using (MySqlCommand comandoBanco3 = new MySqlCommand("INSERT INTO transferenciaitem " +
                                 "(id_transferencia,id_produto,quantidade) " +
-                                "VALUES (@transferencia,@produto,@quantidade)",
-                                comando =>
-                                {
-                                    AcessoDados.AdicionarParametro(
-                                        comando,
-                                        "@transferencia",
-                                        idTransferencia);
-                                    AcessoDados.AdicionarParametro(
-                                        comando,
-                                        "@produto",
-                                        item.IdProduto);
-                                    AcessoDados.AdicionarParametro(
-                                        comando,
-                                        "@quantidade",
-                                        item.Quantidade);
-                                });
+                                "VALUES (@transferencia,@produto,@quantidade)", conexao, transacao))
+                            {
+                                AcessoDados.AdicionarParametro(
+                                comandoBanco3,
+                                "@transferencia",
+                                idTransferencia);
+                                AcessoDados.AdicionarParametro(
+                                comandoBanco3,
+                                "@produto",
+                                item.IdProduto);
+                                AcessoDados.AdicionarParametro(
+                                comandoBanco3,
+                                "@quantidade",
+                                item.Quantidade);
+                                comandoBanco3.ExecuteNonQuery();
+                            }
 
                             ajustesSaldo.Add(Tuple.Create(
                                 idLocalOrigem,
@@ -381,26 +401,25 @@ namespace CASE.Repositories
             int idUsuario,
             int idTransferencia)
         {
-            int linhasAfetadas = AcessoDados.Executar(
-                conexao,
-                transacao,
-                "UPDATE solicitacaoestoquecentral " +
+            int resultadoBanco4;
+            using (MySqlCommand comandoBanco4 = new MySqlCommand("UPDATE solicitacaoestoquecentral " +
                 "SET situacao=@atendida,versao=versao+1 " +
                 "WHERE id_solicitacao_estoque_central=@id " +
-                "AND situacao=@aprovada AND versao=@versao",
-                comando =>
-                {
-                    AcessoDados.AdicionarTextoObrigatorio(
-                        comando,
-                        "@atendida",
-                        SituacoesSolicitacao.Atendida);
-                    AcessoDados.AdicionarParametro(comando, "@id", idSolicitacao);
-                    AcessoDados.AdicionarTextoObrigatorio(
-                        comando,
-                        "@aprovada",
-                        SituacoesSolicitacao.Aprovada);
-                    AcessoDados.AdicionarParametro(comando, "@versao", versao);
-                });
+                "AND situacao=@aprovada AND versao=@versao", conexao, transacao))
+            {
+                AcessoDados.AdicionarTextoObrigatorio(
+                comandoBanco4,
+                "@atendida",
+                SituacoesSolicitacao.Atendida);
+                AcessoDados.AdicionarParametro(comandoBanco4, "@id", idSolicitacao);
+                AcessoDados.AdicionarTextoObrigatorio(
+                comandoBanco4,
+                "@aprovada",
+                SituacoesSolicitacao.Aprovada);
+                AcessoDados.AdicionarParametro(comandoBanco4, "@versao", versao);
+                resultadoBanco4 = comandoBanco4.ExecuteNonQuery();
+            }
+            int linhasAfetadas = resultadoBanco4;
 
             if (linhasAfetadas != 1)
             {
@@ -408,24 +427,22 @@ namespace CASE.Repositories
                     "A solicitação mudou durante o atendimento. Atualize os dados.");
             }
 
-            AcessoDados.Executar(
-                conexao,
-                transacao,
-                "INSERT INTO historicoalteracaooperacao " +
+            using (MySqlCommand comandoBanco5 = new MySqlCommand("INSERT INTO historicoalteracaooperacao " +
                 "(entidade,id_entidade,id_usuario,justificativa,dados_anteriores,dados_novos) " +
                 "VALUES ('solicitacaoestoquecentral',@id,@usuario," +
                 "'Atendimento integral da solicitação'," +
                 "JSON_OBJECT('situacao','aprovada')," +
-                "JSON_OBJECT('situacao','atendida','id_transferencia',@transferencia))",
-                comando =>
-                {
-                    AcessoDados.AdicionarParametro(comando, "@id", idSolicitacao);
-                    AcessoDados.AdicionarParametro(comando, "@usuario", idUsuario);
-                    AcessoDados.AdicionarParametro(
-                        comando,
-                        "@transferencia",
-                        idTransferencia);
-                });
+                "JSON_OBJECT('situacao','atendida','id_transferencia',@transferencia))", conexao, transacao))
+            {
+                AcessoDados.AdicionarParametro(comandoBanco5, "@id", idSolicitacao);
+                AcessoDados.AdicionarParametro(comandoBanco5, "@usuario", idUsuario);
+                AcessoDados.AdicionarParametro(
+                comandoBanco5,
+                "@transferencia",
+                idTransferencia);
+                comandoBanco5.ExecuteNonQuery();
+            }
+
         }
 
         public int CadastrarComItens(TransferenciaEstoque transferencia, IList<TransferenciaItem> itens)
@@ -462,10 +479,10 @@ namespace CASE.Repositories
                 transferencia.CriadoEm = DateTime.Now;
             }
 
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
@@ -494,21 +511,21 @@ namespace CASE.Repositories
                                 SituacoesSolicitacao.Aprovada);
                         }
 
-                        int id = AcessoDados.Inserir(
-                            conexao,
-                            transacao,
-                            "INSERT INTO transferenciaestoque (id_local_origem,id_local_destino,id_solicitacao,id_usuario_responsavel,data_hora,observacao,chave_operacao,criado_em) VALUES (@origem,@destino,@solicitacao,@usuario,@data,@observacao,@chave,@criadoEm)",
-                            comando =>
-                            {
-                                AcessoDados.AdicionarParametro(comando, "@origem", transferencia.IdLocalOrigem);
-                                AcessoDados.AdicionarParametro(comando, "@destino", transferencia.IdLocalDestino);
-                                AcessoDados.AdicionarParametro(comando, "@solicitacao", transferencia.IdSolicitacao);
-                                AcessoDados.AdicionarParametro(comando, "@usuario", transferencia.IdUsuarioResponsavel);
-                                AcessoDados.AdicionarParametro(comando, "@data", transferencia.DataHora);
-                                AcessoDados.AdicionarTextoOpcional(comando, "@observacao", transferencia.Observacao);
-                                AcessoDados.AdicionarTextoObrigatorio(comando, "@chave", transferencia.ChaveOperacao);
-                                AcessoDados.AdicionarParametro(comando, "@criadoEm", transferencia.CriadoEm);
-                            });
+                        int resultadoBanco6;
+                        using (MySqlCommand comandoBanco6 = new MySqlCommand("INSERT INTO transferenciaestoque (id_local_origem,id_local_destino,id_solicitacao,id_usuario_responsavel,data_hora,observacao,chave_operacao,criado_em) VALUES (@origem,@destino,@solicitacao,@usuario,@data,@observacao,@chave,@criadoEm)", conexao, transacao))
+                        {
+                            AcessoDados.AdicionarParametro(comandoBanco6, "@origem", transferencia.IdLocalOrigem);
+                            AcessoDados.AdicionarParametro(comandoBanco6, "@destino", transferencia.IdLocalDestino);
+                            AcessoDados.AdicionarParametro(comandoBanco6, "@solicitacao", transferencia.IdSolicitacao);
+                            AcessoDados.AdicionarParametro(comandoBanco6, "@usuario", transferencia.IdUsuarioResponsavel);
+                            AcessoDados.AdicionarParametro(comandoBanco6, "@data", transferencia.DataHora);
+                            AcessoDados.AdicionarTextoOpcional(comandoBanco6, "@observacao", transferencia.Observacao);
+                            AcessoDados.AdicionarTextoObrigatorio(comandoBanco6, "@chave", transferencia.ChaveOperacao);
+                            AcessoDados.AdicionarParametro(comandoBanco6, "@criadoEm", transferencia.CriadoEm);
+                            comandoBanco6.ExecuteNonQuery();
+                            resultadoBanco6 = Convert.ToInt32(comandoBanco6.LastInsertedId);
+                        }
+                        int id = resultadoBanco6;
 
                         List<Tuple<int, int, decimal>> ajustesSaldo =
                             new List<Tuple<int, int, decimal>>();
@@ -522,16 +539,13 @@ namespace CASE.Repositories
 
                             ValidarQuantidade(item.Quantidade);
 
-                            AcessoDados.Executar(
-                                conexao,
-                                transacao,
-                                "INSERT INTO transferenciaitem (id_transferencia,id_produto,quantidade) VALUES (@transferencia,@produto,@quantidade)",
-                                comando =>
-                                {
-                                    AcessoDados.AdicionarParametro(comando, "@transferencia", id);
-                                    AcessoDados.AdicionarParametro(comando, "@produto", item.IdProduto);
-                                    AcessoDados.AdicionarParametro(comando, "@quantidade", item.Quantidade);
-                                });
+                            using (MySqlCommand comandoBanco7 = new MySqlCommand("INSERT INTO transferenciaitem (id_transferencia,id_produto,quantidade) VALUES (@transferencia,@produto,@quantidade)", conexao, transacao))
+                            {
+                                AcessoDados.AdicionarParametro(comandoBanco7, "@transferencia", id);
+                                AcessoDados.AdicionarParametro(comandoBanco7, "@produto", item.IdProduto);
+                                AcessoDados.AdicionarParametro(comandoBanco7, "@quantidade", item.Quantidade);
+                                comandoBanco7.ExecuteNonQuery();
+                            }
 
                             ajustesSaldo.Add(Tuple.Create(
                                 transferencia.IdLocalOrigem,
@@ -582,10 +596,10 @@ namespace CASE.Repositories
             {
                 throw new ArgumentException("Informe a transferência e seus itens para corrigir.");
             }
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
@@ -606,7 +620,7 @@ namespace CASE.Repositories
                         {
                             throw new ArgumentException("A correção deve manter os locais e as solicitações originais.");
                         }
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "SELECT ev.id_evento,o.eh_central AS central_origem,d.eh_central AS central_destino " +
                             "FROM vw_localestoque o JOIN vw_localestoque d ON d.id_local_estoque=@destino " +
                             "JOIN evento ev ON ev.id_evento=COALESCE(o.id_evento,d.id_evento) " +
@@ -622,7 +636,7 @@ transacao))
                             comando.Parameters.AddWithValue("@destino", atual.IdLocalDestino);
                             int idEvento;
                             bool central;
-                            using (var leitor = comando.ExecuteReader())
+                            using (MySqlDataReader leitor = comando.ExecuteReader())
                             {
                                 if (!leitor.Read())
                                 {
@@ -667,28 +681,26 @@ transacao))
                             }
                             ajustes.Add(Tuple.Create(atual.IdLocalOrigem, item.IdProduto, -item.Quantidade));
                             ajustes.Add(Tuple.Create(atual.IdLocalDestino, item.IdProduto, item.Quantidade));
-                            AcessoDados.Executar(conexao, transacao,
-                                "UPDATE transferenciaitem SET quantidade=@quantidade " +
-                                "WHERE id_transferencia_item=@item AND id_transferencia=@transferencia",
-                                comando =>
-                                {
-                                    comando.Parameters.AddWithValue("@quantidade", item.Quantidade);
-                                    comando.Parameters.AddWithValue("@item", item.IdTransferenciaItem);
-                                    comando.Parameters.AddWithValue("@transferencia", atual.IdTransferencia);
-                                });
+                            using (MySqlCommand comandoBanco8 = new MySqlCommand("UPDATE transferenciaitem SET quantidade=@quantidade " +
+                                "WHERE id_transferencia_item=@item AND id_transferencia=@transferencia", conexao, transacao))
+                            {
+                                comandoBanco8.Parameters.AddWithValue("@quantidade", item.Quantidade);
+                                comandoBanco8.Parameters.AddWithValue("@item", item.IdTransferenciaItem);
+                                comandoBanco8.Parameters.AddWithValue("@transferencia", atual.IdTransferencia);
+                                comandoBanco8.ExecuteNonQuery();
+                            }
+
                         }
                         ControleSaldoEstoque.AplicarAjustes(conexao, transacao, ajustes, true);
-                        AcessoDados.Executar(
-conexao,
-transacao,
-                            "UPDATE transferenciaestoque SET observacao=@observacao,id_usuario_alteracao=@usuario," +
-                            "atualizado_em=NOW(),versao=versao+1 WHERE id_transferencia=@id",
-                            comando =>
-                            {
-                                AcessoDados.AdicionarTextoOpcional(comando, "@observacao", transferencia.Observacao);
-                                comando.Parameters.AddWithValue("@usuario", idUsuarioAlteracao);
-                                comando.Parameters.AddWithValue("@id", atual.IdTransferencia);
-                            });
+                        using (MySqlCommand comandoBanco9 = new MySqlCommand("UPDATE transferenciaestoque SET observacao=@observacao,id_usuario_alteracao=@usuario," +
+                            "atualizado_em=NOW(),versao=versao+1 WHERE id_transferencia=@id", conexao, transacao))
+                        {
+                            AcessoDados.AdicionarTextoOpcional(comandoBanco9, "@observacao", transferencia.Observacao);
+                            comandoBanco9.Parameters.AddWithValue("@usuario", idUsuarioAlteracao);
+                            comandoBanco9.Parameters.AddWithValue("@id", atual.IdTransferencia);
+                            comandoBanco9.ExecuteNonQuery();
+                        }
+
                         RegistrarHistorico(
 conexao,
 transacao,

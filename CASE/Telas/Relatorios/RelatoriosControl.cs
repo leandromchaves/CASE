@@ -1,29 +1,31 @@
-using System;
-using System.Windows.Forms;
-using CASE.Utils;
+﻿using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
+using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Drawing;
 using System.Windows.Forms.DataVisualization.Charting;
+using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
+using CASE.Utils;
 
 namespace CASE
 {
     public partial class RelatoriosControl : UserControl
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly DataGridView gradeRelatorio = new DataGridView();
-        private readonly Label resumoRelatorio = new Label();
+        private Usuario usuarioAutenticado;
+        private DataGridView gradeRelatorio = new DataGridView();
+        private Label resumoRelatorio = new Label();
         private DataTable dadosRelatorio;
-        private readonly ContextMenuStrip menuExportacoes = new ContextMenuStrip();
-        private readonly CheckBox chkIncluirGrafico = new CheckBox();
-        private readonly ComboBox cmbGraficoRelatorio = new ComboBox();
-        private readonly Panel opcoesGrafico = new Panel();
+        private ContextMenuStrip menuExportacoes = new ContextMenuStrip();
+        private CheckBox chkIncluirGrafico = new CheckBox();
+        private ComboBox cmbGraficoRelatorio = new ComboBox();
+        private Panel opcoesGrafico = new Panel();
         private Chart graficoRelatorio;
-        private readonly FlowLayoutPanel perfisRelatorio = new FlowLayoutPanel();
-
+        private FlowLayoutPanel perfisRelatorio = new FlowLayoutPanel();
         public RelatoriosControl() : this(null)
         {
         }
@@ -31,9 +33,11 @@ namespace CASE
         public RelatoriosControl(Usuario usuario)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             usuarioAutenticado = usuario;
-            Disposed += (s, e) => menuExportacoes.Dispose();
-            CASE.Utils.FrontendTheme.Aplicar(this);
+            Disposed += Tela_Disposed;
+            FrontendTheme.Aplicar(this);
             VisualUtils.Arredondar(panelAcoesRelatorios, 12);
             panelAcoesRelatorios.SizeChanged += AjustarArredondamento;
             VisualUtils.AplicarBorda(panelAcoesRelatorios);
@@ -62,12 +66,12 @@ namespace CASE
             lblSubtituloRelatorios.Text = "Acompanhe o desempenho do seu estoque";
             lblGraficoEsquerdo.Text = "Entradas e saídas por dia";
             lblGraficoDireito.Text = "Distribuição por categoria";
-            panelGraficoEsquerdoArea.BackColor = System.Drawing.Color.White;
-            panelGraficoDireitoArea.BackColor = System.Drawing.Color.White;
+            panelGraficoEsquerdoArea.BackColor = Color.White;
+            panelGraficoDireitoArea.BackColor = Color.White;
             gradeRelatorio.Dock = DockStyle.Fill;
             gradeRelatorio.Name = "dgvRelatorio";
             gradeRelatorio.CellFormatting += FormatarValorExibido;
-            gradeRelatorio.BackgroundColor = System.Drawing.Color.White;
+            gradeRelatorio.BackgroundColor = Color.White;
             gradeRelatorio.RowHeadersVisible = false;
             gradeRelatorio.EnableHeadersVisualStyles = false;
             gradeRelatorio.ReadOnly = true;
@@ -93,8 +97,7 @@ namespace CASE
             panelGraficoEsquerdo.Height = panelGraficoDireito.Height = 330;
             panelGraficoEsquerdoArea.Height = panelGraficoDireitoArea.Height = 250;
             cmbRelatorioCategoria.Items.Clear();
-            cmbRelatorioCategoria.Items.AddRange(new object[] {
-                "Movimentações", "Estoque", "Estoque crítico", "Vendas e perdas", "Solicitações de reposição" });
+            cmbRelatorioCategoria.Items.AddRange(new object[] { "Movimentações", "Estoque", "Estoque crítico", "Vendas e perdas", "Solicitações de reposição" });
             if (usuario != null)
             {
                 try
@@ -103,42 +106,32 @@ namespace CASE
                     new AutorizacaoService().ValidarUsuarioEObterPerfil(usuario, out perfil);
                     if (perfil != "Membro")
                     {
-                        cmbRelatorioCategoria.Items.AddRange(new object[] {
-                            "Eventos", "Solicitações ao central", "Despesas", "Apurações" });
+                        cmbRelatorioCategoria.Items.AddRange(new object[] { "Eventos", "Solicitações ao central", "Despesas", "Apurações" });
                     }
                 }
                 catch (Exception erro)
                 {
-                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ConfigurarRelatorios");
+                    Trace.WriteLine(erro.GetType().Name + " em ConfigurarRelatorios");
                 }
             }
+
             cmbRelatorioCategoria.SelectedIndex = 0;
-            cmbRelatorioCategoria.SelectedIndexChanged += (s, e) =>
-            {
-                AtualizarPerfisRelatorio();
-                bool utilizaPeriodo = cmbRelatorioCategoria.Text != "Estoque" && cmbRelatorioCategoria.Text != "Estoque crítico";
-                dtpRelatorioInicio.Enabled = utilizaPeriodo;
-                dtpRelatorioFim.Enabled = utilizaPeriodo;
-                dadosRelatorio = null;
-                gradeRelatorio.DataSource = null;
-                btnExportarCsv.Enabled = false;
-                resumoRelatorio.Text = "Clique em Gerar para consultar o relatório selecionado.";
-                AtualizarTiposGrafico();
-                AtualizarGraficoRelatorio();
-            };
+            cmbRelatorioCategoria.SelectedIndexChanged += cmbRelatorioCategoria_SelectedIndexChanged;
             dtpRelatorioInicio.Value = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
             dtpRelatorioFim.Value = DateTime.Today;
-            foreach (Control campo in new Control[] { cmbRelatorioCategoria, dtpRelatorioInicio, dtpRelatorioFim })
+            foreach (Control campo in new Control[]
+            {
+                cmbRelatorioCategoria,
+                dtpRelatorioInicio,
+                dtpRelatorioFim
+            }
+
+            )
             {
                 campo.Top = 30;
-                panelAcoesRelatorios.Controls.Add(FrontendTheme.Legenda(
-                    campo == cmbRelatorioCategoria
-                        ? "Tipo de relatório"
-                        : campo == dtpRelatorioInicio
-                            ? "Data inicial"
-                            : "Data final",
-                    new System.Drawing.Rectangle(campo.Left, 6, campo.Width, 20)));
+                panelAcoesRelatorios.Controls.Add(FrontendTheme.Legenda(campo == cmbRelatorioCategoria ? "Tipo de relatório" : campo == dtpRelatorioInicio ? "Data inicial" : "Data final", new Rectangle(campo.Left, 6, campo.Width, 20)));
             }
+
             perfisRelatorio.Name = "perfisRelatorio";
             perfisRelatorio.SetBounds(20, 76, 680, 36);
             perfisRelatorio.BackColor = Color.White;
@@ -165,47 +158,41 @@ namespace CASE
             perfisRelatorio.SuspendLayout();
             while (perfisRelatorio.Controls.Count > 0)
                 perfisRelatorio.Controls[0].Dispose();
-            perfisRelatorio.Controls.Add(new Label
-            {
-                Text = "Disponível para", AutoSize = false, Size = new Size(105, 30),
-                TextAlign = ContentAlignment.MiddleLeft, ForeColor = VisualUtils.TextoSuave,
-                Font = new Font("Segoe UI", 9), Margin = new Padding(0, 0, 10, 0)
-            });
+            perfisRelatorio.Controls.Add(new Label { Text = "Disponível para", AutoSize = false, Size = new Size(105, 30), TextAlign = ContentAlignment.MiddleLeft, ForeColor = VisualUtils.TextoSuave, Font = new Font("Segoe UI", 9), Margin = new Padding(0, 0, 10, 0) });
             foreach (string perfil in ConsultaOperacionalService.PerfisPermitidosNoRelatorio(cmbRelatorioCategoria.Text))
             {
-                Color cor = perfil == "Membro" ? Color.FromArgb(29, 125, 96) :
-                    perfil == "Gerente" ? VisualUtils.Azul : Color.FromArgb(113, 73, 181);
-                Color fundo = perfil == "Membro" ? Color.FromArgb(233, 247, 241) :
-                    perfil == "Gerente" ? Color.FromArgb(234, 242, 254) : Color.FromArgb(243, 238, 255);
+                Color cor = perfil == "Membro" ? Color.FromArgb(29, 125, 96) : perfil == "Gerente" ? VisualUtils.Azul : Color.FromArgb(113, 73, 181);
+                Color fundo = perfil == "Membro" ? Color.FromArgb(233, 247, 241) : perfil == "Gerente" ? Color.FromArgb(234, 242, 254) : Color.FromArgb(243, 238, 255);
                 var selo = new Label
                 {
-                    Text = perfil, AccessibleName = "Relatório disponível para " + perfil,
+                    Text = perfil,
+                    AccessibleName = "Relatório disponível para " + perfil,
                     Size = new Size(perfil == "Administrador" ? 130 : 92, 30),
-                    TextAlign = ContentAlignment.MiddleCenter, ForeColor = cor, BackColor = fundo,
-                    Font = new Font("Segoe UI", 9, FontStyle.Bold), Margin = new Padding(0, 0, 8, 0)
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    ForeColor = cor,
+                    BackColor = fundo,
+                    Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                    Margin = new Padding(0, 0, 8, 0)
                 };
                 perfisRelatorio.Controls.Add(selo);
                 VisualUtils.Arredondar(selo, 8);
             }
+
             perfisRelatorio.ResumeLayout(true);
         }
 
         private void GerarRelatorio(object sender, EventArgs e)
         {
-
             btnExportarCsv.Enabled = false;
             gradeRelatorio.DataSource = null;
             dadosRelatorio = null;
             try
             {
                 ConsultaOperacionalService consulta = new ConsultaOperacionalService();
-                dadosRelatorio = consulta.Relatorio(usuarioAutenticado, cmbRelatorioCategoria.Text,
-                    dtpRelatorioInicio.Value, dtpRelatorioFim.Value);
+                dadosRelatorio = consulta.Relatorio(usuarioAutenticado, cmbRelatorioCategoria.Text, dtpRelatorioInicio.Value, dtpRelatorioFim.Value);
                 if (cmbRelatorioCategoria.Text == "Estoque crítico")
                 {
-                    resumoRelatorio.Text = "Produtos sem estoque ou com saldo abaixo do mínimo, por local autorizado. " +
-                        "Falta para o mínimo indica a quantidade necessária para atingir o limite cadastrado. " +
-                        "Saldo atual: o filtro de datas não se aplica. A consulta não realiza reposições.";
+                    resumoRelatorio.Text = "Produtos sem estoque ou com saldo abaixo do mínimo, por local autorizado. " + "Falta para o mínimo indica a quantidade necessária para atingir o limite cadastrado. " + "Saldo atual: o filtro de datas não se aplica. A consulta não realiza reposições.";
                 }
                 else if (cmbRelatorioCategoria.Text == "Estoque")
                 {
@@ -213,20 +200,17 @@ namespace CASE
                 }
                 else if (cmbRelatorioCategoria.Text == "Apurações")
                 {
-                    resumoRelatorio.Text = "Conferências preservadas. Diferença atual = informado − vendas atuais da jornada, incluindo correções. " +
-                        "Não some conferências sucessivas como receitas. Campos sem dados válidos permanecem vazios.";
+                    resumoRelatorio.Text = "Conferências preservadas. Diferença atual = informado − vendas atuais da jornada, incluindo correções. " + "Não some conferências sucessivas como receitas. Campos sem dados válidos permanecem vazios.";
                 }
                 else
                 {
                     resumoRelatorio.Text = "Registros autorizados do período selecionado. Valores históricos preservados.";
                 }
+
                 gradeRelatorio.DataSource = dadosRelatorio;
                 FormatarColunasRelatorio();
-                VisualUtils.ExibirEstadoVazio(gradeRelatorio, cmbRelatorioCategoria.Text == "Estoque crítico"
-                    ? "Nenhum produto sem estoque ou abaixo do mínimo nos locais autorizados."
-                    : "Nenhum registro encontrado para esta consulta.");
-                resumoRelatorio.Text += Environment.NewLine + Environment.NewLine +
-                    dadosRelatorio.Rows.Count + " linha(s) autorizada(s).";
+                VisualUtils.ExibirEstadoVazio(gradeRelatorio, cmbRelatorioCategoria.Text == "Estoque crítico" ? "Nenhum produto sem estoque ou abaixo do mínimo nos locais autorizados." : "Nenhum registro encontrado para esta consulta.");
+                resumoRelatorio.Text += Environment.NewLine + Environment.NewLine + dadosRelatorio.Rows.Count + " linha(s) autorizada(s).";
                 btnExportarCsv.Enabled = dadosRelatorio.Rows.Count > 0;
                 AtualizarGraficoRelatorio();
             }
@@ -235,12 +219,12 @@ namespace CASE
                 AtualizarGraficoRelatorio();
                 if (erro is ArgumentException || erro is UnauthorizedAccessException)
                 {
-                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar os dados do relatório.", resumoRelatorio);
+                    FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar os dados do relatório.", resumoRelatorio);
                 }
                 else
                 {
                     resumoRelatorio.Text = "Não foi possível consultar os dados do relatório.";
-                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em RelatoriosControl: " + erro.StackTrace);
+                    Trace.WriteLine(erro.GetType().Name + " em RelatoriosControl: " + erro.StackTrace);
                 }
             }
         }
@@ -248,13 +232,12 @@ namespace CASE
         private void FormatarColunasRelatorio()
         {
             bool estoqueCritico = cmbRelatorioCategoria.Text == "Estoque crítico";
-            gradeRelatorio.AutoSizeColumnsMode = estoqueCritico
-                ? DataGridViewAutoSizeColumnsMode.Fill : DataGridViewAutoSizeColumnsMode.DisplayedCells;
+            gradeRelatorio.AutoSizeColumnsMode = estoqueCritico ? DataGridViewAutoSizeColumnsMode.Fill : DataGridViewAutoSizeColumnsMode.DisplayedCells;
             foreach (DataGridViewColumn coluna in gradeRelatorio.Columns)
             {
                 string nome = coluna.Name;
                 coluna.Visible = !nome.StartsWith("id_", StringComparison.OrdinalIgnoreCase) && nome != "entidade";
-                coluna.HeaderText = System.Globalization.CultureInfo.GetCultureInfo("pt-BR").TextInfo.ToTitleCase(nome.Replace('_', ' '));
+                coluna.HeaderText = CultureInfo.GetCultureInfo("pt-BR").TextInfo.ToTitleCase(nome.Replace('_', ' '));
                 if (nome == "data_hora")
                 {
                     coluna.HeaderText = "Data / hora";
@@ -282,26 +265,31 @@ namespace CASE
                     coluna.HeaderText = "Falta para o mínimo";
                     coluna.DefaultCellStyle.Format = "0.###";
                 }
-                if (nome == "quantidade" || nome == "quantidade_atual" || nome == "quantidade_minima" ||
-                    nome == "quantidade_ideal")
+
+                if (nome == "quantidade" || nome == "quantidade_atual" || nome == "quantidade_minima" || nome == "quantidade_ideal")
                 {
                     coluna.DefaultCellStyle.Format = "0.###";
                 }
-                if (nome == "valor" || nome == "total" || nome == "esperado_atual" || nome.StartsWith("valor_") ||
-                    nome.StartsWith("preco_") || nome.StartsWith("diferenca_"))
+
+                if (nome == "valor" || nome == "total" || nome == "esperado_atual" || nome.StartsWith("valor_") || nome.StartsWith("preco_") || nome.StartsWith("diferenca_"))
                 {
                     coluna.DefaultCellStyle.Format = "C2";
                 }
+
                 if (estoqueCritico)
                 {
-                    if (nome == "quantidade_ideal") coluna.Visible = false;
-                    if (nome == "quantidade_atual") coluna.HeaderText = "Saldo atual";
-                    if (nome == "quantidade_minima") coluna.HeaderText = "Mínimo";
-                    if (nome == "unidade_medida") coluna.HeaderText = "Unidade";
-                    coluna.FillWeight = nome == "local" || nome == "produto" ? 155 :
-                        nome == "situacao" ? 125 : nome == "reposicao_minima" ? 90 : 65;
+                    if (nome == "quantidade_ideal")
+                        coluna.Visible = false;
+                    if (nome == "quantidade_atual")
+                        coluna.HeaderText = "Saldo atual";
+                    if (nome == "quantidade_minima")
+                        coluna.HeaderText = "Mínimo";
+                    if (nome == "unidade_medida")
+                        coluna.HeaderText = "Unidade";
+                    coluna.FillWeight = nome == "local" || nome == "produto" ? 155 : nome == "situacao" ? 125 : nome == "reposicao_minima" ? 90 : 65;
                 }
             }
+
             if (estoqueCritico)
                 gradeRelatorio.Columns["reposicao_minima"].DisplayIndex = gradeRelatorio.Columns["situacao"].DisplayIndex;
         }
@@ -310,10 +298,8 @@ namespace CASE
         {
             if (e.RowIndex < 0 || e.ColumnIndex < 0 || e.Value == null || e.Value == DBNull.Value)
                 return;
-
             string nomeColuna = gradeRelatorio.Columns[e.ColumnIndex].Name;
-            if (nomeColuna == "situacao" || nomeColuna == "status" || nomeColuna == "tipo" ||
-                nomeColuna == "forma_pagamento")
+            if (nomeColuna == "situacao" || nomeColuna == "status" || nomeColuna == "tipo" || nomeColuna == "forma_pagamento")
             {
                 e.Value = TextoInterface.FormatarColunaBanco(nomeColuna, e.Value);
                 e.FormattingApplied = true;
@@ -343,19 +329,19 @@ namespace CASE
                 var excel = new ToolStripMenuItem("Excel (.xlsx)");
                 var pdf = new ToolStripMenuItem("PDF");
                 csv.Click += ExportarCsv;
-                excel.Click += (s, args) => ExportarExcel();
+                excel.Click += excel_Click;
                 pdf.Click += ExportarPdf;
                 menuExportacoes.Items.AddRange(new ToolStripItem[] { csv, excel, pdf });
             }
-            menuExportacoes.Show(btnExportarCsv, new System.Drawing.Point(0, btnExportarCsv.Height));
+
+            menuExportacoes.Show(btnExportarCsv, new Point(0, btnExportarCsv.Height));
         }
 
         private void ExportarFormato(string formato)
         {
             using (var dialogo = new SaveFileDialog())
             {
-                dialogo.Filter = formato == "xlsx" ? "Planilha Excel (*.xlsx)|*.xlsx" :
-                    formato == "pdf" ? "Documento PDF (*.pdf)|*.pdf" : "CSV compatível com Excel (*.csv)|*.csv";
+                dialogo.Filter = formato == "xlsx" ? "Planilha Excel (*.xlsx)|*.xlsx" : formato == "pdf" ? "Documento PDF (*.pdf)|*.pdf" : "CSV compatível com Excel (*.csv)|*.csv";
                 dialogo.DefaultExt = formato;
                 dialogo.AddExtension = true;
                 dialogo.FileName = "CASE_relatorio_" + DateTime.Today.ToString("yyyyMMdd") + "." + formato;
@@ -366,16 +352,13 @@ namespace CASE
                 try
                 {
                     // Consulta novamente e revalida a sessão depois do diálogo de salvar.
-                    new ConsultaOperacionalService().ExportarRelatorio(usuarioAutenticado,
-                        cmbRelatorioCategoria.Text, dtpRelatorioInicio.Value,
-                        dtpRelatorioFim.Value, dialogo.FileName, formato,
-                        chkIncluirGrafico.Checked ? cmbGraficoRelatorio.Text : null);
+                    new ConsultaOperacionalService().ExportarRelatorio(usuarioAutenticado, cmbRelatorioCategoria.Text, dtpRelatorioInicio.Value, dtpRelatorioFim.Value, dialogo.FileName, formato, chkIncluirGrafico.Checked ? cmbGraficoRelatorio.Text : null);
                     resumoRelatorio.Text = "Relatório exportado para " + formato.ToUpperInvariant() + ".";
                 }
                 catch (Exception erro)
                 {
-                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível salvar o relatório. Confira a pasta escolhida e tente novamente.", resumoRelatorio);
-                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExportarRelatorio");
+                    FeedbackUsuario.ExibirErro(this, erro, "Não foi possível salvar o relatório. Confira a pasta escolhida e tente novamente.", resumoRelatorio);
+                    Trace.WriteLine(erro.GetType().Name + " em ExportarRelatorio");
                 }
                 finally
                 {
@@ -385,6 +368,7 @@ namespace CASE
                 }
             }
         }
+
         private void AjustarArredondamento(object sender, EventArgs e)
         {
             Control controle = (Control)sender;
@@ -401,8 +385,12 @@ namespace CASE
             cmbGraficoRelatorio.Name = "cmbGraficoRelatorio";
             cmbGraficoRelatorio.AccessibleName = "Tipo de gráfico do relatório";
             cmbGraficoRelatorio.DropDownStyle = ComboBoxStyle.DropDownList;
-            var painel = new Panel { Name = "panelTipoGraficoRelatorio", BackColor = VisualUtils.Fundo,
-                Padding = new Padding(8, 0, 8, 0) };
+            var painel = new Panel
+            {
+                Name = "panelTipoGraficoRelatorio",
+                BackColor = VisualUtils.Fundo,
+                Padding = new Padding(8, 0, 8, 0)
+            };
             painel.SetBounds(160, 2, 175, 40);
             painel.Controls.Add(cmbGraficoRelatorio);
             VisualUtils.EstilizarSelecao(cmbGraficoRelatorio);
@@ -410,8 +398,12 @@ namespace CASE
             cmbGraficoRelatorio.BackColor = painel.BackColor;
             VisualUtils.Arredondar(painel, 10);
             VisualUtils.AplicarBorda(painel);
-            var orientacao = new Label { Text = "Disponível também no PDF e no Excel. CSV mantém somente os dados.",
-                AutoSize = false, ForeColor = VisualUtils.TextoSuave };
+            var orientacao = new Label
+            {
+                Text = "Disponível também no PDF e no Excel. CSV mantém somente os dados.",
+                AutoSize = false,
+                ForeColor = VisualUtils.TextoSuave
+            };
             orientacao.SetBounds(355, 12, 530, 26);
             opcoesGrafico.Controls.AddRange(new Control[] { chkIncluirGrafico, painel, orientacao });
             Controls.Add(opcoesGrafico);
@@ -422,14 +414,9 @@ namespace CASE
             lblGraficoDireito.Text = "Gráfico do relatório";
             lblGraficoDireito.Font = new Font("Segoe UI", 12F, FontStyle.Bold);
             AtualizarTiposGrafico();
-            chkIncluirGrafico.CheckedChanged += (s, e) =>
-            {
-                cmbGraficoRelatorio.Enabled = chkIncluirGrafico.Checked;
-                AtualizarGraficoRelatorio();
-                AjustarLayoutRelatorio();
-            };
-            cmbGraficoRelatorio.SelectedIndexChanged += (s, e) => AtualizarGraficoRelatorio();
-            SizeChanged += (s, e) => AjustarLayoutRelatorio();
+            chkIncluirGrafico.CheckedChanged += chkIncluirGrafico_CheckedChanged;
+            cmbGraficoRelatorio.SelectedIndexChanged += cmbGraficoRelatorio_SelectedIndexChanged;
+            SizeChanged += Tela_SizeChanged;
             AjustarLayoutRelatorio();
         }
 
@@ -457,11 +444,11 @@ namespace CASE
                 graficoRelatorio.Dispose();
                 graficoRelatorio = null;
             }
+
             panelGraficoDireitoArea.Controls.Clear();
             if (!chkIncluirGrafico.Checked || dadosRelatorio == null)
                 return;
-            graficoRelatorio = GraficoRelatorio.Criar(dadosRelatorio,
-                cmbRelatorioCategoria.Text, cmbGraficoRelatorio.Text);
+            graficoRelatorio = GraficoRelatorio.Criar(dadosRelatorio, cmbRelatorioCategoria.Text, cmbGraficoRelatorio.Text);
             graficoRelatorio.Name = "graficoRelatorio";
             graficoRelatorio.Dock = DockStyle.Fill;
             panelGraficoDireitoArea.Controls.Add(graficoRelatorio);
@@ -482,6 +469,46 @@ namespace CASE
             resumoRelatorio.SetBounds(30, panelGraficoEsquerdo.Bottom + 10, largura, 65);
             AutoScrollMinSize = new Size(970, resumoRelatorio.Bottom + 12);
         }
+
+        private void Tela_Disposed(object s, EventArgs e)
+        {
+            menuExportacoes.Dispose();
+        }
+
+        private void cmbRelatorioCategoria_SelectedIndexChanged(object s, EventArgs e)
+        {
+            AtualizarPerfisRelatorio();
+            bool utilizaPeriodo = cmbRelatorioCategoria.Text != "Estoque" && cmbRelatorioCategoria.Text != "Estoque crítico";
+            dtpRelatorioInicio.Enabled = utilizaPeriodo;
+            dtpRelatorioFim.Enabled = utilizaPeriodo;
+            dadosRelatorio = null;
+            gradeRelatorio.DataSource = null;
+            btnExportarCsv.Enabled = false;
+            resumoRelatorio.Text = "Clique em Gerar para consultar o relatório selecionado.";
+            AtualizarTiposGrafico();
+            AtualizarGraficoRelatorio();
+        }
+
+        private void excel_Click(object s, EventArgs args)
+        {
+            ExportarExcel();
+        }
+
+        private void chkIncluirGrafico_CheckedChanged(object s, EventArgs e)
+        {
+            cmbGraficoRelatorio.Enabled = chkIncluirGrafico.Checked;
+            AtualizarGraficoRelatorio();
+            AjustarLayoutRelatorio();
+        }
+
+        private void cmbGraficoRelatorio_SelectedIndexChanged(object s, EventArgs e)
+        {
+            AtualizarGraficoRelatorio();
+        }
+
+        private void Tela_SizeChanged(object s, EventArgs e)
+        {
+            AjustarLayoutRelatorio();
+        }
     }
 }
-

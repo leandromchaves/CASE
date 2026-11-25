@@ -1,4 +1,4 @@
-namespace CASE
+﻿namespace CASE
 {
     partial class AcessosControl
     {
@@ -205,7 +205,7 @@ namespace CASE
             this.AutoScroll = true;
             this.AutoScrollMinSize = new System.Drawing.Size(1050, 720);
             this.pictureIconeTela.Name = "pictureIconeTela";
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulAcessos;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulAcessos;
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Size = new System.Drawing.Size(44, 44);
             this.pictureIconeTela.Padding = new System.Windows.Forms.Padding(6);

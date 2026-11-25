@@ -1,8 +1,9 @@
-using System;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -12,16 +13,18 @@ namespace CASE
 {
     public partial class LoginForm : Form
     {
-        private readonly AutenticacaoService autenticacaoService = new AutenticacaoService();
+        private AutenticacaoService autenticacaoService = new AutenticacaoService();
         private bool autenticando;
-
+        private string loginDaTentativa;
+        private string senhaDaTentativa;
         public LoginForm()
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             DoubleBuffered = true;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer, true);
             IconoAplicacao.Aplicar(this);
-
             VisualUtils.Arredondar(panelLogin, 15);
             btnEntrar.Click += BtnEntrar_Click;
             btnEntrar.CausesValidation = false;
@@ -31,7 +34,6 @@ namespace CASE
             VisualUtils.Arredondar(panelSenha, 7);
             VisualUtils.AplicarBorda(panelUsuario);
             VisualUtils.AplicarBorda(panelSenha);
-
             PrepararCampoLogin(textUsuario, panelUsuario, "Seu nome de usuário");
             PrepararCampoLogin(textSenha, panelSenha, "Sua senha");
             textSenha.UseSystemPasswordChar = true;
@@ -46,7 +48,17 @@ namespace CASE
             linkLabel1.TabIndex = 3;
             lblMensagem.SetBounds(60, 354, 300, 52);
             linkLabel1.Top = 418;
-            Shown += (s, e) => textUsuario.Focus();
+            Shown += LoginForm_Shown;
+        }
+
+        private void LoginForm_Shown(object sender, EventArgs e)
+        {
+            textUsuario.Focus();
+        }
+
+        private Usuario AutenticarConta()
+        {
+            return autenticacaoService.Autenticar(loginDaTentativa, senhaDaTentativa);
         }
 
         private static void PrepararCampoLogin(TextBox campo, Panel painel, string placeholder)
@@ -66,8 +78,8 @@ namespace CASE
             {
                 return;
             }
-            DefinirMensagem(string.Empty);
 
+            DefinirMensagem(string.Empty);
             if (string.IsNullOrWhiteSpace(textUsuario.Text))
             {
                 DefinirMensagem("Informe o login.");
@@ -82,15 +94,14 @@ namespace CASE
                 return;
             }
 
-            string login = textUsuario.Text;
-            string senha = textSenha.Text;
+            loginDaTentativa = textUsuario.Text;
+            senhaDaTentativa = textSenha.Text;
             DefinirEstadoLogin(true);
             DefinirMensagem("Verificando acesso…", true);
             try
             {
-                Usuario usuario = await Task.Run(() => autenticacaoService.Autenticar(login, senha));
-                senha = null;
-
+                Usuario usuario = await Task.Run(AutenticarConta);
+                senhaDaTentativa = null;
                 if (IsDisposed)
                 {
                     autenticacaoService.EncerrarSessao();
@@ -108,7 +119,6 @@ namespace CASE
                 DefinirMensagem("Carregando o sistema…", true);
                 btnEntrar.Text = "Abrindo…";
                 btnEntrar.Refresh();
-
                 try
                 {
                     using (PrincipalForm formularioPrincipal = new PrincipalForm(usuario))
@@ -149,7 +159,8 @@ namespace CASE
             }
             finally
             {
-                senha = null;
+                senhaDaTentativa = null;
+                loginDaTentativa = null;
                 autenticando = false;
                 if (!IsDisposed)
                 {
@@ -180,7 +191,6 @@ namespace CASE
 
             Debug.WriteLine("Falha no login. Tipo: " + erro.GetType().FullName);
             Debug.WriteLine(erro.StackTrace);
-
             if (erro.InnerException != null)
             {
                 Debug.WriteLine("Falha interna. Tipo: " + erro.InnerException.GetType().FullName);
@@ -192,7 +202,6 @@ namespace CASE
         {
             lblMensagem.Text = mensagem;
             lblMensagem.ForeColor = informativa ? VisualUtils.TextoSuave : Color.Firebrick;
-
             if (string.IsNullOrEmpty(mensagem))
             {
                 lblMensagem.Visible = false;
@@ -202,7 +211,7 @@ namespace CASE
                 lblMensagem.Visible = true;
                 lblMensagem.BringToFront();
                 if (!informativa)
-                    CASE.Utils.FeedbackUsuario.Exibir(this, mensagem, CASE.Utils.TipoFeedback.Erro);
+                    FeedbackUsuario.Exibir(this, mensagem, TipoFeedback.Erro);
             }
         }
 

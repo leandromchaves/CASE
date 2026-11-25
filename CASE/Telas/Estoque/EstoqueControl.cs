@@ -1,19 +1,21 @@
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Diagnostics;
+using System.Drawing;
 using System.Windows.Forms;
-using CASE.Utils;
+using System;
 using CASE.Models;
 using CASE.Services;
-using System.Data;
+using CASE.Utils;
 
 namespace CASE
 {
     public partial class EstoqueControl : UserControl
     {
-        private readonly Usuario usuarioAutenticado;
+        private Usuario usuarioAutenticado;
         private string filtroSelecionado = "Todos";
         private Panel areaPesquisa;
-
         public EstoqueControl() : this(null)
         {
         }
@@ -21,10 +23,12 @@ namespace CASE
         public EstoqueControl(Usuario usuario)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             usuarioAutenticado = usuario;
             cmbCategoriaEstoque.Items.Clear();
             cmbStatusEstoque.Items.Clear();
-            CASE.Utils.FrontendTheme.Aplicar(this);
+            FrontendTheme.Aplicar(this);
             VisualUtils.Arredondar(panelCardEstoqueTotal, 12);
             panelCardEstoqueTotal.SizeChanged += AjustarArredondamento;
             VisualUtils.AplicarBorda(panelCardEstoqueTotal);
@@ -55,8 +59,14 @@ namespace CASE
             txtPesquisarEstoque.Visible = cmbCategoriaEstoque.Visible = cmbStatusEstoque.Visible = false;
             btnAtualizarEstoque.Visible = false;
             dgvEstoqueColCodigo.Visible = dgvEstoqueColIdeal.Visible = false;
-            string[] filtros = { "Todos", "Em estoque", "Estoque baixo", "Sem estoque" };
-            var botoes = new System.Collections.Generic.List<Button>();
+            string[] filtros =
+            {
+                "Todos",
+                "Em estoque",
+                "Estoque baixo",
+                "Sem estoque"
+            };
+            var botoes = new List<Button>();
             for (int i = 0; i < filtros.Length; i++)
             {
                 string filtro = filtros[i];
@@ -64,42 +74,45 @@ namespace CASE
                 {
                     Name = "btnFiltroEstoque" + i,
                     Text = filtro,
-                    Bounds = new System.Drawing.Rectangle(16 + i * 150, 18, 140, 36),
+                    Bounds = new Rectangle(16 + i * 150, 18, 140, 36),
                     FlatStyle = FlatStyle.Flat,
-                    BackColor = System.Drawing.Color.White,
+                    BackColor = Color.White,
                     ForeColor = FrontendTheme.Texto
                 };
-                botao.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(221, 230, 240);
+                botao.FlatAppearance.BorderColor = Color.FromArgb(221, 230, 240);
                 botoes.Add(botao);
                 panelFiltrosEstoque.Controls.Add(botao);
-                botao.Click += (s, e) =>
+                botao.Click += Tratar_botao_Click;
+                void Tratar_botao_Click(object s, EventArgs e)
                 {
                     foreach (var item in botoes)
                     {
-                        item.BackColor = item == botao ? System.Drawing.Color.FromArgb(226, 238, 255) : System.Drawing.Color.White;
+                        item.BackColor = item == botao ? Color.FromArgb(226, 238, 255) : Color.White;
                         item.ForeColor = item == botao ? FrontendTheme.Azul : FrontendTheme.Texto;
                     }
+
                     filtroSelecionado = filtro;
                     AplicarFiltros();
-                };
+                }
             }
+
             FrontendTheme.Aplicar(panelFiltrosEstoque);
             botoes[0].PerformClick();
             txtPesquisarEstoque.Visible = true;
             txtPesquisarEstoque.SetBounds(635, 22, 220, txtPesquisarEstoque.PreferredHeight);
             VisualUtils.DefinirPlaceholder(txtPesquisarEstoque, "Produto ou local");
-            txtPesquisarEstoque.TextChanged += (s, e) => AplicarFiltros();
+            txtPesquisarEstoque.TextChanged += txtPesquisarEstoque_TextChanged;
             areaPesquisa = VisualUtils.EstilizarPesquisa(txtPesquisarEstoque, "Pesquisar produto ou local");
             btnAtualizarEstoque.Visible = true;
             btnAtualizarEstoque.SetBounds(870, 18, 100, 36);
             btnAtualizarEstoque.Click += AtualizarSaldos;
             dgvEstoqueColCategoria.HeaderText = "Local";
             dgvEstoqueColIdeal.Visible = true;
-            panelFiltrosEstoque.MinimumSize = System.Drawing.Size.Empty;
-            panelListaEstoque.MinimumSize = System.Drawing.Size.Empty;
+            panelFiltrosEstoque.MinimumSize = Size.Empty;
+            panelListaEstoque.MinimumSize = Size.Empty;
             panelFiltrosEstoque.Anchor = panelListaEstoque.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             btnAtualizarEstoque.Anchor = areaPesquisa.Anchor = AnchorStyles.Top | AnchorStyles.Left;
-            SizeChanged += (s, e) => AjustarLayoutEstoque();
+            SizeChanged += Tela_SizeChanged;
             AjustarLayoutEstoque();
             AtualizarSaldos(this, EventArgs.Empty);
         }
@@ -111,8 +124,7 @@ namespace CASE
             panelFiltrosEstoque.SetBounds(30, 115, largura, duasLinhas ? 124 : 75);
             int larguraFiltro = Math.Min(140, (largura - 62) / 4);
             for (int i = 0; i < 4; i++)
-                panelFiltrosEstoque.Controls["btnFiltroEstoque" + i].SetBounds(
-                    16 + i * (larguraFiltro + 10), 18, larguraFiltro, 36);
+                panelFiltrosEstoque.Controls["btnFiltroEstoque" + i].SetBounds(16 + i * (larguraFiltro + 10), 18, larguraFiltro, 36);
             int topo = duasLinhas ? 68 : 18;
             btnAtualizarEstoque.SetBounds(largura - 116, topo, 100, 40);
             int esquerda = duasLinhas ? 16 : 620;
@@ -122,7 +134,7 @@ namespace CASE
             lblListaEstoque.Width = largura - 40;
             dgvEstoque.SetBounds(20, 60, largura - 40, panelListaEstoque.Height - 80);
             lblSubtituloEstoque.Width = largura - 50;
-            AutoScrollMinSize = new System.Drawing.Size(680, panelListaEstoque.Bottom + 25);
+            AutoScrollMinSize = new Size(680, panelListaEstoque.Bottom + 25);
         }
 
         private void AtualizarSaldos(object sender, EventArgs e)
@@ -134,6 +146,7 @@ namespace CASE
                 btnAtualizarEstoque.Enabled = false;
                 return;
             }
+
             try
             {
                 DataTable saldos = new ConsultaOperacionalService().Estoques(usuarioAutenticado);
@@ -151,9 +164,10 @@ namespace CASE
                     {
                         situacao = "Estoque baixo";
                     }
-                    linhas.Add(new object[] { saldo["id_produto"], saldo["produto"], saldo["local"],
-                        atual, minimo, saldo["quantidade_ideal"], situacao });
+
+                    linhas.Add(new object[] { saldo["id_produto"], saldo["produto"], saldo["local"], atual, minimo, saldo["quantidade_ideal"], situacao });
                 }
+
                 dgvEstoque.Rows.Clear();
                 foreach (object[] linha in linhas)
                     dgvEstoque.Rows.Add(linha);
@@ -164,7 +178,7 @@ namespace CASE
             catch (Exception erro)
             {
                 lblListaEstoque.Text = "Não foi possível consultar os saldos autorizados.";
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ResumoEstoque: " + erro.StackTrace);
+                Trace.WriteLine(erro.GetType().Name + " em ResumoEstoque: " + erro.StackTrace);
             }
         }
 
@@ -173,11 +187,8 @@ namespace CASE
             dgvEstoque.CurrentCell = null;
             foreach (DataGridViewRow linha in dgvEstoque.Rows)
             {
-                string descricao = Convert.ToString(linha.Cells[dgvEstoqueColProduto.Index].Value) + " " +
-                    Convert.ToString(linha.Cells[dgvEstoqueColCategoria.Index].Value);
-                linha.Visible = descricao.IndexOf(txtPesquisarEstoque.Text.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0 &&
-                    (filtroSelecionado == "Todos" ||
-                    Convert.ToString(linha.Cells[dgvEstoqueColStatus.Index].Value) == filtroSelecionado);
+                string descricao = Convert.ToString(linha.Cells[dgvEstoqueColProduto.Index].Value) + " " + Convert.ToString(linha.Cells[dgvEstoqueColCategoria.Index].Value);
+                linha.Visible = descricao.IndexOf(txtPesquisarEstoque.Text.Trim(), StringComparison.CurrentCultureIgnoreCase) >= 0 && (filtroSelecionado == "Todos" || Convert.ToString(linha.Cells[dgvEstoqueColStatus.Index].Value) == filtroSelecionado);
             }
         }
 
@@ -187,6 +198,15 @@ namespace CASE
             VisualUtils.Arredondar(controle, controle is Panel ? 12 : 8);
             controle.Invalidate();
         }
+
+        private void txtPesquisarEstoque_TextChanged(object s, EventArgs e)
+        {
+            AplicarFiltros();
+        }
+
+        private void Tela_SizeChanged(object s, EventArgs e)
+        {
+            AjustarLayoutEstoque();
+        }
     }
 }
-

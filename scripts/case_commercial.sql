@@ -490,14 +490,6 @@ CREATE TABLE `usuario` (
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 SET FOREIGN_KEY_CHECKS=1;
 
--- Totais antigos sem discriminação por modalidade são preservados separadamente.
-CREATE TABLE apuracaototallegado (
-  id_apuracao int NOT NULL,
-  valor_informado decimal(10,2) NOT NULL,
-  PRIMARY KEY (id_apuracao),
-  CONSTRAINT fk_apuracao_total_legado FOREIGN KEY (id_apuracao) REFERENCES apuracao(id_apuracao)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 -- As views recompõem os dados de leitura sem armazenar as redundâncias.
 CREATE VIEW vw_localestoque AS
 SELECT l.id_local_estoque,COALESCE(l.id_instituicao_central,e.id_instituicao) AS id_instituicao,
@@ -516,9 +508,9 @@ JOIN vw_localestoque d ON d.id_local_estoque=s.id_local_destino;
 
 CREATE VIEW vw_apuracao AS
 SELECT a.id_apuracao,a.id_jornada,
-       COALESCE(h.valor_informado,a.valor_dinheiro+a.valor_pix+a.valor_cartao) AS valor_informado,
+       a.valor_dinheiro+a.valor_pix+a.valor_cartao AS valor_informado,
        a.data_hora,a.id_usuario_responsavel,a.observacao,a.valor_dinheiro,a.valor_pix,a.valor_cartao
-FROM apuracao a LEFT JOIN apuracaototallegado h ON h.id_apuracao=a.id_apuracao;
+FROM apuracao a;
 
 DELIMITER $$
 CREATE PROCEDURE validar_rota_central(IN origem int, IN destino int)

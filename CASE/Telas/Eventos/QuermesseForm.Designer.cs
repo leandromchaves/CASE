@@ -1,4 +1,4 @@
-namespace CASE.Quermesse
+﻿namespace CASE.Quermesse
 {
     partial class QuermesseForm
     {
@@ -42,8 +42,8 @@ namespace CASE.Quermesse
             this.panelFormulario.Name = "panelFormulario";
             this.panelFormulario.Location = new System.Drawing.Point(16, 16);
             this.panelFormulario.Size = new System.Drawing.Size(608, 593);
-            this.panelFormulario.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.panelFormulario.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelFormulario.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.panelFormulario.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelFormulario.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelFormulario.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelFormulario.TabIndex = 0;
@@ -51,42 +51,42 @@ namespace CASE.Quermesse
             this.lblTitulo.Name = "lblTitulo";
             this.lblTitulo.Location = new System.Drawing.Point(28, 22);
             this.lblTitulo.Size = new System.Drawing.Size(485, 40);
-            this.lblTitulo.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 20F, (System.Drawing.FontStyle)1);
+            this.lblTitulo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.lblTitulo.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.lblTitulo.ForeColor = System.Drawing.Color.FromArgb(255, 16, 43, 73);
             this.lblTitulo.TabIndex = 0;
             this.lblTitulo.Text = "Novo evento";
-            this.lblTitulo.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblTitulo.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // pictureIconeFormulario
             this.pictureIconeFormulario.Name = "pictureIconeFormulario";
             this.pictureIconeFormulario.Location = new System.Drawing.Point(538, 24);
             this.pictureIconeFormulario.Size = new System.Drawing.Size(36, 36);
-            this.pictureIconeFormulario.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.pictureIconeFormulario.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.pictureIconeFormulario.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.pictureIconeFormulario.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.pictureIconeFormulario.BackColor = System.Drawing.Color.FromArgb(255, 234, 242, 254);
             this.pictureIconeFormulario.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.pictureIconeFormulario.TabIndex = 1;
             this.pictureIconeFormulario.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureIconeFormulario.Image = global::CASE.Properties.Resources.LucideAzulQuermesses;
+            this.pictureIconeFormulario.Image = global::CASE.Properties.Resources.IconeAzulQuermesses;
             this.pictureIconeFormulario.TabStop = false;
             // labelAvisoFormulario
             this.labelAvisoFormulario.Name = "labelAvisoFormulario";
             this.labelAvisoFormulario.Location = new System.Drawing.Point(28, 499);
             this.labelAvisoFormulario.Size = new System.Drawing.Size(550, 36);
-            this.labelAvisoFormulario.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.labelAvisoFormulario.Font = new System.Drawing.Font("Segoe UI", 8.5F, (System.Drawing.FontStyle)0);
+            this.labelAvisoFormulario.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.labelAvisoFormulario.Font = new System.Drawing.Font("Segoe UI", 8.5F, System.Drawing.FontStyle.Regular);
             this.labelAvisoFormulario.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.labelAvisoFormulario.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.labelAvisoFormulario.TabIndex = 2;
             this.labelAvisoFormulario.Text = "Prévia visual · alterações não são salvas";
-            this.labelAvisoFormulario.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.labelAvisoFormulario.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // btnCancelar
             this.btnCancelar.Name = "btnCancelar";
             this.btnCancelar.Location = new System.Drawing.Point(320, 545);
             this.btnCancelar.Size = new System.Drawing.Size(115, 35);
-            this.btnCancelar.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.btnCancelar.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.btnCancelar.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnCancelar.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.btnCancelar.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.btnCancelar.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.btnCancelar.TabIndex = 3;
@@ -96,13 +96,13 @@ namespace CASE.Quermesse
             this.btnCancelar.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(255, 228, 234, 242);
             this.btnCancelar.UseVisualStyleBackColor = false;
             this.btnCancelar.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnCancelar.DialogResult = (System.Windows.Forms.DialogResult)2;
+            this.btnCancelar.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             // btnSalvarVisual
             this.btnSalvarVisual.Name = "btnSalvarVisual";
             this.btnSalvarVisual.Location = new System.Drawing.Point(450, 545);
             this.btnSalvarVisual.Size = new System.Drawing.Size(134, 35);
-            this.btnSalvarVisual.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.btnSalvarVisual.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)1);
+            this.btnSalvarVisual.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnSalvarVisual.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnSalvarVisual.BackColor = System.Drawing.Color.FromArgb(255, 23, 105, 210);
             this.btnSalvarVisual.ForeColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.btnSalvarVisual.TabIndex = 4;
@@ -112,24 +112,24 @@ namespace CASE.Quermesse
             this.btnSalvarVisual.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(255, 228, 234, 242);
             this.btnSalvarVisual.UseVisualStyleBackColor = false;
             this.btnSalvarVisual.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnSalvarVisual.DialogResult = (System.Windows.Forms.DialogResult)0;
+            this.btnSalvarVisual.DialogResult = System.Windows.Forms.DialogResult.None;
             // lblNomedoevento
             this.lblNomedoevento.Name = "lblNomedoevento";
             this.lblNomedoevento.Location = new System.Drawing.Point(28, 72);
             this.lblNomedoevento.Size = new System.Drawing.Size(550, 22);
-            this.lblNomedoevento.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblNomedoevento.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblNomedoevento.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblNomedoevento.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblNomedoevento.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblNomedoevento.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblNomedoevento.TabIndex = 5;
             this.lblNomedoevento.Text = "Nome do evento";
-            this.lblNomedoevento.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblNomedoevento.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // txtNomeQuermesse
             this.txtNomeQuermesse.Name = "txtNomeQuermesse";
             this.txtNomeQuermesse.Location = new System.Drawing.Point(36, 98);
             this.txtNomeQuermesse.Size = new System.Drawing.Size(530, 25);
-            this.txtNomeQuermesse.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.txtNomeQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.txtNomeQuermesse.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.txtNomeQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.txtNomeQuermesse.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.txtNomeQuermesse.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.txtNomeQuermesse.TabIndex = 6;
@@ -158,19 +158,19 @@ namespace CASE.Quermesse
             this.lblLocal.Name = "lblLocal";
             this.lblLocal.Location = new System.Drawing.Point(28, 178);
             this.lblLocal.Size = new System.Drawing.Size(550, 22);
-            this.lblLocal.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblLocal.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblLocal.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblLocal.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblLocal.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblLocal.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblLocal.TabIndex = 7;
             this.lblLocal.Text = "Local";
-            this.lblLocal.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblLocal.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // txtLocalQuermesse
             this.txtLocalQuermesse.Name = "txtLocalQuermesse";
             this.txtLocalQuermesse.Location = new System.Drawing.Point(36, 204);
             this.txtLocalQuermesse.Size = new System.Drawing.Size(530, 25);
-            this.txtLocalQuermesse.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.txtLocalQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.txtLocalQuermesse.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.txtLocalQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.txtLocalQuermesse.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.txtLocalQuermesse.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.txtLocalQuermesse.TabIndex = 8;
@@ -182,23 +182,23 @@ namespace CASE.Quermesse
             this.lblDatainicial.Name = "lblDatainicial";
             this.lblDatainicial.Location = new System.Drawing.Point(28, 229);
             this.lblDatainicial.Size = new System.Drawing.Size(550, 22);
-            this.lblDatainicial.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblDatainicial.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblDatainicial.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblDatainicial.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblDatainicial.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblDatainicial.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblDatainicial.TabIndex = 9;
             this.lblDatainicial.Text = "Data inicial";
-            this.lblDatainicial.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblDatainicial.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // dtpInicioQuermesse
             this.dtpInicioQuermesse.Name = "dtpInicioQuermesse";
             this.dtpInicioQuermesse.Location = new System.Drawing.Point(28, 251);
             this.dtpInicioQuermesse.Size = new System.Drawing.Size(550, 25);
-            this.dtpInicioQuermesse.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.dtpInicioQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.dtpInicioQuermesse.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.dtpInicioQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.dtpInicioQuermesse.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.dtpInicioQuermesse.ForeColor = System.Drawing.Color.FromArgb(255, 0, 0, 0);
             this.dtpInicioQuermesse.TabIndex = 10;
-            this.dtpInicioQuermesse.Format = (System.Windows.Forms.DateTimePickerFormat)8;
+            this.dtpInicioQuermesse.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpInicioQuermesse.CustomFormat = "dd/MM/yyyy";
             this.dtpInicioQuermesse.ShowUpDown = false;
             this.dtpInicioQuermesse.Value = new System.DateTime(2026, 10, 22, 15, 49, 0);
@@ -206,23 +206,23 @@ namespace CASE.Quermesse
             this.lblDatafinal.Name = "lblDatafinal";
             this.lblDatafinal.Location = new System.Drawing.Point(28, 280);
             this.lblDatafinal.Size = new System.Drawing.Size(550, 22);
-            this.lblDatafinal.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblDatafinal.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblDatafinal.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblDatafinal.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblDatafinal.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblDatafinal.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblDatafinal.TabIndex = 11;
             this.lblDatafinal.Text = "Data final";
-            this.lblDatafinal.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblDatafinal.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // dtpFimQuermesse
             this.dtpFimQuermesse.Name = "dtpFimQuermesse";
             this.dtpFimQuermesse.Location = new System.Drawing.Point(28, 302);
             this.dtpFimQuermesse.Size = new System.Drawing.Size(550, 25);
-            this.dtpFimQuermesse.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.dtpFimQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.dtpFimQuermesse.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.dtpFimQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.dtpFimQuermesse.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.dtpFimQuermesse.ForeColor = System.Drawing.Color.FromArgb(255, 0, 0, 0);
             this.dtpFimQuermesse.TabIndex = 12;
-            this.dtpFimQuermesse.Format = (System.Windows.Forms.DateTimePickerFormat)8;
+            this.dtpFimQuermesse.Format = System.Windows.Forms.DateTimePickerFormat.Custom;
             this.dtpFimQuermesse.CustomFormat = "dd/MM/yyyy";
             this.dtpFimQuermesse.ShowUpDown = false;
             this.dtpFimQuermesse.Value = new System.DateTime(2026, 10, 22, 15, 49, 0);
@@ -230,19 +230,19 @@ namespace CASE.Quermesse
             this.lblResponsavel.Name = "lblResponsavel";
             this.lblResponsavel.Location = new System.Drawing.Point(28, 331);
             this.lblResponsavel.Size = new System.Drawing.Size(550, 22);
-            this.lblResponsavel.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblResponsavel.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblResponsavel.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblResponsavel.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblResponsavel.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblResponsavel.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblResponsavel.TabIndex = 13;
             this.lblResponsavel.Text = "Responsável";
-            this.lblResponsavel.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblResponsavel.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // txtResponsavelQuermesse
             this.txtResponsavelQuermesse.Name = "txtResponsavelQuermesse";
             this.txtResponsavelQuermesse.Location = new System.Drawing.Point(36, 357);
             this.txtResponsavelQuermesse.Size = new System.Drawing.Size(530, 25);
-            this.txtResponsavelQuermesse.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.txtResponsavelQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.txtResponsavelQuermesse.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.txtResponsavelQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.txtResponsavelQuermesse.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.txtResponsavelQuermesse.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.txtResponsavelQuermesse.TabIndex = 14;
@@ -254,19 +254,19 @@ namespace CASE.Quermesse
             this.lblSituacao.Name = "lblSituacao";
             this.lblSituacao.Location = new System.Drawing.Point(28, 382);
             this.lblSituacao.Size = new System.Drawing.Size(550, 22);
-            this.lblSituacao.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblSituacao.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblSituacao.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblSituacao.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblSituacao.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblSituacao.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblSituacao.TabIndex = 15;
             this.lblSituacao.Text = "Situação";
-            this.lblSituacao.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblSituacao.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // cmbSituacaoQuermesse
             this.cmbSituacaoQuermesse.Name = "cmbSituacaoQuermesse";
             this.cmbSituacaoQuermesse.Location = new System.Drawing.Point(28, 404);
             this.cmbSituacaoQuermesse.Size = new System.Drawing.Size(550, 29);
-            this.cmbSituacaoQuermesse.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.cmbSituacaoQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.cmbSituacaoQuermesse.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.cmbSituacaoQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.cmbSituacaoQuermesse.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.cmbSituacaoQuermesse.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.cmbSituacaoQuermesse.TabIndex = 16;
@@ -278,19 +278,19 @@ namespace CASE.Quermesse
             this.lblObservacao.Name = "lblObservacao";
             this.lblObservacao.Location = new System.Drawing.Point(28, 433);
             this.lblObservacao.Size = new System.Drawing.Size(550, 22);
-            this.lblObservacao.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblObservacao.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblObservacao.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblObservacao.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblObservacao.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblObservacao.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblObservacao.TabIndex = 17;
             this.lblObservacao.Text = "Observação";
-            this.lblObservacao.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblObservacao.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // txtObservacaoQuermesse
             this.txtObservacaoQuermesse.Name = "txtObservacaoQuermesse";
             this.txtObservacaoQuermesse.Location = new System.Drawing.Point(36, 459);
             this.txtObservacaoQuermesse.Size = new System.Drawing.Size(530, 25);
-            this.txtObservacaoQuermesse.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.txtObservacaoQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.txtObservacaoQuermesse.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.txtObservacaoQuermesse.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.txtObservacaoQuermesse.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.txtObservacaoQuermesse.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.txtObservacaoQuermesse.TabIndex = 18;
@@ -321,7 +321,7 @@ namespace CASE.Quermesse
             this.panelFormulario.Controls.Add(this.lblObservacao);
             this.panelFormulario.Controls.Add(this.txtObservacaoQuermesse);
             this.Name = "QuermesseForm";
-            this.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;

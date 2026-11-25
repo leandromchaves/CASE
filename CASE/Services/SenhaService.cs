@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
@@ -20,11 +20,11 @@ namespace CASE.Services
         private const int IteracoesMaximas = 10;
         private const int ParalelismoMinimo = 1;
         private const int ParalelismoMaximo = 8;
-        private static readonly Encoding CodificacaoSenha = new UTF8Encoding(false, true);
+        private static Encoding CodificacaoSenha = new UTF8Encoding(false, true);
 
-        private readonly int memoriaKb;
-        private readonly int iteracoes;
-        private readonly int paralelismo;
+        private int memoriaKb;
+        private int iteracoes;
+        private int paralelismo;
 
         public SenhaService()
             : this(MemoriaPadraoKb, IteracoesPadrao, ParalelismoPadrao)

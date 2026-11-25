@@ -7,8 +7,8 @@ namespace CASE.Services
 {
     public class TipoEventoService
     {
-        private readonly TipoEventoRepository tipoEventoRepository = new TipoEventoRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private TipoEventoRepository tipoEventoRepository = new TipoEventoRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public List<TipoEvento> Listar()
         {

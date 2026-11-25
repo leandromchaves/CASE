@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
-using CASE.Models;
 using System;
 using CASE.Data;
+using CASE.Models;
 using CASE.Services;
 using MySql.Data.MySqlClient;
 
@@ -9,28 +9,48 @@ namespace CASE.Repositories
 {
     public class ProdutoFornecedorRepository
     {
-
         public List<ProdutoFornecedor> ListarPorProduto(int idProduto)
         {
             ExigirConsulta();
-            return AcessoDados.ConsultarLista(
-                "SELECT id_produto,id_fornecedor,codigo_no_fornecedor FROM produtofornecedor WHERE id_produto=@id ORDER BY id_fornecedor",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idProduto)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_produto,id_fornecedor,codigo_no_fornecedor FROM produtofornecedor WHERE id_produto=@id ORDER BY id_fornecedor", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idProduto);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<ProdutoFornecedor> resultadoBanco = new List<ProdutoFornecedor>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public ProdutoFornecedor BuscarPorChave(int idProduto, int idFornecedor)
         {
             ExigirConsulta();
-            return AcessoDados.ConsultarUnico(
-                "SELECT id_produto,id_fornecedor,codigo_no_fornecedor FROM produtofornecedor WHERE id_produto=@produto AND id_fornecedor=@fornecedor",
-                ConverterLinha,
-                comando =>
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_produto,id_fornecedor,codigo_no_fornecedor FROM produtofornecedor WHERE id_produto=@produto AND id_fornecedor=@fornecedor", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@produto", idProduto);
-                    AcessoDados.AdicionarParametro(comando, "@fornecedor", idFornecedor);
-                });
+                    AcessoDados.AdicionarParametro(comandoBanco, "@produto", idProduto);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@fornecedor", idFornecedor);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
 
         }
 
@@ -77,10 +97,10 @@ codigo) > 0;
 
         private static int ExecutarAdministrativo(string sql, int produto, int fornecedor, string codigo)
         {
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
@@ -89,12 +109,15 @@ codigo) > 0;
                         {
                             throw new ArgumentException("Selecione produto e fornecedor válidos e um código com até 50 caracteres.");
                         }
-                        int resultado = AcessoDados.Executar(conexao, transacao, sql, comando =>
+                        int resultadoBanco;
+                        using (MySqlCommand comandoBanco = new MySqlCommand(sql, conexao, transacao))
                         {
-                            comando.Parameters.AddWithValue("@produto", produto);
-                            comando.Parameters.AddWithValue("@fornecedor", fornecedor);
-                            AcessoDados.AdicionarTextoOpcional(comando, "@codigo", codigo);
-                        });
+                            comandoBanco.Parameters.AddWithValue("@produto", produto);
+                            comandoBanco.Parameters.AddWithValue("@fornecedor", fornecedor);
+                            AcessoDados.AdicionarTextoOpcional(comandoBanco, "@codigo", codigo);
+                            resultadoBanco = comandoBanco.ExecuteNonQuery();
+                        }
+                        int resultado = resultadoBanco;
                         transacao.Commit();
                         return resultado;
                     }

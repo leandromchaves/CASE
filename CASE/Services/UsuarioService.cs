@@ -1,3 +1,4 @@
+﻿using System.Collections.Generic;
 using System;
 using CASE.Models;
 using CASE.Repositories;
@@ -6,8 +7,8 @@ namespace CASE.Services
 {
     public class UsuarioService
     {
-        private readonly UsuarioRepository usuarioRepository = new UsuarioRepository();
-        private readonly SenhaService senhaService = new SenhaService();
+        private UsuarioRepository usuarioRepository = new UsuarioRepository();
+        private SenhaService senhaService = new SenhaService();
 
         public void AlterarMinhaSenha(string senhaAtual, string novaSenha, string confirmacao)
         {
@@ -40,14 +41,14 @@ namespace CASE.Services
             SessaoUsuario.Encerrar();
         }
 
-        public System.Collections.Generic.List<Usuario> ListarCadastrosPendentes(Usuario administrador)
+        public List<Usuario> ListarCadastrosPendentes(Usuario administrador)
         {
             AutorizacaoService autorizacao = new AutorizacaoService();
             autorizacao.ExigirAdministrador(administrador);
 
-            System.Collections.Generic.List<Usuario> usuarios = usuarioRepository.Listar();
-            System.Collections.Generic.List<Usuario> pendentes =
-                new System.Collections.Generic.List<Usuario>();
+            List<Usuario> usuarios = usuarioRepository.Listar();
+            List<Usuario> pendentes =
+                new List<Usuario>();
 
             foreach (Usuario usuario in usuarios)
             {
@@ -63,21 +64,21 @@ namespace CASE.Services
             return pendentes;
         }
 
-        public System.Collections.Generic.List<Usuario> ListarUsuariosAdministrativos(
+        public List<Usuario> ListarUsuariosAdministrativos(
             Usuario administrador)
         {
             new AutorizacaoService().ExigirAdministrador(administrador);
             return usuarioRepository.Listar();
         }
 
-        public System.Collections.Generic.List<PerfilSistema> ListarPerfisDeSistema(
+        public List<PerfilSistema> ListarPerfisDeSistema(
             Usuario administrador)
         {
             new AutorizacaoService().ExigirAdministrador(administrador);
-            System.Collections.Generic.List<PerfilSistema> perfis =
+            List<PerfilSistema> perfis =
                 new PerfilSistemaRepository().Listar();
-            System.Collections.Generic.List<PerfilSistema> permitidos =
-                new System.Collections.Generic.List<PerfilSistema>();
+            List<PerfilSistema> permitidos =
+                new List<PerfilSistema>();
 
             foreach (PerfilSistema perfil in perfis)
             {
@@ -174,7 +175,7 @@ namespace CASE.Services
                 justificativa.Trim());
         }
 
-        public System.Collections.Generic.List<AnaliseUsuario> ListarHistorico(
+        public List<AnaliseUsuario> ListarHistorico(
             Usuario usuario,
             int idUsuario)
         {

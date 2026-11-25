@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,15 +7,15 @@ namespace CASE.Services
 {
     public class RegistroService
     {
-        private readonly RegistroRepository registroRepository = new RegistroRepository();
-        private readonly RegistroItemRepository registroItemRepository = new RegistroItemRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
-        private readonly EscalaRepository escalaRepository = new EscalaRepository();
-        private readonly JornadaSetorRepository jornadaRepository = new JornadaSetorRepository();
-        private readonly SetorRepository setorRepository = new SetorRepository();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
-        private readonly ProdutoRepository produtoRepository = new ProdutoRepository();
-        private readonly ProdutoSetorRepository produtoSetorRepository = new ProdutoSetorRepository();
+        private RegistroRepository registroRepository = new RegistroRepository();
+        private RegistroItemRepository registroItemRepository = new RegistroItemRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private EscalaRepository escalaRepository = new EscalaRepository();
+        private JornadaSetorRepository jornadaRepository = new JornadaSetorRepository();
+        private SetorRepository setorRepository = new SetorRepository();
+        private EventoRepository eventoRepository = new EventoRepository();
+        private ProdutoRepository produtoRepository = new ProdutoRepository();
+        private ProdutoSetorRepository produtoSetorRepository = new ProdutoSetorRepository();
 
         public int Registrar(Usuario usuario, Registro registro, IList<RegistroItem> itens)
         {

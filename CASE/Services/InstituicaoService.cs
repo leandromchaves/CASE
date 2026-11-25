@@ -7,8 +7,8 @@ namespace CASE.Services
 {
     public class InstituicaoService
     {
-        private readonly InstituicaoRepository instituicaoRepository = new InstituicaoRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private InstituicaoRepository instituicaoRepository = new InstituicaoRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public List<Instituicao> Listar()
         {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,11 +7,11 @@ namespace CASE.Services
 {
     public class JornadaSetorService
     {
-        private readonly JornadaSetorRepository jornadaSetorRepository = new JornadaSetorRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
-        private readonly SetorRepository setorRepository = new SetorRepository();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
-        private readonly TurnoRepository turnoRepository = new TurnoRepository();
+        private JornadaSetorRepository jornadaSetorRepository = new JornadaSetorRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private SetorRepository setorRepository = new SetorRepository();
+        private EventoRepository eventoRepository = new EventoRepository();
+        private TurnoRepository turnoRepository = new TurnoRepository();
 
         public List<Turno> ListarTurnos(Usuario usuario, int idEvento)
         {

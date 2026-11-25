@@ -7,11 +7,11 @@ namespace CASE.Services
 {
     public class EntradaMercadoriaService
     {
-        private readonly EntradaMercadoriaRepository entradaRepository = new EntradaMercadoriaRepository();
-        private readonly EntradaItemRepository entradaItemRepository = new EntradaItemRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
-        private readonly ProdutoRepository produtoRepository = new ProdutoRepository();
-        private readonly LocalEstoqueRepository localRepository = new LocalEstoqueRepository();
+        private EntradaMercadoriaRepository entradaRepository = new EntradaMercadoriaRepository();
+        private EntradaItemRepository entradaItemRepository = new EntradaItemRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private ProdutoRepository produtoRepository = new ProdutoRepository();
+        private LocalEstoqueRepository localRepository = new LocalEstoqueRepository();
 
         public int Registrar(
             Usuario usuario,

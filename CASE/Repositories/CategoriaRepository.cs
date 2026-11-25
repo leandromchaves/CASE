@@ -1,26 +1,25 @@
 ﻿using System.Collections.Generic;
-using System;
 using System.Data;
+using System;
 using CASE.Data;
-using CASE.Services;
 using CASE.Models;
+using CASE.Services;
 using MySql.Data.MySqlClient;
 
 namespace CASE.Repositories
 {
     public class CategoriaRepository
     {
-
         public List<Categoria> Listar()
         {
-            using (var conexao = Conexao.CriarConexao())
-            using (var adaptador = new MySqlDataAdapter(
+            using (MySqlConnection conexao = Conexao.CriarConexao())
+            using (MySqlDataAdapter adaptador = new MySqlDataAdapter(
                 "SELECT id_categoria,nome FROM categoria ORDER BY nome,id_categoria", conexao))
-            using (var dados = new DataSet("Catalogo"))
+            using (DataSet dados = new DataSet("Catalogo"))
             {
                 adaptador.MissingSchemaAction = MissingSchemaAction.AddWithKey;
                 adaptador.Fill(dados, "Categorias");
-                var categorias = new List<Categoria>();
+                List<Categoria> categorias = new List<Categoria>();
                 foreach (DataRow linha in dados.Tables["Categorias"].Rows)
                     categorias.Add(new Categoria
                     {
@@ -33,34 +32,53 @@ namespace CASE.Repositories
 
         public Categoria BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT id_categoria,nome FROM categoria WHERE id_categoria=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_categoria,nome FROM categoria WHERE id_categoria=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(Categoria item)
         {
-            return AcessoDados.Inserir(
-                "INSERT INTO categoria (nome) VALUES (@nome)",
-                comando => AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", item.Nome)
-            );
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("INSERT INTO categoria (nome) VALUES (@nome)", conexaoBanco))
+                {
+                    AcessoDados.AdicionarTextoObrigatorio(comandoBanco, "@nome", item.Nome);
+                    comandoBanco.ExecuteNonQuery();
+                    resultadoBanco = Convert.ToInt32(comandoBanco.LastInsertedId);
+                }
+            }
+            return resultadoBanco;
         }
 
         public bool Atualizar(Categoria item)
         {
             new AutorizacaoService().ExigirAdministrador(SessaoUsuario.ObterUsuarioAtual());
             if (item == null) throw new ArgumentNullException(nameof(item));
-            using (var conexao = Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
-                using (var comando = new MySqlCommand(
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
+                using (MySqlCommand comando = new MySqlCommand(
                     "SELECT id_categoria,nome FROM categoria WHERE id_categoria=@id", conexao, transacao))
-                using (var adaptador = new MySqlDataAdapter(comando))
-                using (var dados = new DataSet("Catalogo"))
-                using (var gerador = new MySqlCommandBuilder(adaptador))
+                using (MySqlDataAdapter adaptador = new MySqlDataAdapter(comando))
+                using (DataSet dados = new DataSet("Catalogo"))
+                using (MySqlCommandBuilder gerador = new MySqlCommandBuilder(adaptador))
                 {
                     try
                     {
@@ -106,9 +124,18 @@ namespace CASE.Repositories
 
         public bool Excluir(int id)
         {
-            new CASE.Services.AutorizacaoService().ExigirAdministrador(CASE.Services.SessaoUsuario.ObterUsuarioAtual());
-            return AcessoDados.Executar("DELETE FROM categoria WHERE id_categoria=@id",
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)) == 1;
+            new AutorizacaoService().ExigirAdministrador(SessaoUsuario.ObterUsuarioAtual());
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("DELETE FROM categoria WHERE id_categoria=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco == 1;
         }
 
         private static Categoria ConverterLinha(MySqlDataReader leitor)

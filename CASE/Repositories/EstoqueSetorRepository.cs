@@ -1,5 +1,6 @@
+﻿using System.Collections.Generic;
 using System;
-using System.Collections.Generic;
+using CASE.Data;
 using CASE.Models;
 using MySql.Data.MySqlClient;
 
@@ -7,41 +8,65 @@ namespace CASE.Repositories
 {
     public class EstoqueSetorRepository
     {
-
         public List<EstoqueSetor> Listar()
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT id_setor,id_local_estoque,id_evento FROM estoquesetor ORDER BY id_setor",
-                ConverterLinha
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_setor,id_local_estoque,id_evento FROM estoquesetor ORDER BY id_setor", conexaoBanco))
+                {
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<EstoqueSetor> resultadoBanco = new List<EstoqueSetor>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public EstoqueSetor BuscarPorSetor(int idSetor)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT id_setor,id_local_estoque,id_evento FROM estoquesetor WHERE id_setor=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idSetor)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_setor,id_local_estoque,id_evento FROM estoquesetor WHERE id_setor=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idSetor);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public void Associar(EstoqueSetor item)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
                         ValidarLocalDeBarraca(conexao, transacao, item);
-                        AcessoDados.Executar(
-                            conexao,
-                            transacao,
-                            "INSERT INTO estoquesetor (id_setor,id_local_estoque,id_evento) " +
-                            "VALUES (@setor,@local,@evento)",
-                            comando => Vincular(comando, item));
+                        int resultadoBanco;
+                        using (MySqlCommand comandoBanco = new MySqlCommand("INSERT INTO estoquesetor (id_setor,id_local_estoque,id_evento) " +
+                            "VALUES (@setor,@local,@evento)", conexao, transacao))
+                        {
+                            Vincular(comandoBanco, item);
+                            resultadoBanco = comandoBanco.ExecuteNonQuery();
+                        }
+
                         transacao.Commit();
                     }
                     catch
@@ -55,21 +80,23 @@ namespace CASE.Repositories
 
         public bool AtualizarLocal(EstoqueSetor item)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
                         ValidarLocalDeBarraca(conexao, transacao, item);
-                        int linhasAfetadas = AcessoDados.Executar(
-                            conexao,
-                            transacao,
-                            "UPDATE estoquesetor SET id_local_estoque=@local,id_evento=@evento " +
-                            "WHERE id_setor=@setor",
-                            comando => Vincular(comando, item));
+                        int resultadoBanco;
+                        using (MySqlCommand comandoBanco = new MySqlCommand("UPDATE estoquesetor SET id_local_estoque=@local,id_evento=@evento " +
+                            "WHERE id_setor=@setor", conexao, transacao))
+                        {
+                            Vincular(comandoBanco, item);
+                            resultadoBanco = comandoBanco.ExecuteNonQuery();
+                        }
+                        int linhasAfetadas = resultadoBanco;
                         transacao.Commit();
                         return linhasAfetadas > 0;
                     }

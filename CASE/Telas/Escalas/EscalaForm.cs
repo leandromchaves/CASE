@@ -1,6 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -9,13 +11,13 @@ namespace CASE.Quermesse
 {
     public partial class EscalaForm : Form
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly Evento eventoSelecionado;
-        private readonly Escala escalaExistente;
-        private readonly EscalaService escalaService = new EscalaService();
-        private readonly EquipeEventoService equipeService = new EquipeEventoService();
-        private readonly SetorService setorService = new SetorService();
-        private readonly JornadaSetorService jornadaService = new JornadaSetorService();
+        private Usuario usuarioAutenticado;
+        private Evento eventoSelecionado;
+        private Escala escalaExistente;
+        private EscalaService escalaService = new EscalaService();
+        private EquipeEventoService equipeService = new EquipeEventoService();
+        private SetorService setorService = new SetorService();
+        private JornadaSetorService jornadaService = new JornadaSetorService();
 
         public EscalaForm() : this(null, null, null)
         {
@@ -24,6 +26,8 @@ namespace CASE.Quermesse
         public EscalaForm(Usuario usuario, Evento evento, Escala escala)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode ==
+                LicenseUsageMode.Designtime) return;
             IconoAplicacao.Aplicar(this);
             FrontendTheme.Aplicar(this);
             OrganizarCamposPorDependencia();
@@ -326,11 +330,11 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da escala e tente novamente.", labelAvisoFormulario);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da escala e tente novamente.", labelAvisoFormulario);
             }
             catch (InvalidOperationException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da escala e tente novamente.", labelAvisoFormulario);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da escala e tente novamente.", labelAvisoFormulario);
             }
             catch (UnauthorizedAccessException)
             {
@@ -339,7 +343,7 @@ namespace CASE.Quermesse
             catch (Exception erro)
             {
                 labelAvisoFormulario.Text = "Não foi possível salvar a escala.";
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em SalvarEscala: " + erro.StackTrace);
+                Trace.WriteLine(erro.GetType().Name + " em SalvarEscala: " + erro.StackTrace);
             }
         }
     }

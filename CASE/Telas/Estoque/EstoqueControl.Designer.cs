@@ -1,4 +1,4 @@
-namespace CASE
+﻿namespace CASE
 {
     partial class EstoqueControl
     {
@@ -338,7 +338,7 @@ namespace CASE
             this.panelListaEstoque.PerformLayout();
             // pictureIconeTela — Lucide
             this.pictureIconeTela.Name = "pictureIconeTela";
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulEstoque;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulEstoque;
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Size = new System.Drawing.Size(36, 36);
             this.pictureIconeTela.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;

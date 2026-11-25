@@ -1,4 +1,4 @@
-namespace CASE.Quermesse
+﻿namespace CASE.Quermesse
 {
     partial class EscalaControl
     {
@@ -43,42 +43,42 @@ namespace CASE.Quermesse
             this.pictureIconeTela.Name = "pictureIconeTela";
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Size = new System.Drawing.Size(36, 36);
-            this.pictureIconeTela.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.pictureIconeTela.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.pictureIconeTela.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.pictureIconeTela.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.pictureIconeTela.BackColor = System.Drawing.Color.FromArgb(255, 232, 240, 252);
             this.pictureIconeTela.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.pictureIconeTela.TabIndex = 0;
             this.pictureIconeTela.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulEscala;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulEscala;
             this.pictureIconeTela.TabStop = false;
             // lblTitulo
             this.lblTitulo.Name = "lblTitulo";
             this.lblTitulo.Location = new System.Drawing.Point(80, 22);
             this.lblTitulo.Size = new System.Drawing.Size(850, 42);
-            this.lblTitulo.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 20F, (System.Drawing.FontStyle)1);
+            this.lblTitulo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.lblTitulo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.lblTitulo.ForeColor = System.Drawing.Color.FromArgb(255, 16, 43, 73);
             this.lblTitulo.TabIndex = 1;
             this.lblTitulo.Text = "Escala de trabalho";
-            this.lblTitulo.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblTitulo.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // lblSubtitulo
             this.lblSubtitulo.Name = "lblSubtitulo";
             this.lblSubtitulo.Location = new System.Drawing.Point(82, 66);
             this.lblSubtitulo.Size = new System.Drawing.Size(880, 24);
-            this.lblSubtitulo.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblSubtitulo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblSubtitulo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.lblSubtitulo.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblSubtitulo.TabIndex = 2;
             this.lblSubtitulo.Text = "Distribuição da equipe por setor, data e horário";
-            this.lblSubtitulo.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblSubtitulo.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // panelCorpo
             this.panelCorpo.Name = "panelCorpo";
             this.panelCorpo.Location = new System.Drawing.Point(30, 112);
             this.panelCorpo.Size = new System.Drawing.Size(990, 530);
-            this.panelCorpo.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelCorpo.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelCorpo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelCorpo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelCorpo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.panelCorpo.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelCorpo.TabIndex = 3;
@@ -86,8 +86,8 @@ namespace CASE.Quermesse
             this.panelFiltrosEscala.Name = "panelFiltrosEscala";
             this.panelFiltrosEscala.Location = new System.Drawing.Point(0, 0);
             this.panelFiltrosEscala.Size = new System.Drawing.Size(990, 95);
-            this.panelFiltrosEscala.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelFiltrosEscala.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelFiltrosEscala.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelFiltrosEscala.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelFiltrosEscala.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelFiltrosEscala.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelFiltrosEscala.TabIndex = 0;
@@ -95,19 +95,19 @@ namespace CASE.Quermesse
             this.lblSetorbarraca.Name = "lblSetorbarraca";
             this.lblSetorbarraca.Location = new System.Drawing.Point(18, 12);
             this.lblSetorbarraca.Size = new System.Drawing.Size(250, 24);
-            this.lblSetorbarraca.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblSetorbarraca.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblSetorbarraca.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblSetorbarraca.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblSetorbarraca.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblSetorbarraca.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblSetorbarraca.TabIndex = 0;
             this.lblSetorbarraca.Text = "Setor";
-            this.lblSetorbarraca.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblSetorbarraca.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // cmbFiltroEscala
             this.cmbFiltroEscala.Name = "cmbFiltroEscala";
             this.cmbFiltroEscala.Location = new System.Drawing.Point(18, 44);
             this.cmbFiltroEscala.Size = new System.Drawing.Size(280, 29);
-            this.cmbFiltroEscala.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.cmbFiltroEscala.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.cmbFiltroEscala.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.cmbFiltroEscala.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.cmbFiltroEscala.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.cmbFiltroEscala.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.cmbFiltroEscala.TabIndex = 1;
@@ -119,19 +119,19 @@ namespace CASE.Quermesse
             this.lblTurno.Name = "lblTurno";
             this.lblTurno.Location = new System.Drawing.Point(320, 12);
             this.lblTurno.Size = new System.Drawing.Size(200, 24);
-            this.lblTurno.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblTurno.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblTurno.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblTurno.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblTurno.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblTurno.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblTurno.TabIndex = 2;
             this.lblTurno.Text = "Turno";
-            this.lblTurno.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblTurno.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // cmbFiltroTurnoEscala
             this.cmbFiltroTurnoEscala.Name = "cmbFiltroTurnoEscala";
             this.cmbFiltroTurnoEscala.Location = new System.Drawing.Point(320, 44);
             this.cmbFiltroTurnoEscala.Size = new System.Drawing.Size(220, 29);
-            this.cmbFiltroTurnoEscala.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.cmbFiltroTurnoEscala.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.cmbFiltroTurnoEscala.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.cmbFiltroTurnoEscala.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.cmbFiltroTurnoEscala.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.cmbFiltroTurnoEscala.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.cmbFiltroTurnoEscala.TabIndex = 3;
@@ -143,8 +143,8 @@ namespace CASE.Quermesse
             this.btnNovaAlocacao.Name = "btnNovaAlocacao";
             this.btnNovaAlocacao.Location = new System.Drawing.Point(735, 34);
             this.btnNovaAlocacao.Size = new System.Drawing.Size(235, 40);
-            this.btnNovaAlocacao.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.btnNovaAlocacao.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)1);
+            this.btnNovaAlocacao.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnNovaAlocacao.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnNovaAlocacao.BackColor = System.Drawing.Color.FromArgb(255, 23, 105, 210);
             this.btnNovaAlocacao.ForeColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.btnNovaAlocacao.TabIndex = 4;
@@ -154,13 +154,13 @@ namespace CASE.Quermesse
             this.btnNovaAlocacao.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(255, 228, 234, 242);
             this.btnNovaAlocacao.UseVisualStyleBackColor = false;
             this.btnNovaAlocacao.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnNovaAlocacao.DialogResult = (System.Windows.Forms.DialogResult)0;
+            this.btnNovaAlocacao.DialogResult = System.Windows.Forms.DialogResult.None;
             // panelListaEscala
             this.panelListaEscala.Name = "panelListaEscala";
             this.panelListaEscala.Location = new System.Drawing.Point(0, 115);
             this.panelListaEscala.Size = new System.Drawing.Size(990, 415);
-            this.panelListaEscala.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelListaEscala.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelListaEscala.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelListaEscala.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelListaEscala.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelListaEscala.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelListaEscala.TabIndex = 1;
@@ -168,8 +168,8 @@ namespace CASE.Quermesse
             this.dgvEscala.Name = "dgvEscala";
             this.dgvEscala.Location = new System.Drawing.Point(12, 14);
             this.dgvEscala.Size = new System.Drawing.Size(966, 385);
-            this.dgvEscala.Anchor = (System.Windows.Forms.AnchorStyles)15;
-            this.dgvEscala.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.dgvEscala.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.dgvEscala.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.dgvEscala.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.dgvEscala.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.dgvEscala.TabIndex = 0;
@@ -216,13 +216,13 @@ namespace CASE.Quermesse
             this.labelAviso.Name = "labelAviso";
             this.labelAviso.Location = new System.Drawing.Point(32, 652);
             this.labelAviso.Size = new System.Drawing.Size(900, 28);
-            this.labelAviso.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.labelAviso.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.labelAviso.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.labelAviso.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.labelAviso.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.labelAviso.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.labelAviso.TabIndex = 4;
             this.labelAviso.Text = "";
-            this.labelAviso.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.labelAviso.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             this.Controls.Add(this.pictureIconeTela);
             this.Controls.Add(this.lblTitulo);
             this.Controls.Add(this.lblSubtitulo);
@@ -237,7 +237,7 @@ namespace CASE.Quermesse
             this.panelListaEscala.Controls.Add(this.dgvEscala);
             this.Controls.Add(this.labelAviso);
             this.Name = "EscalaControl";
-            this.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;

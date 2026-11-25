@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 
@@ -15,11 +15,11 @@ namespace CASE.Services
 
     public class NotificacaoService
     {
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
-        private readonly UsuarioService usuarioService = new UsuarioService();
-        private readonly EventoService eventoService = new EventoService();
-        private readonly SolicitacaoService solicitacaoService = new SolicitacaoService();
-        private readonly SolicitacaoEstoqueCentralService solicitacaoCentralService =
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private UsuarioService usuarioService = new UsuarioService();
+        private EventoService eventoService = new EventoService();
+        private SolicitacaoService solicitacaoService = new SolicitacaoService();
+        private SolicitacaoEstoqueCentralService solicitacaoCentralService =
             new SolicitacaoEstoqueCentralService();
 
         public List<NotificacaoPendente> ListarPendencias(Usuario usuario)

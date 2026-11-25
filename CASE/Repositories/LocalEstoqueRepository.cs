@@ -1,4 +1,6 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System;
+using CASE.Data;
 using CASE.Models;
 using MySql.Data.MySqlClient;
 
@@ -8,12 +10,12 @@ namespace CASE.Repositories
     {
         public int GarantirCentral(int idInstituicao)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
-                    using (var comando = new MySqlCommand(
+                    using (MySqlCommand comando = new MySqlCommand(
                         "SELECT id_instituicao FROM instituicao WHERE id_instituicao=@id FOR UPDATE",
 conexao,
 transacao))
@@ -21,23 +23,23 @@ transacao))
                         comando.Parameters.AddWithValue("@id", idInstituicao);
                         if (comando.ExecuteScalar() == null)
                         {
-                            throw new System.InvalidOperationException("Cadastre a instituição primeiro.");
+                            throw new InvalidOperationException("Cadastre a instituição primeiro.");
                         }
                     }
                     int idCentral = 0;
-                    using (var comando = new MySqlCommand(
+                    using (MySqlCommand comando = new MySqlCommand(
                         "SELECT id_local_estoque,ativo FROM vw_localestoque WHERE id_instituicao=@id AND eh_central=1 FOR UPDATE",
 conexao,
 transacao))
                     {
                         comando.Parameters.AddWithValue("@id", idInstituicao);
-                        using (var leitor = comando.ExecuteReader())
+                        using (MySqlDataReader leitor = comando.ExecuteReader())
                         {
                             while (leitor.Read())
                             {
                                 if (idCentral > 0 || !leitor.GetBoolean("ativo"))
                                 {
-                                    throw new System.InvalidOperationException("O estoque central precisa ser revisado: duplicado ou inativo.");
+                                    throw new InvalidOperationException("O estoque central precisa ser revisado: duplicado ou inativo.");
                                 }
                                 idCentral = leitor.GetInt32("id_local_estoque");
                             }
@@ -45,7 +47,7 @@ transacao))
                     }
                     if (idCentral == 0)
                     {
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "INSERT INTO localestoque(id_instituicao_central,nome,ativo,eh_geral_evento,id_evento) " +
                             "VALUES (@id,'Estoque central',1,0,NULL)",
 conexao,
@@ -64,75 +66,147 @@ transacao))
 
         public List<LocalEstoque> Listar()
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
-                "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento ORDER BY le.id_local_estoque",
-                ConverterLinha
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+                "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento ORDER BY le.id_local_estoque", conexaoBanco))
+                {
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<LocalEstoque> resultadoBanco = new List<LocalEstoque>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<LocalEstoque> ListarCentrais(int idInstituicao)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
                 "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento " +
-                "WHERE le.id_instituicao=@instituicao AND le.eh_central=1 ORDER BY le.id_local_estoque",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@instituicao", idInstituicao)
-            );
+                "WHERE le.id_instituicao=@instituicao AND le.eh_central=1 ORDER BY le.id_local_estoque", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@instituicao", idInstituicao);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<LocalEstoque> resultadoBanco = new List<LocalEstoque>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<LocalEstoque> ListarPorEvento(int idEvento)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
                 "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento " +
-                "WHERE le.id_evento=@evento ORDER BY le.id_local_estoque",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@evento", idEvento)
-            );
+                "WHERE le.id_evento=@evento ORDER BY le.id_local_estoque", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@evento", idEvento);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<LocalEstoque> resultadoBanco = new List<LocalEstoque>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<LocalEstoque> ListarGeraisPorEvento(int idEvento)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
                 "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento " +
                 "WHERE le.id_evento=@evento AND le.eh_geral_evento=1 " +
-                "ORDER BY le.id_local_estoque",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@evento", idEvento)
-            );
+                "ORDER BY le.id_local_estoque", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@evento", idEvento);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<LocalEstoque> resultadoBanco = new List<LocalEstoque>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public LocalEstoque BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT le.id_local_estoque,le.id_instituicao,le.id_evento,le.nome,le.ativo,le.eh_central,le.eh_geral_evento,ev.nome AS nome_evento " +
                 "FROM vw_localestoque le LEFT JOIN evento ev ON ev.id_evento=le.id_evento " +
-                "WHERE le.id_local_estoque=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+                "WHERE le.id_local_estoque=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(LocalEstoque item)
         {
-            return AcessoDados.Inserir(
-                "INSERT INTO localestoque (id_instituicao_central,id_evento,nome,ativo,eh_geral_evento) VALUES (@instituicao,@evento,@nome,@ativo,@geralEvento)",
-                comando => Vincular(comando, item)
-            );
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("INSERT INTO localestoque (id_instituicao_central,id_evento,nome,ativo,eh_geral_evento) VALUES (@instituicao,@evento,@nome,@ativo,@geralEvento)", conexaoBanco))
+                {
+                    Vincular(comandoBanco, item);
+                    comandoBanco.ExecuteNonQuery();
+                    resultadoBanco = Convert.ToInt32(comandoBanco.LastInsertedId);
+                }
+            }
+            return resultadoBanco;
         }
 
         public bool Atualizar(LocalEstoque item)
         {
-            return AcessoDados.Executar(
-                "UPDATE localestoque SET nome=@nome,ativo=@ativo WHERE id_local_estoque=@id AND id_instituicao_central <=> @instituicao AND id_evento <=> @evento AND eh_geral_evento=@geralEvento",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("UPDATE localestoque SET nome=@nome,ativo=@ativo WHERE id_local_estoque=@id AND id_instituicao_central <=> @instituicao AND id_evento <=> @evento AND eh_geral_evento=@geralEvento", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@id", item.IdLocalEstoque);
-                    Vincular(comando, item);
-                }) > 0;
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", item.IdLocalEstoque);
+                    Vincular(comandoBanco, item);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco > 0;
 
         }
 

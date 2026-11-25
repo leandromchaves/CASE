@@ -1,5 +1,5 @@
+﻿using System.Data;
 using System;
-using System.Data;
 using CASE.Data;
 using MySql.Data.MySqlClient;
 
@@ -14,15 +14,21 @@ namespace CASE.Repositories
 
         public DataTable Escalas(string perfil, int pessoa, int evento)
         {
-            string sql = "SELECT e.id_escala,eq.id_pessoa,p.nome AS pessoa_nome,ev.id_evento,ev.nome AS evento_nome,eq.ativo,e.situacao,j.id_jornada,j.data AS data_jornada,s.id_setor,ev.situacao AS situacao_evento, " +
+            // Junta os vínculos da escala para mostrar pessoa, setor, turno e evento.
+            string sql = "SELECT e.id_escala,eq.id_pessoa,p.nome AS pessoa_nome," +
+                "ev.id_evento,ev.nome AS evento_nome,eq.ativo,e.situacao," +
+                "j.id_jornada,j.data AS data_jornada,s.id_setor,ev.situacao AS situacao_evento, " +
                 "CONCAT(s.nome,' · ',DATE_FORMAT(j.data,'%d/%m/%Y'),' · ',t.nome,' · ',TIME_FORMAT(e.entrada_prevista,'%H:%i'),' – ',TIME_FORMAT(e.saida_prevista,'%H:%i')) AS descricao_curta, " +
                 "CONCAT(ev.nome,' / ',s.nome,' / ',DATE_FORMAT(j.data,'%d/%m/%Y')," +
                 "' / ',p.nome,' / ',e.entrada_prevista,' - ',e.saida_prevista) AS descricao," +
                 "CONCAT(s.nome,' / ',DATE_FORMAT(j.data,'%d/%m/%Y'),' / ',t.nome) AS descricao_jornada " +
-                "FROM escala e JOIN equipeevento eq ON eq.id_equipe=e.id_equipe " +
+                "FROM escala e " +
+                "JOIN equipeevento eq ON eq.id_equipe=e.id_equipe " +
                 "JOIN pessoa p ON p.id_pessoa=eq.id_pessoa " +
-                "JOIN jornadasetor j ON j.id_jornada=e.id_jornada JOIN turno t ON t.id_turno=j.id_turno " +
-                "JOIN setor s ON s.id_setor=j.id_setor JOIN evento ev ON ev.id_evento=s.id_evento " +
+                "JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +
+                "JOIN turno t ON t.id_turno=j.id_turno " +
+                "JOIN setor s ON s.id_setor=j.id_setor " +
+                "JOIN evento ev ON ev.id_evento=s.id_evento " +
                 "WHERE eq.id_evento=ev.id_evento AND " + Escopo +
                 " AND (@perfil<>'Membro' OR LOWER(e.situacao)<>'cancelada') " +
                 "AND (@evento=0 OR ev.id_evento=@evento) ORDER BY j.data,s.nome,p.nome";
@@ -269,8 +275,8 @@ namespace CASE.Repositories
         private static DataTable Consultar(string sql, string perfil, int pessoa, int evento,
             DateTime inicio, DateTime fim)
         {
-            using (var conexao = Conexao.CriarConexao())
-            using (var comando = new MySqlCommand(sql, conexao))
+            using (MySqlConnection conexao = Conexao.CriarConexao())
+            using (MySqlCommand comando = new MySqlCommand(sql, conexao))
             {
                 comando.Parameters.AddWithValue("@perfil", perfil);
                 comando.Parameters.AddWithValue("@pessoa", pessoa);
@@ -278,7 +284,7 @@ namespace CASE.Repositories
                 comando.Parameters.AddWithValue("@inicio", inicio.Date);
                 comando.Parameters.AddWithValue("@fim", fim.Date.AddDays(1));
                 conexao.Open();
-                using (var leitor = comando.ExecuteReader())
+                using (MySqlDataReader leitor = comando.ExecuteReader())
                 {
                     DataTable dados = new DataTable();
                     dados.Load(leitor);

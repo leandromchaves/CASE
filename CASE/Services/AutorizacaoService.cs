@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -10,15 +10,15 @@ namespace CASE.Services
         private const string PerfilAdministrador = "Administrador";
         private const string PerfilGerente = "Gerente";
         private const string PerfilMembro = "Membro";
-        private readonly UsuarioRepository usuarioRepository = new UsuarioRepository();
-        private readonly PerfilSistemaRepository perfilSistemaRepository = new PerfilSistemaRepository();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
-        private readonly SetorRepository setorRepository = new SetorRepository();
-        private readonly EquipeEventoRepository equipeEventoRepository = new EquipeEventoRepository();
-        private readonly JornadaSetorRepository jornadaSetorRepository = new JornadaSetorRepository();
-        private readonly EscalaRepository escalaRepository = new EscalaRepository();
-        private readonly LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
-        private readonly EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
+        private UsuarioRepository usuarioRepository = new UsuarioRepository();
+        private PerfilSistemaRepository perfilSistemaRepository = new PerfilSistemaRepository();
+        private EventoRepository eventoRepository = new EventoRepository();
+        private SetorRepository setorRepository = new SetorRepository();
+        private EquipeEventoRepository equipeEventoRepository = new EquipeEventoRepository();
+        private JornadaSetorRepository jornadaSetorRepository = new JornadaSetorRepository();
+        private EscalaRepository escalaRepository = new EscalaRepository();
+        private LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
+        private EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
 
         internal Usuario ValidarUsuarioEObterPerfil(Usuario usuarioDaSessao, out string nomePerfil)
         {

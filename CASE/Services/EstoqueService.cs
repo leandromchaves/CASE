@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,9 +7,9 @@ namespace CASE.Services
 {
     public class EstoqueService
     {
-        private readonly EstoqueRepository estoqueRepository = new EstoqueRepository();
-        private readonly LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private EstoqueRepository estoqueRepository = new EstoqueRepository();
+        private LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public void ConfigurarQuantidadesAlvo(Usuario usuario, int idEstoque, decimal minima, decimal ideal)
         {

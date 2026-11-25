@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Configuration;
 using MySql.Data.MySqlClient;
 
@@ -12,7 +8,7 @@ namespace CASE.Data
     {
         public static MySqlConnection CriarConexao()
         {
-            var configuracao = ConfigurationManager
+            ConnectionStringSettings configuracao = ConfigurationManager
                 .ConnectionStrings["CaseDb"];
 
             if (configuracao == null)

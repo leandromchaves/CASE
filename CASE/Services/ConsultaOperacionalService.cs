@@ -1,16 +1,17 @@
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
+using System;
 using CASE.Models;
 using CASE.Repositories;
+using CASE.Utils;
 
 namespace CASE.Services
 {
     public class ConsultaOperacionalService
     {
-        private readonly AutorizacaoService autorizacao = new AutorizacaoService();
-        private readonly ConsultaOperacionalRepository repository = new ConsultaOperacionalRepository();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
+        private AutorizacaoService autorizacao = new AutorizacaoService();
+        private ConsultaOperacionalRepository repository = new ConsultaOperacionalRepository();
+        private EventoRepository eventoRepository = new EventoRepository();
 
         public DataTable Escalas(Usuario usuario, int idEvento)
         {
@@ -218,7 +219,7 @@ namespace CASE.Services
             DataTable dados = Relatorio(usuario, tipo, inicio, fim);
             string perfil;
             Usuario atual = autorizacao.ValidarUsuarioEObterPerfil(usuario, out perfil);
-            var contexto = new CASE.Utils.ContextoRelatorio
+            var contexto = new ContextoRelatorio
             {
                 Titulo = tipo,
                 TipoGrafico = tipoGrafico,
@@ -231,15 +232,15 @@ namespace CASE.Services
             };
             if (formato == "pdf")
             {
-                CASE.Utils.ExportadorRelatorio.ExportarPdf(dados, caminho, contexto);
+                ExportadorRelatorio.ExportarPdf(dados, caminho, contexto);
             }
             else if (formato == "xlsx")
             {
-                CASE.Utils.ExportadorRelatorio.ExportarExcel(dados, caminho, contexto);
+                ExportadorRelatorio.ExportarExcel(dados, caminho, contexto);
             }
             else if (formato == "csv")
             {
-                CASE.Utils.ExportadorRelatorio.ExportarCsv(dados, caminho);
+                ExportadorRelatorio.ExportarCsv(dados, caminho);
             }
             else throw new ArgumentException("Selecione CSV, Excel ou PDF.");
         }
@@ -255,7 +256,7 @@ namespace CASE.Services
             {
                 dados = Movimentacoes(usuario, inicio, fim);
             }
-            CASE.Utils.ExportadorRelatorio.ExportarCsv(dados, caminho);
+            ExportadorRelatorio.ExportarCsv(dados, caminho);
         }
 
         private static void ValidarPeriodo(DateTime inicio, DateTime fim)

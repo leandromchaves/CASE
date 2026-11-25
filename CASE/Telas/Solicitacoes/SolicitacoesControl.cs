@@ -1,7 +1,8 @@
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -10,18 +11,16 @@ namespace CASE.Quermesse
 {
     public partial class SolicitacoesControl : UserControl
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly Evento eventoSelecionado;
-        private readonly SolicitacaoService solicitacaoService = new SolicitacaoService();
+        private Usuario usuarioAutenticado;
+        private Evento eventoSelecionado;
+        private SolicitacaoService solicitacaoService = new SolicitacaoService();
         private bool gerenteAutorizado;
         private bool administrador;
         private bool exibindoPedidosCentrais;
         private bool mostrandoReposicoesAdministrativas;
         private TextBox pesquisa;
-        private readonly Button btnAtualizarSolicitacoes = new Button();
-
+        private Button btnAtualizarSolicitacoes = new Button();
         public event Action<int> AnalisarPedidoCentral;
-
         public SolicitacoesControl() : this(null, null)
         {
         }
@@ -29,9 +28,10 @@ namespace CASE.Quermesse
         public SolicitacoesControl(Usuario usuario, Evento evento)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             FrontendTheme.Aplicar(this);
-            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarSolicitacao", "Pesquisar pedido ou produto",
-                texto => AplicarFiltros());
+            pesquisa = VisualUtils.AdicionarPesquisa(this, "txtPesquisarSolicitacao", "Pesquisar pedido ou produto", Preparar_AdicionarPesquisa);
             usuarioAutenticado = usuario;
             eventoSelecionado = evento;
             cmbFiltroSolicitacoes.Items.Clear();
@@ -39,7 +39,6 @@ namespace CASE.Quermesse
             btnDetalhesSolicitacao.Text = "Detalhes / analisar";
             dgvSolicitacoesQuermesse.CellDoubleClick += dgvSolicitacoesQuermesse_CellDoubleClick;
             ConfigurarBotaoAtualizar();
-
             if (usuarioAutenticado == null)
             {
                 btnNovaSolicitacao.Enabled = false;
@@ -51,17 +50,9 @@ namespace CASE.Quermesse
             try
             {
                 string nomePerfil;
-                new AutorizacaoService().ValidarUsuarioEObterPerfil(
-                    usuarioAutenticado,
-                    out nomePerfil);
-                gerenteAutorizado = string.Equals(
-                    nomePerfil,
-                    "Gerente",
-                    StringComparison.OrdinalIgnoreCase);
-                administrador = string.Equals(
-                    nomePerfil,
-                    "Administrador",
-                    StringComparison.OrdinalIgnoreCase);
+                new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out nomePerfil);
+                gerenteAutorizado = string.Equals(nomePerfil, "Gerente", StringComparison.OrdinalIgnoreCase);
+                administrador = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
             }
             catch (Exception)
             {
@@ -80,7 +71,8 @@ namespace CASE.Quermesse
                 };
                 btnNovaSolicitacao.Parent.Controls.Add(alternar);
                 VisualUtils.EstilizarBotao(alternar);
-                alternar.Click += (s, e) =>
+                alternar.Click += Tratar_alternar_Click;
+                void Tratar_alternar_Click(object s, EventArgs e)
                 {
                     if (administrador)
                     {
@@ -92,8 +84,9 @@ namespace CASE.Quermesse
                         exibindoPedidosCentrais = !exibindoPedidosCentrais;
                         AtualizarTextoBotaoAlternar();
                     }
+
                     CarregarSolicitacoes();
-                };
+                }
             }
 
             CarregarSolicitacoes();
@@ -126,6 +119,7 @@ namespace CASE.Quermesse
                     if (formulario.ShowDialog(this) == DialogResult.OK)
                         CarregarSolicitacoes();
                 }
+
                 return;
             }
 
@@ -137,8 +131,7 @@ namespace CASE.Quermesse
                     return;
                 }
 
-                using (SolicitacaoEstoqueCentralForm formulario =
-                    new SolicitacaoEstoqueCentralForm(usuarioAutenticado, eventoDoPedido))
+                using (SolicitacaoEstoqueCentralForm formulario = new SolicitacaoEstoqueCentralForm(usuarioAutenticado, eventoDoPedido))
                 {
                     if (formulario.ShowDialog(this) == DialogResult.OK)
                     {
@@ -201,7 +194,6 @@ namespace CASE.Quermesse
                 dialogo.MaximizeBox = false;
                 dialogo.ClientSize = new Size(440, 155);
                 dialogo.Font = new Font("Segoe UI", 9F);
-
                 Label instrucao = new Label
                 {
                     Text = "Selecione o evento que precisa de produtos do estoque central.",
@@ -214,14 +206,12 @@ namespace CASE.Quermesse
                 selecao.DisplayMember = "Nome";
                 selecao.DataSource = eventos;
                 selecao.SetBounds(20, 62, 400, 32);
-
                 confirmar.Text = "Continuar";
                 confirmar.DialogResult = DialogResult.OK;
                 confirmar.SetBounds(238, 108, 88, 32);
                 cancelar.Text = "Cancelar";
                 cancelar.DialogResult = DialogResult.Cancel;
                 cancelar.SetBounds(332, 108, 88, 32);
-
                 dialogo.Controls.Add(instrucao);
                 dialogo.Controls.Add(selecao);
                 dialogo.Controls.Add(confirmar);
@@ -232,7 +222,6 @@ namespace CASE.Quermesse
                 VisualUtils.EstilizarBotao(cancelar);
                 dialogo.AcceptButton = confirmar;
                 dialogo.CancelButton = cancelar;
-
                 if (dialogo.ShowDialog(this) == DialogResult.OK)
                 {
                     return selecao.SelectedItem as Evento;
@@ -244,14 +233,10 @@ namespace CASE.Quermesse
 
         private void AtualizarTextoBotaoAlternar()
         {
-            Control[] alternar = Controls.Find(
-                "btnAlternarSolicitacoesGerente",
-                true);
+            Control[] alternar = Controls.Find("btnAlternarSolicitacoesGerente", true);
             if (alternar.Length > 0)
             {
-                alternar[0].Text = exibindoPedidosCentrais
-                    ? "Reposições dos setores"
-                    : "Pedidos ao central";
+                alternar[0].Text = exibindoPedidosCentrais ? "Reposições dos setores" : "Pedidos ao central";
             }
         }
 
@@ -264,23 +249,16 @@ namespace CASE.Quermesse
         {
             btnAtualizarSolicitacoes.Name = "btnAtualizarSolicitacoes";
             btnAtualizarSolicitacoes.Text = "Atualizar lista";
-            btnAtualizarSolicitacoes.Bounds = new Rectangle(
-                btnDetalhesSolicitacao.Left - 145,
-                btnDetalhesSolicitacao.Top,
-                130,
-                btnDetalhesSolicitacao.Height);
+            btnAtualizarSolicitacoes.Bounds = new Rectangle(btnDetalhesSolicitacao.Left - 145, btnDetalhesSolicitacao.Top, 130, btnDetalhesSolicitacao.Height);
             btnAtualizarSolicitacoes.Anchor = AnchorStyles.Top | AnchorStyles.Right;
             btnAtualizarSolicitacoes.Enabled = usuarioAutenticado != null;
-            btnAtualizarSolicitacoes.Click += (s, e) => CarregarSolicitacoes();
+            btnAtualizarSolicitacoes.Click += btnAtualizarSolicitacoes_Click;
             panelListaSolicitacoes.Controls.Add(btnAtualizarSolicitacoes);
-            lblAcompanhamentodospedidos.Width = btnAtualizarSolicitacoes.Left -
-                lblAcompanhamentodospedidos.Left - 16;
+            lblAcompanhamentodospedidos.Width = btnAtualizarSolicitacoes.Left - lblAcompanhamentodospedidos.Left - 16;
             VisualUtils.EstilizarBotao(btnAtualizarSolicitacoes);
         }
 
-        private void dgvSolicitacoesQuermesse_CellDoubleClick(
-            object sender,
-            DataGridViewCellEventArgs e)
+        private void dgvSolicitacoesQuermesse_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex >= 0)
             {
@@ -290,7 +268,6 @@ namespace CASE.Quermesse
 
         private void AbrirSolicitacaoSelecionada()
         {
-
             if (dgvSolicitacoesQuermesse.SelectedRows.Count == 0)
             {
                 labelAviso.Text = "Selecione uma solicitação.";
@@ -299,18 +276,13 @@ namespace CASE.Quermesse
 
             if (exibindoPedidosCentrais)
             {
-                SolicitacaoEstoqueCentral pedidoCentral =
-                    dgvSolicitacoesQuermesse.SelectedRows[0].Tag as SolicitacaoEstoqueCentral;
-
+                SolicitacaoEstoqueCentral pedidoCentral = dgvSolicitacoesQuermesse.SelectedRows[0].Tag as SolicitacaoEstoqueCentral;
                 if (pedidoCentral != null)
                 {
                     if (administrador && AnalisarPedidoCentral != null)
                     {
                         SolicitacaoEstoqueCentralService service = new SolicitacaoEstoqueCentralService();
-                        if (pedidoCentral.Situacao == SituacoesSolicitacao.Pendente ||
-                            (pedidoCentral.Situacao == SituacoesSolicitacao.Aprovada &&
-                            !service.BuscarIdTransferenciaAtendimento(usuarioAutenticado,
-                                pedidoCentral.IdSolicitacaoEstoqueCentral).HasValue))
+                        if (pedidoCentral.Situacao == SituacoesSolicitacao.Pendente || (pedidoCentral.Situacao == SituacoesSolicitacao.Aprovada && !service.BuscarIdTransferenciaAtendimento(usuarioAutenticado, pedidoCentral.IdSolicitacaoEstoqueCentral).HasValue))
                         {
                             AnalisarPedidoCentral(pedidoCentral.IdSolicitacaoEstoqueCentral);
                         }
@@ -318,6 +290,7 @@ namespace CASE.Quermesse
                         {
                             MostrarDetalhesCentral(pedidoCentral.IdSolicitacaoEstoqueCentral);
                         }
+
                         CarregarSolicitacoes();
                     }
                     else
@@ -330,16 +303,12 @@ namespace CASE.Quermesse
             }
 
             Solicitacao solicitacao = dgvSolicitacoesQuermesse.SelectedRows[0].Tag as Solicitacao;
-
             if (solicitacao == null)
             {
                 return;
             }
 
-            if (string.Equals(
-                solicitacao.Situacao,
-                SituacoesSolicitacao.Pendente,
-                StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(solicitacao.Situacao, SituacoesSolicitacao.Pendente, StringComparison.OrdinalIgnoreCase))
             {
                 if (gerenteAutorizado || administrador)
                 {
@@ -353,10 +322,7 @@ namespace CASE.Quermesse
                 return;
             }
 
-            if (string.Equals(
-                solicitacao.Situacao,
-                SituacoesSolicitacao.Aprovada,
-                StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(solicitacao.Situacao, SituacoesSolicitacao.Aprovada, StringComparison.OrdinalIgnoreCase))
             {
                 if (!gerenteAutorizado && !administrador)
                 {
@@ -397,6 +363,7 @@ namespace CASE.Quermesse
                     return;
                 }
             }
+
             labelAviso.Text = "O pedido não está mais disponível. Atualize as pendências.";
         }
 
@@ -409,10 +376,7 @@ namespace CASE.Quermesse
                     resposta = formulario.ShowDialog(this);
                 if (resposta == DialogResult.Yes)
                 {
-                    solicitacaoService.Aprovar(
-                        usuarioAutenticado,
-                        solicitacao.IdSolicitacao,
-                        null);
+                    solicitacaoService.Aprovar(usuarioAutenticado, solicitacao.IdSolicitacao, null);
                     CarregarSolicitacoes();
                     labelAviso.Text = "Solicitação aprovada. O estoque não foi movimentado.";
                     FeedbackUsuario.Exibir(this, "Solicitação aprovada. Abra o pedido para efetivar a transferência ao setor.", TipoFeedback.Sucesso);
@@ -420,16 +384,12 @@ namespace CASE.Quermesse
                 else if (resposta == DialogResult.No)
                 {
                     string justificativa = SolicitarJustificativa();
-
                     if (string.IsNullOrWhiteSpace(justificativa))
                     {
                         return;
                     }
 
-                    solicitacaoService.Rejeitar(
-                        usuarioAutenticado,
-                        solicitacao.IdSolicitacao,
-                        justificativa);
+                    solicitacaoService.Rejeitar(usuarioAutenticado, solicitacao.IdSolicitacao, justificativa);
                     CarregarSolicitacoes();
                     labelAviso.Text = "Solicitação rejeitada.";
                     FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
@@ -442,7 +402,7 @@ namespace CASE.Quermesse
             catch (InvalidOperationException ex)
             {
                 CarregarSolicitacoes();
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar as solicitações.", labelAviso);
+                FeedbackUsuario.ExibirErro(this, ex, "Não foi possível atualizar as solicitações.", labelAviso);
             }
             catch (Exception)
             {
@@ -464,17 +424,35 @@ namespace CASE.Quermesse
                 dialogo.ClientSize = new Size(420, 150);
                 dialogo.MinimizeBox = false;
                 dialogo.MaximizeBox = false;
-
                 campo.Multiline = true;
                 campo.Name = "txtJustificativaRejeicao";
                 campo.MaxLength = 500;
                 campo.SetBounds(12, 12, 396, 72);
-
                 confirmar.Text = "Rejeitar";
-                Label erroMotivo = new Label { Name = "lblErroJustificativa", ForeColor = Color.Firebrick };
+                Label erroMotivo = new Label
+                {
+                    Name = "lblErroJustificativa",
+                    ForeColor = Color.Firebrick
+                };
                 erroMotivo.SetBounds(12, 85, 396, 17);
                 dialogo.Controls.Add(erroMotivo);
-                confirmar.Click += (s, e) =>
+                confirmar.Click += Tratar_confirmar_Click;
+                confirmar.SetBounds(222, 102, 88, 30);
+                cancelar.Text = "Cancelar";
+                cancelar.DialogResult = DialogResult.Cancel;
+                cancelar.SetBounds(320, 102, 88, 30);
+                dialogo.Controls.Add(campo);
+                dialogo.Controls.Add(confirmar);
+                dialogo.Controls.Add(cancelar);
+                FrontendTheme.Aplicar(dialogo);
+                dialogo.AcceptButton = confirmar;
+                dialogo.CancelButton = cancelar;
+                if (dialogo.ShowDialog(this) == DialogResult.OK)
+                {
+                    return campo.Text.Trim();
+                }
+
+                void Tratar_confirmar_Click(object s, EventArgs e)
                 {
                     if (string.IsNullOrWhiteSpace(campo.Text))
                     {
@@ -482,24 +460,8 @@ namespace CASE.Quermesse
                         campo.Focus();
                         return;
                     }
+
                     dialogo.DialogResult = DialogResult.OK;
-                };
-                confirmar.SetBounds(222, 102, 88, 30);
-
-                cancelar.Text = "Cancelar";
-                cancelar.DialogResult = DialogResult.Cancel;
-                cancelar.SetBounds(320, 102, 88, 30);
-
-                dialogo.Controls.Add(campo);
-                dialogo.Controls.Add(confirmar);
-                dialogo.Controls.Add(cancelar);
-                FrontendTheme.Aplicar(dialogo);
-                dialogo.AcceptButton = confirmar;
-                dialogo.CancelButton = cancelar;
-
-                if (dialogo.ShowDialog(this) == DialogResult.OK)
-                {
-                    return campo.Text.Trim();
                 }
             }
 
@@ -510,9 +472,7 @@ namespace CASE.Quermesse
         {
             try
             {
-                new TransferenciaEstoqueService().AtenderSolicitacaoMembro(
-                    usuarioAutenticado,
-                    solicitacao.IdSolicitacao);
+                new TransferenciaEstoqueService().AtenderSolicitacaoMembro(usuarioAutenticado, solicitacao.IdSolicitacao);
                 CarregarSolicitacoes();
                 labelAviso.Text = "Solicitação atendida integralmente por transferência.";
                 FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
@@ -523,7 +483,7 @@ namespace CASE.Quermesse
             }
             catch (InvalidOperationException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível concluir a solicitação.", labelAviso);
+                FeedbackUsuario.ExibirErro(this, ex, "Não foi possível concluir a solicitação.", labelAviso);
             }
             catch (Exception)
             {
@@ -556,14 +516,15 @@ namespace CASE.Quermesse
             CarregarSolicitacoes();
             int indiceSetor = cmbFiltroSolicitacoes.FindStringExact(setor);
             int indiceSituacao = cmbStatusListaSolicitacoes.FindStringExact(situacao);
-            if (indiceSetor >= 0) cmbFiltroSolicitacoes.SelectedIndex = indiceSetor;
-            if (indiceSituacao >= 0) cmbStatusListaSolicitacoes.SelectedIndex = indiceSituacao;
+            if (indiceSetor >= 0)
+                cmbFiltroSolicitacoes.SelectedIndex = indiceSetor;
+            if (indiceSituacao >= 0)
+                cmbStatusListaSolicitacoes.SelectedIndex = indiceSituacao;
         }
 
         private void CarregarSolicitacoes()
         {
             btnNovaSolicitacao.Enabled = false;
-
             if (administrador && !mostrandoReposicoesAdministrativas)
             {
                 CarregarPedidosParaAdministrador();
@@ -606,21 +567,11 @@ namespace CASE.Quermesse
                 colSolicitacoesQuermesseQtd.Visible = false;
                 List<Solicitacao> solicitacoes = ObterSolicitacoesPermitidas();
                 var linhasCarregadas = new List<DataGridViewRow>();
-
                 foreach (Solicitacao solicitacao in solicitacoes)
                 {
-                    SolicitacaoService.ResumoSolicitacao resumo = solicitacaoService.ObterResumo(
-                        usuarioAutenticado,
-                        solicitacao.IdSolicitacao);
+                    SolicitacaoService.ResumoSolicitacao resumo = solicitacaoService.ObterResumo(usuarioAutenticado, solicitacao.IdSolicitacao);
                     var linhaCarregada = new DataGridViewRow();
-                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse,
-                        solicitacao.DataHora.ToString("dd/MM/yyyy HH:mm"),
-                        resumo.Solicitante,
-                        resumo.Evento + " · " + resumo.Setor,
-                        CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Tipo),
-                        resumo.Produtos,
-                        string.Empty,
-                        CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Situacao));
+                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse, solicitacao.DataHora.ToString("dd/MM/yyyy HH:mm"), resumo.Solicitante, resumo.Evento + " · " + resumo.Setor, TextoInterface.FormatarValorBanco(solicitacao.Tipo), resumo.Produtos, string.Empty, TextoInterface.FormatarValorBanco(solicitacao.Situacao));
                     linhaCarregada.Tag = solicitacao;
                     linhasCarregadas.Add(linhaCarregada);
                 }
@@ -629,7 +580,6 @@ namespace CASE.Quermesse
                 dgvSolicitacoesQuermesse.Rows.Clear();
                 dgvSolicitacoesQuermesse.Rows.AddRange(linhasCarregadas.ToArray());
                 btnNovaSolicitacao.Enabled = administrador || gerenteAutorizado || membroComEscala;
-
                 if (gerenteAutorizado)
                 {
                     btnNovaSolicitacao.Text = "+ Solicitar ao central";
@@ -642,11 +592,10 @@ namespace CASE.Quermesse
                     btnNovaSolicitacao.Text = "+ Nova solicitação";
                     btnDetalhesSolicitacao.Text = "Consultar detalhes";
                 }
+
                 ConfigurarFiltros();
                 AplicarFiltros();
-                labelAviso.Text = !administrador && !gerenteAutorizado && !membroComEscala
-                    ? "Sem escala atribuída. Se você já está vinculado ao evento, o estoque geral aparece em Estoque; para solicitar reposição de um setor, o gerente precisa definir seu setor, data e turno."
-                    : solicitacoes.Count + " solicitação(ões) carregada(s).";
+                labelAviso.Text = !administrador && !gerenteAutorizado && !membroComEscala ? "Sem escala atribuída. Se você já está vinculado ao evento, o estoque geral aparece em Estoque; para solicitar reposição de um setor, o gerente precisa definir seu setor, data e turno." : solicitacoes.Count + " solicitação(ões) carregada(s).";
             }
             catch (UnauthorizedAccessException)
             {
@@ -670,19 +619,18 @@ namespace CASE.Quermesse
             colSolicitacoesQuermesseSetor.HeaderText = "Evento";
             colSolicitacoesQuermesseQtd.Visible = true;
             colSolicitacoesQuermesseQtd.HeaderText = "Atendimento";
-
             try
             {
                 SolicitacaoEstoqueCentralService service = new SolicitacaoEstoqueCentralService();
                 List<SolicitacaoEstoqueCentral> pedidos = service.ListarParaAdministrador(usuarioAutenticado);
                 if (eventoSelecionado != null)
-                    pedidos = pedidos.FindAll(pedido => pedido.IdEvento == eventoSelecionado.IdEvento);
-
+                    pedidos = pedidos.FindAll(CarregarPedidosParaAdministrador_FindAll);
                 Dictionary<int, string> solicitantes = new Dictionary<int, string>();
                 foreach (Usuario usuario in new UsuarioService().ListarUsuariosAdministrativos(usuarioAutenticado))
                 {
                     solicitantes[usuario.IdUsuario] = usuario.Login;
                 }
+
                 Dictionary<int, string> eventos = new Dictionary<int, string>();
                 foreach (Evento evento in new EventoService().Listar(usuarioAutenticado))
                 {
@@ -697,15 +645,7 @@ namespace CASE.Quermesse
                     solicitantes.TryGetValue(pedido.IdUsuarioSolicitante, out solicitante);
                     eventos.TryGetValue(pedido.IdEvento, out evento);
                     var linhaCarregada = new DataGridViewRow();
-                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse,
-                        pedido.DataHora.ToString("dd/MM/yyyy HH:mm"),
-                        string.IsNullOrWhiteSpace(solicitante) ? "Usuário indisponível" : solicitante,
-                        evento ?? "Evento " + pedido.IdEvento,
-                        CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Tipo),
-                        MontarResumoItensCentrais(pedido),
-                        service.BuscarIdTransferenciaAtendimento(usuarioAutenticado,
-                            pedido.IdSolicitacaoEstoqueCentral).HasValue ? "Concluído" : "—",
-                        CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Situacao));
+                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse, pedido.DataHora.ToString("dd/MM/yyyy HH:mm"), string.IsNullOrWhiteSpace(solicitante) ? "Usuário indisponível" : solicitante, evento ?? "Evento " + pedido.IdEvento, TextoInterface.FormatarValorBanco(pedido.Tipo), MontarResumoItensCentrais(pedido), service.BuscarIdTransferenciaAtendimento(usuarioAutenticado, pedido.IdSolicitacaoEstoqueCentral).HasValue ? "Concluído" : "—", TextoInterface.FormatarValorBanco(pedido.Situacao));
                     linhaCarregada.Tag = pedido;
                     linhasCarregadas.Add(linhaCarregada);
                 }
@@ -716,9 +656,7 @@ namespace CASE.Quermesse
                 cmbFiltroSolicitacoes.Items[0] = "Todos os eventos";
                 AplicarFiltros();
                 btnDetalhesSolicitacao.Enabled = pedidos.Count > 0;
-                labelAviso.Text = pedidos.Count == 0
-                    ? "Nenhum pedido ao estoque central. Use Atualizar pedidos para consultar novamente."
-                    : "Todos os pedidos autorizados, incluindo o histórico. Selecione uma linha para consultar, analisar ou atender.";
+                labelAviso.Text = pedidos.Count == 0 ? "Nenhum pedido ao estoque central. Use Atualizar pedidos para consultar novamente." : "Todos os pedidos autorizados, incluindo o histórico. Selecione uma linha para consultar, analisar ou atender.";
             }
             catch (UnauthorizedAccessException)
             {
@@ -735,9 +673,7 @@ namespace CASE.Quermesse
         {
             try
             {
-                List<SolicitacaoEstoqueCentral> pedidos =
-                    new SolicitacaoEstoqueCentralService().ListarDoGerente(
-                        usuarioAutenticado);
+                List<SolicitacaoEstoqueCentral> pedidos = new SolicitacaoEstoqueCentralService().ListarDoGerente(usuarioAutenticado);
                 List<Evento> eventos = new EventoService().Listar(usuarioAutenticado);
                 Dictionary<int, string> nomesEventos = new Dictionary<int, string>();
                 foreach (Evento evento in eventos)
@@ -747,8 +683,7 @@ namespace CASE.Quermesse
 
                 if (eventoSelecionado != null)
                 {
-                    pedidos = pedidos.FindAll(pedido =>
-                        pedido.IdEvento == eventoSelecionado.IdEvento);
+                    pedidos = pedidos.FindAll(CarregarPedidosCentrais_FindAll);
                 }
 
                 var linhasCarregadas = new List<DataGridViewRow>();
@@ -760,15 +695,9 @@ namespace CASE.Quermesse
                     {
                         nomeEvento = "Evento " + pedido.IdEvento;
                     }
+
                     var linhaCarregada = new DataGridViewRow();
-                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse,
-                        pedido.DataHora.ToString("dd/MM/yyyy HH:mm"),
-                        new SolicitacaoEstoqueCentralService().ConsultarLoginSolicitante(usuarioAutenticado, pedido.IdSolicitacaoEstoqueCentral),
-                        nomeEvento,
-                        CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Tipo),
-                        resumo,
-                        string.Empty,
-                        CASE.Utils.TextoInterface.FormatarValorBanco(pedido.Situacao));
+                    linhaCarregada.CreateCells(dgvSolicitacoesQuermesse, pedido.DataHora.ToString("dd/MM/yyyy HH:mm"), new SolicitacaoEstoqueCentralService().ConsultarLoginSolicitante(usuarioAutenticado, pedido.IdSolicitacaoEstoqueCentral), nomeEvento, TextoInterface.FormatarValorBanco(pedido.Tipo), resumo, string.Empty, TextoInterface.FormatarValorBanco(pedido.Situacao));
                     linhaCarregada.Tag = pedido;
                     linhasCarregadas.Add(linhaCarregada);
                 }
@@ -788,6 +717,7 @@ namespace CASE.Quermesse
                 {
                     cmbFiltroSolicitacoes.Items[0] = "Todos os eventos";
                 }
+
                 AplicarFiltros();
                 labelAviso.Text = pedidos.Count + " pedido(s) ao estoque central.";
             }
@@ -804,18 +734,12 @@ namespace CASE.Quermesse
         private string MontarResumoItensCentrais(SolicitacaoEstoqueCentral pedido)
         {
             SolicitacaoEstoqueCentralService service = new SolicitacaoEstoqueCentralService();
-            List<SolicitacaoEstoqueCentralItem> itens = service.ListarItens(
-                usuarioAutenticado,
-                pedido.IdSolicitacaoEstoqueCentral);
+            List<SolicitacaoEstoqueCentralItem> itens = service.ListarItens(usuarioAutenticado, pedido.IdSolicitacaoEstoqueCentral);
             List<string> resumoItens = new List<string>();
-
             foreach (SolicitacaoEstoqueCentralItem item in itens)
             {
-                Produto produto = new ProdutoService().BuscarPorId(
-                    usuarioAutenticado,
-                    item.IdProduto);
+                Produto produto = new ProdutoService().BuscarPorId(usuarioAutenticado, item.IdProduto);
                 string nomeProduto = "Produto " + item.IdProduto;
-
                 if (produto != null)
                 {
                     nomeProduto = produto.Nome;
@@ -839,6 +763,7 @@ namespace CASE.Quermesse
                 FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar os detalhes do pedido.", labelAviso);
             }
         }
+
         private List<Solicitacao> ObterSolicitacoesPermitidas()
         {
             if (administrador && eventoSelecionado == null)
@@ -848,6 +773,7 @@ namespace CASE.Quermesse
                 {
                     solicitacoes.AddRange(solicitacaoService.ListarDoEvento(usuarioAutenticado, evento.IdEvento));
                 }
+
                 return solicitacoes;
             }
 
@@ -855,9 +781,7 @@ namespace CASE.Quermesse
             {
                 try
                 {
-                    return solicitacaoService.ListarDoEvento(
-                        usuarioAutenticado,
-                        eventoSelecionado.IdEvento);
+                    return solicitacaoService.ListarDoEvento(usuarioAutenticado, eventoSelecionado.IdEvento);
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -875,14 +799,12 @@ namespace CASE.Quermesse
                 List<Escala> escalas = new EscalaService().ListarMinhas(usuarioAutenticado);
                 foreach (Escala escala in escalas)
                 {
-                    if (!string.Equals(
-                        escala.Situacao,
-                        SituacoesEscala.Cancelada,
-                        StringComparison.OrdinalIgnoreCase))
+                    if (!string.Equals(escala.Situacao, SituacoesEscala.Cancelada, StringComparison.OrdinalIgnoreCase))
                     {
                         return true;
                     }
                 }
+
                 return false;
             }
             catch (UnauthorizedAccessException)
@@ -896,11 +818,9 @@ namespace CASE.Quermesse
             string setorSelecionado = cmbFiltroSolicitacoes.Text;
             cmbFiltroSolicitacoes.Items.Clear();
             cmbFiltroSolicitacoes.Items.Add("Todos os setores");
-
             foreach (DataGridViewRow linha in dgvSolicitacoesQuermesse.Rows)
             {
                 string setor = Convert.ToString(linha.Cells[2].Value);
-
                 if (!cmbFiltroSolicitacoes.Items.Contains(setor))
                 {
                     cmbFiltroSolicitacoes.Items.Add(setor);
@@ -908,46 +828,57 @@ namespace CASE.Quermesse
             }
 
             int indiceSetor = cmbFiltroSolicitacoes.Items.IndexOf(setorSelecionado);
-
             if (indiceSetor < 0)
             {
                 indiceSetor = 0;
             }
 
             cmbFiltroSolicitacoes.SelectedIndex = indiceSetor;
-
             cmbStatusListaSolicitacoes.Items.Clear();
             cmbStatusListaSolicitacoes.Items.Add("Todas");
-            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Pendente));
-            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Aprovada));
-            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Atendida));
-            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Rejeitada));
-            cmbStatusListaSolicitacoes.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Cancelada));
+            cmbStatusListaSolicitacoes.Items.Add(TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Pendente));
+            cmbStatusListaSolicitacoes.Items.Add(TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Aprovada));
+            cmbStatusListaSolicitacoes.Items.Add(TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Atendida));
+            cmbStatusListaSolicitacoes.Items.Add(TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Rejeitada));
+            cmbStatusListaSolicitacoes.Items.Add(TextoInterface.FormatarValorBanco(SituacoesSolicitacao.Cancelada));
             cmbStatusListaSolicitacoes.SelectedIndex = 0;
         }
 
         private void AplicarFiltros()
         {
-            if (cmbFiltroSolicitacoes.SelectedIndex < 0 ||
-                cmbStatusListaSolicitacoes.SelectedIndex < 0)
+            if (cmbFiltroSolicitacoes.SelectedIndex < 0 || cmbStatusListaSolicitacoes.SelectedIndex < 0)
             {
                 return;
             }
 
             foreach (DataGridViewRow linha in dgvSolicitacoesQuermesse.Rows)
             {
-                bool setorCorresponde = cmbFiltroSolicitacoes.SelectedIndex == 0 ||
-                    Convert.ToString(linha.Cells[2].Value) == cmbFiltroSolicitacoes.Text;
-                bool statusCorresponde = cmbStatusListaSolicitacoes.SelectedIndex == 0 ||
-                    string.Equals(
-                        Convert.ToString(linha.Cells[6].Value),
-                        cmbStatusListaSolicitacoes.Text,
-                        StringComparison.OrdinalIgnoreCase);
-                linha.Visible = setorCorresponde && statusCorresponde &&
-                    VisualUtils.LinhaCorrespondePesquisa(linha, pesquisa.Text.Trim());
+                bool setorCorresponde = cmbFiltroSolicitacoes.SelectedIndex == 0 || Convert.ToString(linha.Cells[2].Value) == cmbFiltroSolicitacoes.Text;
+                bool statusCorresponde = cmbStatusListaSolicitacoes.SelectedIndex == 0 || string.Equals(Convert.ToString(linha.Cells[6].Value), cmbStatusListaSolicitacoes.Text, StringComparison.OrdinalIgnoreCase);
+                linha.Visible = setorCorresponde && statusCorresponde && VisualUtils.LinhaCorrespondePesquisa(linha, pesquisa.Text.Trim());
             }
 
             dgvSolicitacoesQuermesse.ClearSelection();
+        }
+
+        private void Preparar_AdicionarPesquisa(string texto)
+        {
+            AplicarFiltros();
+        }
+
+        private void btnAtualizarSolicitacoes_Click(object s, EventArgs e)
+        {
+            CarregarSolicitacoes();
+        }
+
+        private bool CarregarPedidosParaAdministrador_FindAll(SolicitacaoEstoqueCentral pedido)
+        {
+            return pedido.IdEvento == eventoSelecionado.IdEvento;
+        }
+
+        private bool CarregarPedidosCentrais_FindAll(SolicitacaoEstoqueCentral pedido)
+        {
+            return pedido.IdEvento == eventoSelecionado.IdEvento;
         }
     }
 }

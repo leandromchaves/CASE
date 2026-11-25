@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace CASE.Services
 {
@@ -7,7 +7,6 @@ namespace CASE.Services
         public const string Pendente = "pendente";
         public const string Aprovado = "aprovado";
         public const string Rejeitado = "rejeitado";
-
         public static string Normalizar(string situacao)
         {
             if (string.IsNullOrWhiteSpace(situacao))
@@ -16,7 +15,6 @@ namespace CASE.Services
             }
 
             string valor = situacao.Trim();
-
             if (string.Equals(valor, Pendente, StringComparison.OrdinalIgnoreCase))
             {
                 return Pendente;
@@ -32,9 +30,7 @@ namespace CASE.Services
                 return Rejeitado;
             }
 
-            throw new ArgumentException(
-                "A situação informada para a conta não é válida.",
-                nameof(situacao));
+            throw new ArgumentException("A situação informada para a conta não é válida.", nameof(situacao));
         }
     }
 
@@ -44,7 +40,6 @@ namespace CASE.Services
         public const string EmAndamento = "em_andamento";
         public const string Finalizado = "finalizado";
         public const string Cancelado = "cancelado";
-
         public static string Normalizar(string situacao)
         {
             if (string.IsNullOrWhiteSpace(situacao))
@@ -53,7 +48,6 @@ namespace CASE.Services
             }
 
             string valor = situacao.Trim();
-
             if (string.Equals(valor, Planejado, StringComparison.OrdinalIgnoreCase))
             {
                 return Planejado;
@@ -74,28 +68,23 @@ namespace CASE.Services
                 return Cancelado;
             }
 
-            throw new ArgumentException(
-                "A situação informada para o evento não é válida.",
-                nameof(situacao));
+            throw new ArgumentException("A situação informada para o evento não é válida.", nameof(situacao));
         }
 
         public static void ExigirEventoNaoCancelado(string situacao)
         {
             if (string.Equals(situacao, Cancelado, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException(
-                    "Este evento foi cancelado. Não é possível adicionar ou alterar informações nele. Os dados já registrados continuam disponíveis para consulta.");
+                throw new InvalidOperationException("Este evento foi cancelado. Não é possível adicionar ou alterar informações nele. Os dados já registrados continuam disponíveis para consulta.");
             }
         }
 
         public static void ExigirEventoAbertoParaAlteracoes(string situacao)
         {
             ExigirEventoNaoCancelado(situacao);
-            if (!string.Equals(situacao, Planejado, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(situacao, EmAndamento, StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(situacao, Planejado, StringComparison.OrdinalIgnoreCase) && !string.Equals(situacao, EmAndamento, StringComparison.OrdinalIgnoreCase))
             {
-                throw new InvalidOperationException(
-                    "Este evento foi encerrado. Não é possível adicionar ou alterar informações nele. Os dados existentes continuam disponíveis para consulta.");
+                throw new InvalidOperationException("Este evento foi encerrado. Não é possível adicionar ou alterar informações nele. Os dados existentes continuam disponíveis para consulta.");
             }
         }
 
@@ -103,7 +92,6 @@ namespace CASE.Services
         {
             string atual = Normalizar(situacaoAtual);
             string nova = Normalizar(novaSituacao);
-
             if (atual == Planejado && (nova == EmAndamento || nova == Cancelado))
             {
                 return true;
@@ -121,8 +109,7 @@ namespace CASE.Services
         {
             if (!PodeTransicionar(situacaoAtual, novaSituacao))
             {
-                throw new InvalidOperationException(
-                    "A transição de situação do evento não é permitida.");
+                throw new InvalidOperationException("A transição de situação do evento não é permitida.");
             }
         }
     }
@@ -132,7 +119,6 @@ namespace CASE.Services
         public const string Pendente = "pendente";
         public const string Confirmada = "confirmada";
         public const string Cancelada = "cancelada";
-
         public static string Normalizar(string situacao)
         {
             if (string.IsNullOrWhiteSpace(situacao))
@@ -141,7 +127,6 @@ namespace CASE.Services
             }
 
             string valor = situacao.Trim();
-
             if (string.Equals(valor, Pendente, StringComparison.OrdinalIgnoreCase))
             {
                 return Pendente;
@@ -157,16 +142,13 @@ namespace CASE.Services
                 return Cancelada;
             }
 
-            throw new ArgumentException(
-                "A situação informada para a escala não é válida.",
-                nameof(situacao));
+            throw new ArgumentException("A situação informada para a escala não é válida.", nameof(situacao));
         }
 
         public static bool PodeTransicionar(string situacaoAtual, string novaSituacao)
         {
             string atual = Normalizar(situacaoAtual);
             string nova = Normalizar(novaSituacao);
-
             if (atual == Pendente && (nova == Confirmada || nova == Cancelada))
             {
                 return true;
@@ -184,8 +166,7 @@ namespace CASE.Services
         {
             if (!PodeTransicionar(situacaoAtual, novaSituacao))
             {
-                throw new InvalidOperationException(
-                    "A transição de situação da escala não é permitida.");
+                throw new InvalidOperationException("A transição de situação da escala não é permitida.");
             }
         }
     }
@@ -197,7 +178,6 @@ namespace CASE.Services
         public const string Atendida = "atendida";
         public const string Rejeitada = "rejeitada";
         public const string Cancelada = "cancelada";
-
         public static string Normalizar(string situacao)
         {
             if (string.IsNullOrWhiteSpace(situacao))
@@ -206,7 +186,6 @@ namespace CASE.Services
             }
 
             string valor = situacao.Trim();
-
             if (string.Equals(valor, Pendente, StringComparison.OrdinalIgnoreCase))
             {
                 return Pendente;
@@ -232,18 +211,14 @@ namespace CASE.Services
                 return Cancelada;
             }
 
-            throw new ArgumentException(
-                "A situação informada para a solicitação não é válida.",
-                nameof(situacao));
+            throw new ArgumentException("A situação informada para a solicitação não é válida.", nameof(situacao));
         }
 
         public static bool PodeTransicionar(string situacaoAtual, string novaSituacao)
         {
             string atual = Normalizar(situacaoAtual);
             string nova = Normalizar(novaSituacao);
-
-            if (atual == Pendente &&
-                (nova == Aprovada || nova == Rejeitada || nova == Cancelada))
+            if (atual == Pendente && (nova == Aprovada || nova == Rejeitada || nova == Cancelada))
             {
                 return true;
             }
@@ -260,8 +235,7 @@ namespace CASE.Services
         {
             if (!PodeTransicionar(situacaoAtual, novaSituacao))
             {
-                throw new InvalidOperationException(
-                    "A transição de situação da solicitação não é permitida.");
+                throw new InvalidOperationException("A transição de situação da solicitação não é permitida.");
             }
         }
     }
@@ -276,7 +250,6 @@ namespace CASE.Services
     {
         public const string Compra = "compra";
         public const string Doacao = "doacao";
-
         public static string Normalizar(string tipo)
         {
             if (string.IsNullOrWhiteSpace(tipo))
@@ -285,7 +258,6 @@ namespace CASE.Services
             }
 
             string valor = tipo.Trim();
-
             if (string.Equals(valor, Compra, StringComparison.OrdinalIgnoreCase))
             {
                 return Compra;
@@ -304,7 +276,6 @@ namespace CASE.Services
     {
         public const string Venda = "venda";
         public const string Perda = "perda";
-
         public static string Normalizar(string tipo)
         {
             if (string.IsNullOrWhiteSpace(tipo))
@@ -313,7 +284,6 @@ namespace CASE.Services
             }
 
             string valor = tipo.Trim();
-
             if (string.Equals(valor, Venda, StringComparison.OrdinalIgnoreCase))
             {
                 return Venda;

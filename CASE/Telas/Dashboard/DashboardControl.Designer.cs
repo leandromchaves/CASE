@@ -1,4 +1,4 @@
-namespace CASE
+﻿namespace CASE
 {
     partial class DashboardControl
     {
@@ -317,7 +317,7 @@ namespace CASE
             // picIconeEntradas
             // 
             this.picIconeEntradas.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(232)))), ((int)(((byte)(241)))), ((int)(((byte)(251)))));
-            this.picIconeEntradas.Image = global::CASE.Properties.Resources.LucideAzulEntradas;
+            this.picIconeEntradas.Image = global::CASE.Properties.Resources.IconeAzulEntradas;
             this.picIconeEntradas.Location = new System.Drawing.Point(8, 8);
             this.picIconeEntradas.Name = "picIconeEntradas";
             this.picIconeEntradas.Size = new System.Drawing.Size(24, 24);
@@ -328,7 +328,7 @@ namespace CASE
             // picIconeSaidas
             // 
             this.picIconeSaidas.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(241)))), ((int)(((byte)(242)))));
-            this.picIconeSaidas.Image = global::CASE.Properties.Resources.LucideAzulSaidas;
+            this.picIconeSaidas.Image = global::CASE.Properties.Resources.IconeAzulSaidas;
             this.picIconeSaidas.Location = new System.Drawing.Point(8, 8);
             this.picIconeSaidas.Name = "picIconeSaidas";
             this.picIconeSaidas.Size = new System.Drawing.Size(24, 24);
@@ -339,7 +339,7 @@ namespace CASE
             // picIconeProdutos
             // 
             this.picIconeProdutos.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(232)))), ((int)(((byte)(241)))), ((int)(((byte)(251)))));
-            this.picIconeProdutos.Image = global::CASE.Properties.Resources.LucideAzulProdutos;
+            this.picIconeProdutos.Image = global::CASE.Properties.Resources.IconeAzulProdutos;
             this.picIconeProdutos.Location = new System.Drawing.Point(8, 8);
             this.picIconeProdutos.Name = "picIconeProdutos";
             this.picIconeProdutos.Size = new System.Drawing.Size(24, 24);
@@ -350,7 +350,7 @@ namespace CASE
             // picIconeEstoqueBaixo
             // 
             this.picIconeEstoqueBaixo.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(241)))), ((int)(((byte)(242)))));
-            this.picIconeEstoqueBaixo.Image = global::CASE.Properties.Resources.LucideAzulAlerta;
+            this.picIconeEstoqueBaixo.Image = global::CASE.Properties.Resources.IconeAzulAlerta;
             this.picIconeEstoqueBaixo.Location = new System.Drawing.Point(8, 8);
             this.picIconeEstoqueBaixo.Name = "picIconeEstoqueBaixo";
             this.picIconeEstoqueBaixo.Size = new System.Drawing.Size(24, 24);
@@ -396,7 +396,7 @@ namespace CASE
             ((System.ComponentModel.ISupportInitialize)(this.picIconeEstoqueBaixo)).EndInit();
             // pictureIconeTela — Lucide
             this.pictureIconeTela.Name = "pictureIconeTela";
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulDashboard;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulDashboard;
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Size = new System.Drawing.Size(36, 36);
             this.pictureIconeTela.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;

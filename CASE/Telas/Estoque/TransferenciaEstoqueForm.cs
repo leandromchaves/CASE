@@ -1,6 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -9,17 +11,17 @@ namespace CASE
 {
     public partial class TransferenciaEstoqueForm : Form
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly List<LocalEstoque> locaisEvento = new List<LocalEstoque>();
-        private readonly bool transferenciaCentral;
-        private readonly int? idLocalOrigemSolicitado;
-        private readonly int? idEventoContexto;
-        private readonly TransferenciaEstoqueService transferenciaService =
+        private Usuario usuarioAutenticado;
+        private List<LocalEstoque> locaisEvento = new List<LocalEstoque>();
+        private bool transferenciaCentral;
+        private int? idLocalOrigemSolicitado;
+        private int? idEventoContexto;
+        private TransferenciaEstoqueService transferenciaService =
             new TransferenciaEstoqueService();
-        private readonly LocalEstoqueService localEstoqueService = new LocalEstoqueService();
-        private readonly EstoqueService estoqueService = new EstoqueService();
-        private readonly ProdutoService produtoService = new ProdutoService();
-        private readonly string chaveOperacao = Guid.NewGuid().ToString("N");
+        private LocalEstoqueService localEstoqueService = new LocalEstoqueService();
+        private EstoqueService estoqueService = new EstoqueService();
+        private ProdutoService produtoService = new ProdutoService();
+        private string chaveOperacao = Guid.NewGuid().ToString("N");
         private bool salvando;
 
         public TransferenciaEstoqueForm() : this(null)
@@ -50,6 +52,8 @@ namespace CASE
             int? idEventoContexto)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode ==
+                LicenseUsageMode.Designtime) return;
             IconoAplicacao.Aplicar(this);
             usuarioAutenticado = usuario;
             this.transferenciaCentral = transferenciaCentral;
@@ -57,8 +61,8 @@ namespace CASE
             this.idEventoContexto = idEventoContexto;
             lblModoApresentacao.Visible = false;
 
-            if (System.ComponentModel.LicenseManager.UsageMode ==
-                System.ComponentModel.LicenseUsageMode.Designtime)
+            if (LicenseManager.UsageMode ==
+                LicenseUsageMode.Designtime)
             {
                 return;
             }
@@ -338,12 +342,12 @@ namespace CASE
             }
             catch (ArgumentException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da transferência e tente novamente.", lblMensagem);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da transferência e tente novamente.", lblMensagem);
                 ReabilitarConfirmacao();
             }
             catch (InvalidOperationException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da transferência e tente novamente.", lblMensagem);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da transferência e tente novamente.", lblMensagem);
                 ReabilitarConfirmacao();
             }
             catch (UnauthorizedAccessException)
@@ -353,9 +357,9 @@ namespace CASE
             }
             catch (Exception erro)
             {
-                System.Diagnostics.Trace.WriteLine(
+                Trace.WriteLine(
                     erro.GetType().Name + " ao registrar transferência: " + erro.Message);
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "Não foi possível concluir a transferência. Confira os dados e tente novamente.", lblMensagem);
+                FeedbackUsuario.ExibirErro(this, erro, "Não foi possível concluir a transferência. Confira os dados e tente novamente.", lblMensagem);
                 ReabilitarConfirmacao();
             }
         }

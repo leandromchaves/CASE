@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System;
+using CASE.Data;
 using CASE.Models;
 using MySql.Data.MySqlClient;
 
@@ -11,53 +13,98 @@ namespace CASE.Repositories
         public List<Pessoa> Listar()
         {
             string sql = "SELECT " + Colunas + " FROM pessoa ORDER BY id_pessoa";
-            return AcessoDados.ConsultarLista(sql, ConverterLinha);
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand(sql, conexaoBanco))
+                {
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Pessoa> resultadoBanco = new List<Pessoa>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public Pessoa BuscarPorId(int id)
         {
             string sql = "SELECT " + Colunas + " FROM pessoa WHERE id_pessoa = @id";
-            return AcessoDados.ConsultarUnico(sql, ConverterLinha, comando => AcessoDados.AdicionarParametro(comando, "@id", id));
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand(sql, conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(Pessoa pessoa)
         {
             string sql = "INSERT INTO pessoa (nome, telefone, email) VALUES (@nome, @telefone, @email)";
-            return AcessoDados.Inserir(sql, comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
             {
-                AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", pessoa.Nome);
-                AcessoDados.AdicionarTextoOpcional(comando, "@telefone", pessoa.Telefone);
-                AcessoDados.AdicionarTextoOpcional(comando, "@email", pessoa.Email);
-            });
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand(sql, conexaoBanco))
+                {
+                    AcessoDados.AdicionarTextoObrigatorio(comandoBanco, "@nome", pessoa.Nome);
+                                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@telefone", pessoa.Telefone);
+                                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@email", pessoa.Email);
+                    comandoBanco.ExecuteNonQuery();
+                    resultadoBanco = Convert.ToInt32(comandoBanco.LastInsertedId);
+                }
+            }
+            return resultadoBanco;
         }
 
         public bool Atualizar(Pessoa pessoa)
         {
             string sql = "UPDATE pessoa SET nome = @nome, telefone = @telefone, email = @email WHERE id_pessoa = @id";
-            return AcessoDados.Executar(sql, comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
             {
-                AcessoDados.AdicionarParametro(comando, "@id", pessoa.IdPessoa);
-                AcessoDados.AdicionarTextoObrigatorio(comando, "@nome", pessoa.Nome);
-                AcessoDados.AdicionarTextoOpcional(comando, "@telefone", pessoa.Telefone);
-                AcessoDados.AdicionarTextoOpcional(comando, "@email", pessoa.Email);
-            }) > 0;
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand(sql, conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", pessoa.IdPessoa);
+                                    AcessoDados.AdicionarTextoObrigatorio(comandoBanco, "@nome", pessoa.Nome);
+                                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@telefone", pessoa.Telefone);
+                                    AcessoDados.AdicionarTextoOpcional(comandoBanco, "@email", pessoa.Email);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco > 0;
         }
 
         public byte[] BuscarFotoPerfil(int idPessoa)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
                 string sql = "SELECT foto_perfil FROM pessoa WHERE id_pessoa = @idPessoa";
 
-                using (var comando = new MySqlCommand(sql, conexao))
+                using (MySqlCommand comando = new MySqlCommand(sql, conexao))
                 {
                     AcessoDados.AdicionarParametro(comando, "@idPessoa", idPessoa);
 
                     object resultado = comando.ExecuteScalar();
 
-                    if (resultado == null || resultado == System.DBNull.Value)
+                    if (resultado == null || resultado == DBNull.Value)
                     {
                         return null;
                     }
@@ -69,14 +116,14 @@ namespace CASE.Repositories
 
         public void AtualizarFotoPerfil(int idPessoa, byte[] fotoPerfil)
         {
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
                 string sql = "UPDATE pessoa SET foto_perfil = @fotoPerfil " +
                     "WHERE id_pessoa = @idPessoa";
 
-                using (var comando = new MySqlCommand(sql, conexao))
+                using (MySqlCommand comando = new MySqlCommand(sql, conexao))
                 {
                     AcessoDados.AdicionarParametro(comando, "@idPessoa", idPessoa);
 
@@ -86,7 +133,7 @@ namespace CASE.Repositories
 
                     if (fotoPerfil == null)
                     {
-                        parametroFoto.Value = System.DBNull.Value;
+                        parametroFoto.Value = DBNull.Value;
                     }
                     else
                     {

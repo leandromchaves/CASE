@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 
@@ -10,7 +10,7 @@ namespace CASE.Utils
     /// </summary>
     public static class TextoInterface
     {
-        private static readonly Dictionary<string, string> Rotulos =
+        private static Dictionary<string, string> Rotulos =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 { "pendente", "Pendente" },

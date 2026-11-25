@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,11 +7,11 @@ namespace CASE.Services
 {
     public class EstoqueSetorService
     {
-        private readonly EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
-        private readonly SetorRepository setorRepository = new SetorRepository();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
-        private readonly LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
+        private EstoqueSetorRepository estoqueSetorRepository = new EstoqueSetorRepository();
+        private SetorRepository setorRepository = new SetorRepository();
+        private EventoRepository eventoRepository = new EventoRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private LocalEstoqueRepository localEstoqueRepository = new LocalEstoqueRepository();
 
         public List<EstoqueSetor> Listar(Usuario usuario)
         {

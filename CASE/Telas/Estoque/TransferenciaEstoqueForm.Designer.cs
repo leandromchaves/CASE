@@ -1,4 +1,4 @@
-namespace CASE
+﻿namespace CASE
 {
     partial class TransferenciaEstoqueForm
     {
@@ -169,7 +169,7 @@ namespace CASE
             this.CancelButton = this.btnCancelar;
             this.btnCancelar.DialogResult = System.Windows.Forms.DialogResult.Cancel;
             this.pictureIconeTela.Name = "pictureIconeTela";
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulTransferencia;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulTransferencia;
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Size = new System.Drawing.Size(44, 44);
             this.pictureIconeTela.Padding = new System.Windows.Forms.Padding(6);

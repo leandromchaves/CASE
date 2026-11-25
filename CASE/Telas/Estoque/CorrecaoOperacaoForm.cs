@@ -1,165 +1,71 @@
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
 
 namespace CASE
 {
-    public sealed class CorrecaoOperacaoForm : Form
+    public sealed partial class CorrecaoOperacaoForm : Form
     {
-        private readonly Usuario usuario;
-        private readonly string entidade;
-        private readonly int idOperacao;
-        private readonly DataGridView grade = new DataGridView();
-        private readonly TextBox observacao = new TextBox();
-        private readonly TextBox justificativa = new TextBox();
-        private readonly ComboBox tipo = new ComboBox();
-        private readonly ComboBox pagamento = new ComboBox();
-        private readonly Button salvar = new Button();
-        private readonly Label mensagem = new Label();
-        private readonly Label contexto = new Label();
+        private Usuario usuario;
+        private string entidade;
+        private int idOperacao;
         private DataTable itens;
         private Registro registro;
         private EntradaMercadoria entrada;
         private TransferenciaEstoque transferencia;
+        public CorrecaoOperacaoForm()
+        {
+            InitializeComponent();
+        }
 
         public CorrecaoOperacaoForm(Usuario usuarioAutenticado, string tipoOperacao, int id)
         {
             usuario = usuarioAutenticado;
             entidade = tipoOperacao;
             idOperacao = id;
-            Name = "CorrecaoOperacaoForm";
+            InitializeComponent();
             Text = tipoOperacao == "registro" ? "Revisar venda ou perda" : "Correção de operação";
-            Font = new Font("Segoe UI", 10F);
-            StartPosition = FormStartPosition.CenterParent;
-            ClientSize = new Size(840, 630);
-            MinimumSize = new Size(780, 600);
             IconoAplicacao.Aplicar(this);
-            MontarFormulario();
+            historico.Tag = auditoria;
+            VisualUtils.ExibirEstadoVazio(auditoria, "Nenhuma correção registrada.");
+            FrontendTheme.Aplicar(this);
             CarregarOperacao();
         }
 
-        private void MontarFormulario()
+        private void Grade_DataError(object sender, DataGridViewDataErrorEventArgs e)
         {
-            TabControl abas = new TabControl { Dock = DockStyle.Fill };
-            TabPage correcao = new TabPage("Correção") { BackColor = VisualUtils.Fundo };
-            TabPage historico = new TabPage("Histórico de correções") { BackColor = VisualUtils.Fundo };
-            abas.TabPages.Add(correcao);
-            abas.TabPages.Add(historico);
-            Controls.Add(abas);
-            TableLayoutPanel layout = new TableLayoutPanel
+            e.ThrowException = false;
+            e.Cancel = true;
+            mensagem.Text = "Informe números válidos nos campos de quantidade e valor.";
+        }
+
+        private void Justificativa_TextChanged(object sender, EventArgs e)
+        {
+            if (!string.IsNullOrWhiteSpace(justificativa.Text))
             {
-                Dock = DockStyle.Fill,
-                ColumnCount = 1,
-                RowCount = 8,
-                Padding = new Padding(16)
-            };
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 90));
-            correcao.Controls.Add(layout);
-            contexto.Dock = DockStyle.Fill;
-            contexto.AutoEllipsis = true;
-            contexto.ForeColor = VisualUtils.Texto;
-            layout.Controls.Add(contexto, 0, 0);
-            FlowLayoutPanel opcoes = new FlowLayoutPanel { Dock = DockStyle.Fill };
-            tipo.Name = "cmbTipoCorrecao";
-            tipo.DropDownStyle = ComboBoxStyle.DropDownList;
-            tipo.Width = 150;
-            pagamento.Name = "cmbPagamentoCorrecao";
-            pagamento.DropDownStyle = ComboBoxStyle.DropDownList;
-            pagamento.Items.AddRange(new object[] { "dinheiro", "pix", "cartao" });
-            pagamento.Width = 150;
-            opcoes.Controls.Add(tipo);
-            opcoes.Controls.Add(pagamento);
-            layout.Controls.Add(opcoes, 0, 1);
-            grade.Name = "dgvItensCorrecao";
-            grade.Dock = DockStyle.Fill;
-            grade.AllowUserToAddRows = false;
-            grade.AllowUserToDeleteRows = false;
-            grade.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-            grade.BackgroundColor = Color.White;
-            grade.RowHeadersVisible = false;
-            grade.EnableHeadersVisualStyles = false;
-            grade.DataError += (s, e) =>
+                mensagem.Text = "A confirmação atualiza os saldos e registra o motivo da correção.";
+            }
+        }
+
+        private void Abas_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (abas.SelectedTab == historico)
             {
-                e.ThrowException = false;
-                e.Cancel = true;
-                mensagem.Text = "Informe números válidos nos campos de quantidade e valor.";
-            };
-            layout.Controls.Add(grade, 0, 2);
-            layout.Controls.Add(new Label { Text = "Observação da operação", Dock = DockStyle.Fill }, 0, 3);
-            observacao.Name = "txtObservacaoCorrecao";
-            observacao.Dock = DockStyle.Fill;
-            layout.Controls.Add(observacao, 0, 4);
-            layout.Controls.Add(new Label { Text = "Justificativa da correção (obrigatória)", Dock = DockStyle.Fill }, 0, 5);
-            justificativa.Name = "txtJustificativaCorrecao";
-            justificativa.Multiline = true;
-            justificativa.MaxLength = 500;
-            justificativa.Dock = DockStyle.Fill;
-            justificativa.TextChanged += (s, e) =>
-            {
-                if (!string.IsNullOrWhiteSpace(justificativa.Text))
+                try
                 {
-                    mensagem.Text = "A confirmação atualiza os saldos e registra o motivo da correção.";
+                    auditoria.DataSource = new ConsultaOperacionalService().HistoricoDaOperacao(usuario, entidade, idOperacao);
                 }
-            };
-            layout.Controls.Add(justificativa, 0, 6);
-            FlowLayoutPanel rodape = new FlowLayoutPanel { Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft };
-            salvar.Name = "btnConfirmarCorrecao";
-            salvar.Text = "Confirmar correção";
-            salvar.Size = new Size(185, 36);
-            salvar.BackColor = VisualUtils.Azul;
-            salvar.ForeColor = Color.White;
-            salvar.Click += SalvarCorrecao;
-            Button cancelar = new Button { Text = "Cancelar", Size = new Size(115, 36), DialogResult = DialogResult.Cancel };
-            mensagem.Name = "lblMensagemCorrecao";
-            mensagem.Size = new Size(720, 42);
-            mensagem.ForeColor = VisualUtils.TextoSuave;
-            rodape.Controls.Add(salvar);
-            rodape.Controls.Add(cancelar);
-            rodape.Controls.Add(mensagem);
-            layout.Controls.Add(rodape, 0, 7);
-            CancelButton = cancelar;
-            DataGridView auditoria = new DataGridView
-            {
-                Name = "dgvHistoricoCorrecao",
-                Dock = DockStyle.Fill,
-                ReadOnly = true,
-                AllowUserToAddRows = false,
-                AllowUserToDeleteRows = false,
-                AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells,
-                BackgroundColor = Color.White,
-                RowHeadersVisible = false,
-                EnableHeadersVisualStyles = false
-            };
-            historico.Controls.Add(auditoria);
-            VisualUtils.ExibirEstadoVazio(auditoria, "Nenhuma correção registrada.");
-            historico.Tag = auditoria;
-            abas.SelectedIndexChanged += (s, e) =>
-            {
-                if (abas.SelectedTab == historico)
+                catch (Exception erro)
                 {
-                    try
-                    {
-                        auditoria.DataSource = new ConsultaOperacionalService().HistoricoDaOperacao(usuario, entidade, idOperacao);
-                    }
-                    catch (Exception erro)
-                    {
-                        ExibirErro(erro);
-                    }
+                    ExibirErro(erro);
                 }
-            };
-            FrontendTheme.Aplicar(this);
+            }
         }
 
         private void CarregarOperacao()
@@ -183,6 +89,7 @@ namespace CASE
                 {
                     throw new ArgumentException("Tipo de operação inválido.");
                 }
+
                 itens = new ConsultaOperacionalService().ItensParaCorrecao(usuario, entidade, idOperacao);
                 grade.DataSource = itens;
                 grade.Columns["id_item"].Visible = false;
@@ -201,9 +108,8 @@ namespace CASE
                     tipo.SelectedItem = registro.Tipo;
                     pagamento.SelectedItem = registro.FormaPagamento;
                     observacao.Text = registro.Observacao;
-                    contexto.Text = (registro.Tipo == "venda" ? "Venda" : "Perda") + " • Registro " + idOperacao +
-                        " • " + registro.DataHora.ToString("g") + "\nCorreção do lançamento original e histórico de alterações.";
-                    tipo.SelectedIndexChanged += (s, e) => AtualizarTipoRegistro();
+                    contexto.Text = (registro.Tipo == "venda" ? "Venda" : "Perda") + " • Registro " + idOperacao + " • " + registro.DataHora.ToString("g") + "\nCorreção do lançamento original e histórico de alterações.";
+                    tipo.SelectedIndexChanged += tipo_SelectedIndexChanged;
                     AtualizarTipoRegistro();
                 }
                 else if (entidade == "entradamercadoria")
@@ -217,15 +123,14 @@ namespace CASE
                     observacao.Text = transferencia.Observacao;
                     tipo.Visible = pagamento.Visible = false;
                     grade.Columns["valor_unitario"].Visible = false;
-                    grade.Columns["quantidade"].ReadOnly =
-                        transferencia.IdSolicitacao.HasValue ||
-                        transferencia.IdSolicitacaoEstoqueCentral.HasValue;
+                    grade.Columns["quantidade"].ReadOnly = transferencia.IdSolicitacao.HasValue || transferencia.IdSolicitacaoEstoqueCentral.HasValue;
                     contexto.Text = "Transferência " + idOperacao + " · " + transferencia.DataHora.ToString("g") + " · versão " + transferencia.Versao;
                     if (grade.Columns["quantidade"].ReadOnly)
                     {
                         contexto.Text += ". Entrega integral: somente observação pode ser corrigida.";
                     }
                 }
+
                 mensagem.Text = "Datas, locais, autores e itens originais serão preservados. A alteração será auditada.";
                 if (registro != null)
                 {
@@ -254,12 +159,14 @@ namespace CASE
                         break;
                     }
                 }
+
                 // Um produto histórico inativo continua visível; o backend só permite mantê-lo na própria linha.
                 if (!encontrado)
                 {
                     produtos.Rows.Add(id, item["produto"], DBNull.Value);
                 }
             }
+
             grade.Columns["produto"].Visible = false;
             DataGridViewComboBoxColumn selecao = new DataGridViewComboBoxColumn();
             selecao.Name = "produtoCorrecao";
@@ -288,6 +195,7 @@ namespace CASE
                 mensagem.Text = "Corrija o valor digitado antes de confirmar.";
                 return;
             }
+
             salvar.Enabled = false;
             try
             {
@@ -296,15 +204,9 @@ namespace CASE
                     List<RegistroItem> lista = new List<RegistroItem>();
                     foreach (DataRow linha in itens.Rows)
                     {
-                        lista.Add(new RegistroItem
-                        {
-                            IdRegistroItem = Convert.ToInt32(linha["id_item"]),
-                            IdRegistro = idOperacao,
-                            IdProdutoSetor = Convert.ToInt32(linha["id_produto"]),
-                            Quantidade = Convert.ToDecimal(linha["quantidade"]),
-                            PrecoUnitarioPraticado = ValorOpcional(linha)
-                        });
+                        lista.Add(new RegistroItem { IdRegistroItem = Convert.ToInt32(linha["id_item"]), IdRegistro = idOperacao, IdProdutoSetor = Convert.ToInt32(linha["id_produto"]), Quantidade = Convert.ToDecimal(linha["quantidade"]), PrecoUnitarioPraticado = ValorOpcional(linha) });
                     }
+
                     registro.Tipo = tipo.Text;
                     registro.FormaPagamento = pagamento.Text;
                     registro.Observacao = observacao.Text;
@@ -315,15 +217,9 @@ namespace CASE
                     List<EntradaItem> lista = new List<EntradaItem>();
                     foreach (DataRow linha in itens.Rows)
                     {
-                        lista.Add(new EntradaItem
-                        {
-                            IdEntradaItem = Convert.ToInt32(linha["id_item"]),
-                            IdEntrada = idOperacao,
-                            IdProduto = Convert.ToInt32(linha["id_produto"]),
-                            Quantidade = Convert.ToDecimal(linha["quantidade"]),
-                            CustoUnitario = ValorOpcional(linha)
-                        });
+                        lista.Add(new EntradaItem { IdEntradaItem = Convert.ToInt32(linha["id_item"]), IdEntrada = idOperacao, IdProduto = Convert.ToInt32(linha["id_produto"]), Quantidade = Convert.ToDecimal(linha["quantidade"]), CustoUnitario = ValorOpcional(linha) });
                     }
+
                     entrada.Observacao = observacao.Text;
                     new EntradaMercadoriaService().Editar(usuario, entrada, lista, justificativa.Text);
                 }
@@ -332,14 +228,9 @@ namespace CASE
                     List<TransferenciaItem> lista = new List<TransferenciaItem>();
                     foreach (DataRow linha in itens.Rows)
                     {
-                        lista.Add(new TransferenciaItem
-                        {
-                            IdTransferenciaItem = Convert.ToInt32(linha["id_item"]),
-                            IdTransferencia = idOperacao,
-                            IdProduto = Convert.ToInt32(linha["id_produto"]),
-                            Quantidade = Convert.ToDecimal(linha["quantidade"])
-                        });
+                        lista.Add(new TransferenciaItem { IdTransferenciaItem = Convert.ToInt32(linha["id_item"]), IdTransferencia = idOperacao, IdProduto = Convert.ToInt32(linha["id_produto"]), Quantidade = Convert.ToDecimal(linha["quantidade"]) });
                     }
+
                     transferencia.Observacao = observacao.Text;
                     new TransferenciaEstoqueService().Editar(usuario, transferencia, lista, justificativa.Text);
                 }
@@ -347,6 +238,7 @@ namespace CASE
                 {
                     throw new InvalidOperationException("Reabra uma operação válida antes de corrigir.");
                 }
+
                 DialogResult = DialogResult.OK;
                 Close();
             }
@@ -363,14 +255,19 @@ namespace CASE
             {
                 return null;
             }
+
             return Convert.ToDecimal(linha["valor_unitario"]);
         }
 
         private void ExibirErro(Exception erro)
         {
-            CASE.Utils.FeedbackUsuario.ExibirErro(this, erro,
-                "Não foi possível consultar ou corrigir a operação. Confira os dados e tente novamente.", mensagem);
-            System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em CorrecaoOperacaoForm: " + erro.StackTrace);
+            FeedbackUsuario.ExibirErro(this, erro, "Não foi possível consultar ou corrigir a operação. Confira os dados e tente novamente.", mensagem);
+            Trace.WriteLine(erro.GetType().Name + " em CorrecaoOperacaoForm: " + erro.StackTrace);
+        }
+
+        private void tipo_SelectedIndexChanged(object s, EventArgs e)
+        {
+            AtualizarTipoRegistro();
         }
     }
 }

@@ -1,5 +1,6 @@
+﻿using System.Collections.Generic;
 using System;
-using System.Collections.Generic;
+using CASE.Data;
 using CASE.Models;
 using MySql.Data.MySqlClient;
 
@@ -7,25 +8,47 @@ namespace CASE.Repositories
 {
     public class EntradaMercadoriaRepository
     {
-
         private const string Colunas = "id_entrada,id_fornecedor,id_local_destino,id_usuario_responsavel,tipo_entrada,data_hora,numero_documento,observacao,chave_operacao,criado_em,id_usuario_alteracao,atualizado_em,versao";
 
         public List<EntradaMercadoria> ListarPorLocalDestino(int idLocal)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM entradamercadoria WHERE id_local_destino=@id ORDER BY data_hora DESC,id_entrada DESC",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idLocal)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM entradamercadoria WHERE id_local_destino=@id ORDER BY data_hora DESC,id_entrada DESC", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idLocal);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<EntradaMercadoria> resultadoBanco = new List<EntradaMercadoria>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public EntradaMercadoria BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM entradamercadoria WHERE id_entrada=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM entradamercadoria WHERE id_entrada=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int CadastrarComItens(EntradaMercadoria entrada, IList<EntradaItem> itens)
@@ -55,10 +78,10 @@ namespace CASE.Repositories
                 entrada.CriadoEm = DateTime.Now;
             }
 
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
@@ -68,12 +91,14 @@ namespace CASE.Repositories
                             entrada.IdUsuarioResponsavel,
                             entrada.IdLocalDestino);
 
-                        int id = AcessoDados.Inserir(
-                            conexao,
-                            transacao,
-                            "INSERT INTO entradamercadoria (id_fornecedor,id_local_destino,id_usuario_responsavel,tipo_entrada,data_hora,numero_documento,observacao,chave_operacao,criado_em) VALUES (@fornecedor,@local,@usuario,@tipo,@data,@documento,@observacao,@chave,@criadoEm)",
-                            comando => Vincular(comando, entrada)
-                        );
+                        int resultadoBanco2;
+                        using (MySqlCommand comandoBanco2 = new MySqlCommand("INSERT INTO entradamercadoria (id_fornecedor,id_local_destino,id_usuario_responsavel,tipo_entrada,data_hora,numero_documento,observacao,chave_operacao,criado_em) VALUES (@fornecedor,@local,@usuario,@tipo,@data,@documento,@observacao,@chave,@criadoEm)", conexao, transacao))
+                        {
+                            Vincular(comandoBanco2, entrada);
+                            comandoBanco2.ExecuteNonQuery();
+                            resultadoBanco2 = Convert.ToInt32(comandoBanco2.LastInsertedId);
+                        }
+                        int id = resultadoBanco2;
                         List<Tuple<int, int, decimal>> ajustesSaldo =
                             new List<Tuple<int, int, decimal>>();
 
@@ -86,17 +111,14 @@ namespace CASE.Repositories
 
                             ValidarQuantidade(item.Quantidade);
 
-                            AcessoDados.Executar(
-                                conexao,
-                                transacao,
-                                "INSERT INTO entradaitem (id_entrada,id_produto,quantidade,custo_unitario) VALUES (@entrada,@produto,@quantidade,@custo)",
-                                comando =>
-                                {
-                                    AcessoDados.AdicionarParametro(comando, "@entrada", id);
-                                    AcessoDados.AdicionarParametro(comando, "@produto", item.IdProduto);
-                                    AcessoDados.AdicionarParametro(comando, "@quantidade", item.Quantidade);
-                                    AcessoDados.AdicionarParametro(comando, "@custo", item.CustoUnitario);
-                                });
+                            using (MySqlCommand comandoBanco3 = new MySqlCommand("INSERT INTO entradaitem (id_entrada,id_produto,quantidade,custo_unitario) VALUES (@entrada,@produto,@quantidade,@custo)", conexao, transacao))
+                            {
+                                AcessoDados.AdicionarParametro(comandoBanco3, "@entrada", id);
+                                AcessoDados.AdicionarParametro(comandoBanco3, "@produto", item.IdProduto);
+                                AcessoDados.AdicionarParametro(comandoBanco3, "@quantidade", item.Quantidade);
+                                AcessoDados.AdicionarParametro(comandoBanco3, "@custo", item.CustoUnitario);
+                                comandoBanco3.ExecuteNonQuery();
+                            }
 
                             ajustesSaldo.Add(Tuple.Create(
                                 entrada.IdLocalDestino,
@@ -132,10 +154,10 @@ namespace CASE.Repositories
             {
                 throw new ArgumentException("Informe a entrada e seus itens para corrigir.");
             }
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
@@ -178,30 +200,28 @@ itens.Count);
                             ControleCorrecaoOperacao.ValidarItem(originais, informados, item.IdEntradaItem,
                                 item.IdProduto, item.Quantidade, item.CustoUnitario, false);
                             ajustes.Add(Tuple.Create(atual.IdLocalDestino, item.IdProduto, item.Quantidade));
-                            AcessoDados.Executar(conexao, transacao,
-                                "UPDATE entradaitem SET quantidade=@quantidade,custo_unitario=@custo " +
-                                "WHERE id_entrada_item=@item AND id_entrada=@entrada",
-                                comando =>
-                                {
-                                    comando.Parameters.AddWithValue("@quantidade", item.Quantidade);
-                                    AcessoDados.AdicionarParametro(comando, "@custo", item.CustoUnitario);
-                                    comando.Parameters.AddWithValue("@item", item.IdEntradaItem);
-                                    comando.Parameters.AddWithValue("@entrada", atual.IdEntrada);
-                                });
+                            using (MySqlCommand comandoBanco4 = new MySqlCommand("UPDATE entradaitem SET quantidade=@quantidade,custo_unitario=@custo " +
+                                "WHERE id_entrada_item=@item AND id_entrada=@entrada", conexao, transacao))
+                            {
+                                comandoBanco4.Parameters.AddWithValue("@quantidade", item.Quantidade);
+                                AcessoDados.AdicionarParametro(comandoBanco4, "@custo", item.CustoUnitario);
+                                comandoBanco4.Parameters.AddWithValue("@item", item.IdEntradaItem);
+                                comandoBanco4.Parameters.AddWithValue("@entrada", atual.IdEntrada);
+                                comandoBanco4.ExecuteNonQuery();
+                            }
+
                         }
                         ControleSaldoEstoque.AplicarAjustes(conexao, transacao, ajustes, true);
-                        AcessoDados.Executar(
-conexao,
-transacao,
-                            "UPDATE entradamercadoria SET observacao=@observacao,numero_documento=@documento," +
-                            "id_usuario_alteracao=@usuario,atualizado_em=NOW(),versao=versao+1 WHERE id_entrada=@id",
-                            comando =>
-                            {
-                                AcessoDados.AdicionarTextoOpcional(comando, "@observacao", entrada.Observacao);
-                                AcessoDados.AdicionarTextoOpcional(comando, "@documento", entrada.NumeroDocumento);
-                                comando.Parameters.AddWithValue("@usuario", idUsuarioAlteracao);
-                                comando.Parameters.AddWithValue("@id", atual.IdEntrada);
-                            });
+                        using (MySqlCommand comandoBanco5 = new MySqlCommand("UPDATE entradamercadoria SET observacao=@observacao,numero_documento=@documento," +
+                            "id_usuario_alteracao=@usuario,atualizado_em=NOW(),versao=versao+1 WHERE id_entrada=@id", conexao, transacao))
+                        {
+                            AcessoDados.AdicionarTextoOpcional(comandoBanco5, "@observacao", entrada.Observacao);
+                            AcessoDados.AdicionarTextoOpcional(comandoBanco5, "@documento", entrada.NumeroDocumento);
+                            comandoBanco5.Parameters.AddWithValue("@usuario", idUsuarioAlteracao);
+                            comandoBanco5.Parameters.AddWithValue("@id", atual.IdEntrada);
+                            comandoBanco5.ExecuteNonQuery();
+                        }
+
                         RegistrarHistorico(
 conexao,
 transacao,

@@ -83,9 +83,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAcaoAcessos {
+        internal static System.Drawing.Bitmap IconeAcaoAcessos {
             get {
-                object obj = ResourceManager.GetObject("LucideAcaoAcessos", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAcaoAcessos", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -93,9 +93,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAcaoEntrada {
+        internal static System.Drawing.Bitmap IconeAcaoEntrada {
             get {
-                object obj = ResourceManager.GetObject("LucideAcaoEntrada", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAcaoEntrada", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -103,9 +103,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAcaoFornecedores {
+        internal static System.Drawing.Bitmap IconeAcaoFornecedores {
             get {
-                object obj = ResourceManager.GetObject("LucideAcaoFornecedores", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAcaoFornecedores", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -113,9 +113,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAcaoTransferencia {
+        internal static System.Drawing.Bitmap IconeAcaoTransferencia {
             get {
-                object obj = ResourceManager.GetObject("LucideAcaoTransferencia", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAcaoTransferencia", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -123,9 +123,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideApuracao {
+        internal static System.Drawing.Bitmap IconeApuracao {
             get {
-                object obj = ResourceManager.GetObject("LucideApuracao", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeApuracao", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -133,9 +133,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulAcessos {
+        internal static System.Drawing.Bitmap IconeAzulAcessos {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulAcessos", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulAcessos", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -143,9 +143,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulAlerta {
+        internal static System.Drawing.Bitmap IconeAzulAlerta {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulAlerta", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulAlerta", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -153,9 +153,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulApuracao {
+        internal static System.Drawing.Bitmap IconeAzulApuracao {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulApuracao", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulApuracao", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -163,9 +163,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulConfiguracoes {
+        internal static System.Drawing.Bitmap IconeAzulConfiguracoes {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulConfiguracoes", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulConfiguracoes", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -173,9 +173,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulDashboard {
+        internal static System.Drawing.Bitmap IconeAzulDashboard {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulDashboard", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulDashboard", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -183,9 +183,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulEntradas {
+        internal static System.Drawing.Bitmap IconeAzulEntradas {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulEntradas", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulEntradas", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -193,9 +193,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulEquipe {
+        internal static System.Drawing.Bitmap IconeAzulEquipe {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulEquipe", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulEquipe", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -203,9 +203,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulEscala {
+        internal static System.Drawing.Bitmap IconeAzulEscala {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulEscala", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulEscala", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -213,9 +213,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulEstoque {
+        internal static System.Drawing.Bitmap IconeAzulEstoque {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulEstoque", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulEstoque", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -223,9 +223,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulFinanceiro {
+        internal static System.Drawing.Bitmap IconeAzulFinanceiro {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulFinanceiro", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulFinanceiro", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -233,9 +233,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulFornecedores {
+        internal static System.Drawing.Bitmap IconeAzulFornecedores {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulFornecedores", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulFornecedores", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -243,9 +243,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulImagem {
+        internal static System.Drawing.Bitmap IconeAzulImagem {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulImagem", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulImagem", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -253,9 +253,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulProdutos {
+        internal static System.Drawing.Bitmap IconeAzulProdutos {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulProdutos", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulProdutos", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -263,9 +263,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulQuermesses {
+        internal static System.Drawing.Bitmap IconeAzulQuermesses {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulQuermesses", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulQuermesses", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -273,9 +273,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulRegistros {
+        internal static System.Drawing.Bitmap IconeAzulRegistros {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulRegistros", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulRegistros", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -283,9 +283,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulSaidas {
+        internal static System.Drawing.Bitmap IconeAzulSaidas {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulSaidas", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulSaidas", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -293,9 +293,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulSolicitacoes {
+        internal static System.Drawing.Bitmap IconeAzulSolicitacoes {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulSolicitacoes", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulSolicitacoes", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -303,9 +303,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulTransferencia {
+        internal static System.Drawing.Bitmap IconeAzulTransferencia {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulTransferencia", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulTransferencia", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -313,9 +313,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideAzulUsuario {
+        internal static System.Drawing.Bitmap IconeAzulUsuario {
             get {
-                object obj = ResourceManager.GetObject("LucideAzulUsuario", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeAzulUsuario", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -323,9 +323,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideConfiguracoes {
+        internal static System.Drawing.Bitmap IconeConfiguracoes {
             get {
-                object obj = ResourceManager.GetObject("LucideConfiguracoes", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeConfiguracoes", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -333,9 +333,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideDashboard {
+        internal static System.Drawing.Bitmap IconeDashboard {
             get {
-                object obj = ResourceManager.GetObject("LucideDashboard", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeDashboard", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -343,9 +343,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideEquipe {
+        internal static System.Drawing.Bitmap IconeEquipe {
             get {
-                object obj = ResourceManager.GetObject("LucideEquipe", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeEquipe", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -353,9 +353,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideEscala {
+        internal static System.Drawing.Bitmap IconeEscala {
             get {
-                object obj = ResourceManager.GetObject("LucideEscala", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeEscala", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -363,9 +363,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideEstoque {
+        internal static System.Drawing.Bitmap IconeEstoque {
             get {
-                object obj = ResourceManager.GetObject("LucideEstoque", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeEstoque", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -373,9 +373,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideFinanceiro {
+        internal static System.Drawing.Bitmap IconeFinanceiro {
             get {
-                object obj = ResourceManager.GetObject("LucideFinanceiro", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeFinanceiro", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -383,9 +383,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideMenuAcessos {
+        internal static System.Drawing.Bitmap IconeMenuAcessos {
             get {
-                object obj = ResourceManager.GetObject("LucideMenuAcessos", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeMenuAcessos", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -393,9 +393,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideMenuFornecedores {
+        internal static System.Drawing.Bitmap IconeMenuFornecedores {
             get {
-                object obj = ResourceManager.GetObject("LucideMenuFornecedores", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeMenuFornecedores", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -403,9 +403,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideNotificacoes {
+        internal static System.Drawing.Bitmap IconeNotificacoes {
             get {
-                object obj = ResourceManager.GetObject("LucideNotificacoes", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeNotificacoes", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -413,9 +413,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucidePesquisa {
+        internal static System.Drawing.Bitmap IconePesquisa {
             get {
-                object obj = ResourceManager.GetObject("LucidePesquisa", resourceCulture);
+                object obj = ResourceManager.GetObject("IconePesquisa", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -423,9 +423,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideProdutos {
+        internal static System.Drawing.Bitmap IconeProdutos {
             get {
-                object obj = ResourceManager.GetObject("LucideProdutos", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeProdutos", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -433,9 +433,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideQuermesses {
+        internal static System.Drawing.Bitmap IconeQuermesses {
             get {
-                object obj = ResourceManager.GetObject("LucideQuermesses", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeQuermesses", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -443,9 +443,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideRegistros {
+        internal static System.Drawing.Bitmap IconeRegistros {
             get {
-                object obj = ResourceManager.GetObject("LucideRegistros", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeRegistros", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -453,9 +453,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideSair {
+        internal static System.Drawing.Bitmap IconeSair {
             get {
-                object obj = ResourceManager.GetObject("LucideSair", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeSair", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -463,9 +463,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideSolicitacoes {
+        internal static System.Drawing.Bitmap IconeSolicitacoes {
             get {
-                object obj = ResourceManager.GetObject("LucideSolicitacoes", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeSolicitacoes", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
@@ -473,9 +473,9 @@ namespace CASE.Properties {
         /// <summary>
         ///   Consulta um recurso localizado do tipo System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap LucideUsuario {
+        internal static System.Drawing.Bitmap IconeUsuario {
             get {
-                object obj = ResourceManager.GetObject("LucideUsuario", resourceCulture);
+                object obj = ResourceManager.GetObject("IconeUsuario", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }

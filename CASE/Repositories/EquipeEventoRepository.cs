@@ -1,4 +1,6 @@
 ﻿using System.Collections.Generic;
+using System;
+using CASE.Data;
 using CASE.Models;
 using MySql.Data.MySqlClient;
 
@@ -6,24 +8,48 @@ namespace CASE.Repositories
 {
     public class EquipeEventoRepository
     {
-
         private const string Colunas = "id_equipe,id_evento,id_pessoa,id_perfil,ativo,id_usuario_criacao,criado_em,id_usuario_alteracao,atualizado_em,versao";
 
         public List<EquipeEvento> ListarPorEvento(int idEvento)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM equipeevento WHERE id_evento=@id ORDER BY id_equipe",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idEvento)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM equipeevento WHERE id_evento=@id ORDER BY id_equipe", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idEvento);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<EquipeEvento> resultadoBanco = new List<EquipeEvento>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<EquipeEvento> ListarPorPessoa(int idPessoa)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM equipeevento WHERE id_pessoa=@pessoa AND ativo=1 ORDER BY id_evento,id_equipe",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@pessoa", idPessoa));
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM equipeevento WHERE id_pessoa=@pessoa AND ativo=1 ORDER BY id_evento,id_equipe", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@pessoa", idPessoa);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<EquipeEvento> resultadoBanco = new List<EquipeEvento>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<Pessoa> ListarPessoasDisponiveis(int idEvento)
@@ -39,10 +65,23 @@ namespace CASE.Repositories
                       WHERE ee.id_evento=@evento AND ee.id_pessoa=p.id_pessoa AND ee.ativo=1)
                 ORDER BY p.nome";
 
-            return AcessoDados.ConsultarLista(
-                sql,
-                ConverterPessoa,
-                comando => AcessoDados.AdicionarParametro(comando, "@evento", idEvento));
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand(sql, conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@evento", idEvento);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Pessoa> resultadoBanco = new List<Pessoa>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterPessoa(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public Pessoa BuscarPessoaDisponivelPorLogin(int idEvento, string login)
@@ -58,57 +97,99 @@ namespace CASE.Repositories
                       SELECT 1 FROM equipeevento ee
                       WHERE ee.id_evento=@evento AND ee.id_pessoa=p.id_pessoa AND ee.ativo=1)";
 
-            return AcessoDados.ConsultarUnico(
-                sql,
-                ConverterPessoa,
-                comando =>
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand(sql, conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@login", login);
-                    AcessoDados.AdicionarParametro(comando, "@evento", idEvento);
-                });
+                    AcessoDados.AdicionarParametro(comandoBanco, "@login", login);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@evento", idEvento);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterPessoa(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public Pessoa BuscarPessoaPorId(int idPessoa)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT id_pessoa,nome,telefone,email FROM pessoa WHERE id_pessoa=@id",
-                ConverterPessoa,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idPessoa));
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_pessoa,nome,telefone,email FROM pessoa WHERE id_pessoa=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idPessoa);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterPessoa(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public EquipeEvento BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM equipeevento WHERE id_equipe=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM equipeevento WHERE id_equipe=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public int Cadastrar(EquipeEvento item)
         {
-            return AcessoDados.Inserir(
-                "INSERT INTO equipeevento (id_evento,id_pessoa,id_perfil,ativo,id_usuario_criacao,criado_em) VALUES (@evento,@pessoa,@perfil,@ativo,@usuarioCriacao,@criadoEm)",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("INSERT INTO equipeevento (id_evento,id_pessoa,id_perfil,ativo,id_usuario_criacao,criado_em) VALUES (@evento,@pessoa,@perfil,@ativo,@usuarioCriacao,@criadoEm)", conexaoBanco))
                 {
-                    Vincular(comando, item);
-                    AcessoDados.AdicionarParametro(comando, "@usuarioCriacao", item.IdUsuarioCriacao);
-                    AcessoDados.AdicionarParametro(comando, "@criadoEm", item.CriadoEm);
+                    Vincular(comandoBanco, item);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@usuarioCriacao", item.IdUsuarioCriacao);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@criadoEm", item.CriadoEm);
+                    comandoBanco.ExecuteNonQuery();
+                    resultadoBanco = Convert.ToInt32(comandoBanco.LastInsertedId);
                 }
-            );
+            }
+            return resultadoBanco;
         }
 
         public bool Atualizar(EquipeEvento item)
         {
-            return AcessoDados.Executar(
-                "UPDATE equipeevento SET id_evento=@evento,id_pessoa=@pessoa,id_perfil=@perfil,ativo=@ativo,id_usuario_alteracao=@usuarioAlteracao,atualizado_em=NOW(),versao=versao+1 WHERE id_equipe=@id AND versao=@versao",
-                comando =>
+            int resultadoBanco;
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("UPDATE equipeevento SET id_evento=@evento,id_pessoa=@pessoa,id_perfil=@perfil,ativo=@ativo,id_usuario_alteracao=@usuarioAlteracao,atualizado_em=NOW(),versao=versao+1 WHERE id_equipe=@id AND versao=@versao", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@id", item.IdEquipe);
-                    AcessoDados.AdicionarParametro(comando, "@versao", item.Versao);
-                    AcessoDados.AdicionarParametro(comando, "@usuarioAlteracao", item.IdUsuarioAlteracao);
-                    Vincular(comando, item);
-                }) > 0;
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", item.IdEquipe);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@versao", item.Versao);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@usuarioAlteracao", item.IdUsuarioAlteracao);
+                    Vincular(comandoBanco, item);
+                    resultadoBanco = comandoBanco.ExecuteNonQuery();
+                }
+            }
+            return resultadoBanco > 0;
 
         }
 

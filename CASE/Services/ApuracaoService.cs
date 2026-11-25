@@ -1,5 +1,6 @@
+﻿using System.Collections.Generic;
+using System.Data;
 using System;
-using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
 
@@ -7,8 +8,8 @@ namespace CASE.Services
 {
     public class ApuracaoService
     {
-        private readonly ApuracaoRepository apuracaoRepository = new ApuracaoRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private ApuracaoRepository apuracaoRepository = new ApuracaoRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public int RegistrarConferencia(Usuario usuario, Apuracao apuracao, int? ultimaConferenciaEsperada = null)
         {
@@ -51,13 +52,13 @@ namespace CASE.Services
             return apuracaoRepository.Cadastrar(apuracao, ultimaConferenciaEsperada);
         }
 
-        public System.Data.DataTable ResumoPorJornada(Usuario usuario, int idJornada)
+        public DataTable ResumoPorJornada(Usuario usuario, int idJornada)
         {
             ListarPorJornada(usuario, idJornada);
             return apuracaoRepository.ResumoPorJornada(idJornada);
         }
 
-        public System.Data.DataTable VendasPorJornada(Usuario usuario, int idJornada)
+        public DataTable VendasPorJornada(Usuario usuario, int idJornada)
         {
             ListarPorJornada(usuario, idJornada);
             return apuracaoRepository.VendasPorJornada(idJornada);

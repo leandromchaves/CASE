@@ -1,9 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing.Imaging;
+using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -12,13 +13,12 @@ namespace CASE
 {
     public partial class ProdutoForm : Form
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly Produto produtoEmEdicao;
-        private readonly ProdutoService produtoService = new ProdutoService();
-        private readonly CategoriaService categoriaService = new CategoriaService();
-        private readonly ContextMenuStrip menuImagem = new ContextMenuStrip();
+        private Usuario usuarioAutenticado;
+        private Produto produtoEmEdicao;
+        private ProdutoService produtoService = new ProdutoService();
+        private CategoriaService categoriaService = new CategoriaService();
+        private ContextMenuStrip menuImagem = new ContextMenuStrip();
         private byte[] imagemProduto;
-
         public ProdutoForm() : this(null, null)
         {
         }
@@ -26,12 +26,13 @@ namespace CASE
         public ProdutoForm(Usuario usuario, Produto produto)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             IconoAplicacao.Aplicar(this);
             FrontendTheme.Aplicar(this);
             VisualUtils.Arredondar(pictureImagemProduto, 10);
             usuarioAutenticado = usuario;
             produtoEmEdicao = produto;
-
             // Preço e estoque são mantidos por setor e local, não pelo cadastro geral do produto.
             cmbFornecedorProduto.Enabled = false;
             numQuantidadeInicial.Enabled = false;
@@ -39,12 +40,9 @@ namespace CASE
             numEstoqueIdeal.Enabled = false;
             txtPrecoUnitario.Enabled = false;
             ConfigurarCamposDoCatalogo();
-            lblSubtituloProduto.Text =
-                "Dados gerais do produto. Preços e estoque são configurados nos módulos próprios.";
+            lblSubtituloProduto.Text = "Dados gerais do produto. Preços e estoque são configurados nos módulos próprios.";
             ConfigurarSelecaoDeImagem();
-
-            if (System.ComponentModel.LicenseManager.UsageMode ==
-                System.ComponentModel.LicenseUsageMode.Designtime)
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
             {
                 return;
             }
@@ -57,11 +55,11 @@ namespace CASE
             }
 
             CarregarCategorias();
-
             if (produtoEmEdicao != null)
             {
                 PreencherProduto(produtoEmEdicao);
             }
+
             try
             {
                 string perfil;
@@ -94,7 +92,6 @@ namespace CASE
             txtDescricaoProduto.Text = produto.Descricao;
             imagemProduto = produto.Imagem;
             ExibirImagemProduto(imagemProduto);
-
             foreach (Categoria categoria in cmbCategoriaProduto.Items)
             {
                 if (categoria.IdCategoria == produto.IdCategoria)
@@ -107,22 +104,14 @@ namespace CASE
 
         private void btnSalvarProduto_Click(object sender, EventArgs e)
         {
-
             Categoria categoria = cmbCategoriaProduto.SelectedItem as Categoria;
-
             if (categoria == null)
             {
-                MessageBox.Show(
-                    this,
-                    "Selecione uma categoria.",
-                    "Cadastro de produto",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                MessageBox.Show(this, "Selecione uma categoria.", "Cadastro de produto", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
             Produto produto;
-
             if (produtoEmEdicao == null)
             {
                 produto = new Produto();
@@ -141,7 +130,6 @@ namespace CASE
             produto.Descricao = txtDescricaoProduto.Text.Trim();
             produto.UnidadeMedida = produtoEmEdicao == null ? "UN" : produtoEmEdicao.UnidadeMedida;
             produto.Imagem = imagemProduto;
-
             try
             {
                 if (produtoEmEdicao == null)
@@ -158,21 +146,19 @@ namespace CASE
             }
             catch (ArgumentException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do produto e tente novamente.");
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados do produto e tente novamente.");
             }
             catch (InvalidOperationException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível salvar o produto. Confira os dados e tente novamente.");
+                FeedbackUsuario.ExibirErro(this, ex, "Não foi possível salvar o produto. Confira os dados e tente novamente.");
             }
             catch (UnauthorizedAccessException)
             {
-                MessageBox.Show(this, "Sua conta não tem permissão para alterar produtos.",
-                    "Cadastro de produto", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(this, "Sua conta não tem permissão para alterar produtos.", "Cadastro de produto", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             catch (Exception)
             {
-                MessageBox.Show(this, "Não foi possível salvar o produto.",
-                    "Cadastro de produto", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, "Não foi possível salvar o produto.", "Cadastro de produto", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -182,42 +168,46 @@ namespace CASE
             cmbFornecedorProduto.Items.Clear();
             foreach (Control campo in new Control[]
             {
-                lblQuantidadeInicial, numQuantidadeInicial, lblEstoqueMinimo, numEstoqueMinimo,
-                lblEstoqueIdeal, numEstoqueIdeal, lblPrecoUnitario, txtPrecoUnitario
-            })
-                campo.Visible = false;
+                lblQuantidadeInicial,
+                numQuantidadeInicial,
+                lblEstoqueMinimo,
+                numEstoqueMinimo,
+                lblEstoqueIdeal,
+                numEstoqueIdeal,
+                lblPrecoUnitario,
+                txtPrecoUnitario
+            }
 
+            )
+                campo.Visible = false;
             // O tema envolve TextBoxes em um painel arredondado. Como o preço não
             // pertence ao cadastro geral, o campo e seu contêiner precisam sumir juntos.
             Control contornoPreco = ControleVisual(txtPrecoUnitario);
             if (contornoPreco != txtPrecoUnitario)
                 contornoPreco.Visible = false;
-
             lblFornecedorProduto.Text = "Fornecedores vinculados";
             var fornecedores = new Button
             {
-                Name = "btnFornecedoresProduto", Text = "Fornecedores do produto…",
-                Bounds = new Rectangle(cmbFornecedorProduto.Left, cmbFornecedorProduto.Top - 4,
-                    cmbFornecedorProduto.Width, 36),
-                BackColor = VisualUtils.Azul, ForeColor = Color.White,
+                Name = "btnFornecedoresProduto",
+                Text = "Fornecedores do produto…",
+                Bounds = new Rectangle(cmbFornecedorProduto.Left, cmbFornecedorProduto.Top - 4, cmbFornecedorProduto.Width, 36),
+                BackColor = VisualUtils.Azul,
+                ForeColor = Color.White,
                 TabIndex = cmbFornecedorProduto.TabIndex,
                 Enabled = produtoEmEdicao != null && usuarioAutenticado != null
             };
             panelProduto.Controls.Add(fornecedores);
             VisualUtils.EstilizarBotao(fornecedores);
             VisualUtils.Arredondar(fornecedores, 8);
-            fornecedores.Click += (s, e) => ProdutosControl.GerenciarFornecedores(
-                this, usuarioAutenticado, produtoEmEdicao);
+            fornecedores.Click += fornecedores_Click;
             var orientacao = new Label
             {
-                Name = "lblOrientacaoEstoqueProduto", BackColor = VisualUtils.Fundo,
-                ForeColor = VisualUtils.TextoSuave, Padding = new Padding(10),
+                Name = "lblOrientacaoEstoqueProduto",
+                BackColor = VisualUtils.Fundo,
+                ForeColor = VisualUtils.TextoSuave,
+                Padding = new Padding(10),
                 Font = new Font("Segoe UI", 9F),
-                Text = (produtoEmEdicao == null ? "Salve o produto para vincular fornecedores.\n" :
-                    "Os vínculos com fornecedores são salvos em uma janela própria.\n") +
-                    "Saldo: entradas e transferências em Estoque.\n" +
-                    "Mínimo e ideal: limites por local em Estoque.\n" +
-                    "Preço de venda: Equipes e setores → Produtos e preços."
+                Text = (produtoEmEdicao == null ? "Salve o produto para vincular fornecedores.\n" : "Os vínculos com fornecedores são salvos em uma janela própria.\n") + "Saldo: entradas e transferências em Estoque.\n" + "Mínimo e ideal: limites por local em Estoque.\n" + "Preço de venda: Equipes e setores → Produtos e preços."
             };
             Control contornoNome = ControleVisual(txtNomeProduto);
             orientacao.SetBounds(contornoNome.Left, 236, contornoNome.Width, 86);
@@ -230,23 +220,18 @@ namespace CASE
         private static Control ControleVisual(TextBox campo)
         {
             Panel painel = campo == null ? null : campo.Parent as Panel;
-            return painel != null && painel.Controls.Count == 1 && painel.Controls[0] == campo
-                ? (Control)painel
-                : campo;
+            return painel != null && painel.Controls.Count == 1 && painel.Controls[0] == campo ? (Control)painel : campo;
         }
 
         private void ConfigurarSelecaoDeImagem()
         {
             ToolStripMenuItem selecionarImagem = new ToolStripMenuItem("Selecionar imagem");
             selecionarImagem.Click += SelecionarImagem_Click;
-
             ToolStripMenuItem removerImagem = new ToolStripMenuItem("Remover imagem");
             removerImagem.Click += RemoverImagem_Click;
-
             menuImagem.Items.Add(selecionarImagem);
             menuImagem.Items.Add(removerImagem);
             menuImagem.Opening += MenuImagem_Opening;
-
             pictureImagemProduto.ContextMenuStrip = menuImagem;
             pictureImagemProduto.Cursor = Cursors.Hand;
             pictureImagemProduto.Click += PictureImagemProduto_Click;
@@ -259,7 +244,7 @@ namespace CASE
             menuImagem.Show(pictureImagemProduto, new Point(0, pictureImagemProduto.Height));
         }
 
-        private void MenuImagem_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        private void MenuImagem_Opening(object sender, CancelEventArgs e)
         {
             menuImagem.Items[1].Enabled = imagemProduto != null && imagemProduto.Length > 0;
         }
@@ -272,7 +257,6 @@ namespace CASE
                 seletor.Filter = "Imagens JPG ou PNG|*.jpg;*.jpeg;*.png";
                 seletor.CheckFileExists = true;
                 seletor.Multiselect = false;
-
                 if (seletor.ShowDialog(this) != DialogResult.OK)
                 {
                     return;
@@ -284,18 +268,18 @@ namespace CASE
                     {
                         throw new ArgumentException("A imagem do produto excede o limite de 16 MB.");
                     }
+
                     byte[] dados = File.ReadAllBytes(seletor.FileName);
                     imagemProduto = ValidarEPrepararImagem(dados);
                     ExibirImagemProduto(imagemProduto);
                 }
                 catch (ArgumentException erro)
                 {
-                    CASE.Utils.FeedbackUsuario.ExibirErro(this, erro, "A imagem selecionada não pôde ser utilizada. Escolha outro arquivo.");
+                    FeedbackUsuario.ExibirErro(this, erro, "A imagem selecionada não pôde ser utilizada. Escolha outro arquivo.");
                 }
                 catch (Exception)
                 {
-                    MessageBox.Show(this, "Não foi possível abrir a imagem selecionada.",
-                        "Imagem do produto", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show(this, "Não foi possível abrir a imagem selecionada.", "Imagem do produto", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -329,7 +313,6 @@ namespace CASE
         {
             Image imagemAnterior = pictureImagemProduto.Image;
             pictureImagemProduto.Image = null;
-
             if (imagemAnterior != null)
             {
                 imagemAnterior.Dispose();
@@ -372,11 +355,9 @@ namespace CASE
         {
             cmbCategoriaProduto.Items.Clear();
             cmbCategoriaProduto.DisplayMember = "Nome";
-
             try
             {
                 List<Categoria> categorias = categoriaService.Listar(usuarioAutenticado);
-
                 foreach (Categoria categoria in categorias)
                 {
                     cmbCategoriaProduto.Items.Add(categoria);
@@ -394,13 +375,13 @@ namespace CASE
             catch (Exception)
             {
                 btnSalvarProduto.Enabled = false;
-                MessageBox.Show(
-                    this,
-                    "Não foi possível carregar as categorias.",
-                    "Cadastro de produto",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(this, "Não foi possível carregar as categorias.", "Cadastro de produto", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void fornecedores_Click(object s, EventArgs e)
+        {
+            ProdutosControl.GerenciarFornecedores(this, usuarioAutenticado, produtoEmEdicao);
         }
     }
 }

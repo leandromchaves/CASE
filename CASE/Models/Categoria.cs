@@ -1,4 +1,4 @@
-namespace CASE.Models
+﻿namespace CASE.Models
 {
     public class Categoria
     {

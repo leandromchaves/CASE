@@ -1,7 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
+using System.Drawing;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -10,10 +13,9 @@ namespace CASE.Quermesse
 {
     public partial class QuermesseDashboardControl : UserControl
     {
-        private readonly Button btnGerarPdf = new Button();
-        private readonly Button btnGerarExcel = new Button();
+        private Button btnGerarPdf = new Button();
+        private Button btnGerarExcel = new Button();
         private DataTable dadosAtividade;
-
         public QuermesseDashboardControl() : this(null, null)
         {
         }
@@ -21,6 +23,8 @@ namespace CASE.Quermesse
         public QuermesseDashboardControl(Usuario usuario, Evento evento)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
             FrontendTheme.Aplicar(this);
             ConfigurarExportacoes();
             lblValorIndicador0.Text = lblValorIndicador1.Text = "—";
@@ -42,9 +46,9 @@ namespace CASE.Quermesse
                 {
                     throw new InvalidOperationException("O evento não foi encontrado.");
                 }
+
                 lblSubtitulo.Text = autorizado.Nome;
-                DataTable registros = new ConsultaOperacionalService().Registros(usuario,
-                    autorizado.IdEvento, autorizado.DataInicio, autorizado.DataFim);
+                DataTable registros = new ConsultaOperacionalService().Registros(usuario, autorizado.IdEvento, autorizado.DataInicio, autorizado.DataFim);
                 HashSet<int> operacoes = new HashSet<int>();
                 decimal itensVendidos = 0;
                 foreach (DataRow registro in registros.Rows)
@@ -54,10 +58,10 @@ namespace CASE.Quermesse
                     {
                         itensVendidos += Convert.ToDecimal(registro["quantidade"]);
                     }
-                    dgvAtividade.Rows.Add(registro["responsavel"], registro["setor"],
-                        registro["turno"], CASE.Utils.TextoInterface.FormatarValorBanco(registro["tipo"]),
-                        registro["produto"], registro["quantidade"]);
+
+                    dgvAtividade.Rows.Add(registro["responsavel"], registro["setor"], registro["turno"], TextoInterface.FormatarValorBanco(registro["tipo"]), registro["produto"], registro["quantidade"]);
                 }
+
                 lblValorIndicador0.Text = operacoes.Count.ToString();
                 lblValorIndicador1.Text = itensVendidos.ToString("N0");
                 lblValorIndicador2.Text = new EquipeEventoService().ListarPorEvento(usuario, autorizado.IdEvento).Count.ToString();
@@ -70,7 +74,7 @@ namespace CASE.Quermesse
             catch (Exception erro)
             {
                 labelAviso.Text = "Não foi possível carregar o resumo autorizado do evento.";
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ResumoEvento: " + erro.StackTrace);
+                Trace.WriteLine(erro.GetType().Name + " em ResumoEvento: " + erro.StackTrace);
             }
         }
 
@@ -78,29 +82,33 @@ namespace CASE.Quermesse
         {
             btnGerarPdf.Name = "btnGerarResumoPdf";
             btnGerarPdf.Text = "Gerar PDF";
-            btnGerarPdf.Size = new System.Drawing.Size(104, 34);
+            btnGerarPdf.Size = new Size(104, 34);
             btnGerarPdf.Enabled = false;
             btnGerarPdf.CausesValidation = false;
-            btnGerarPdf.Click += (s, e) => ExportarResumo("pdf");
-
+            btnGerarPdf.Click += btnGerarPdf_Click;
             btnGerarExcel.Name = "btnGerarResumoExcel";
             btnGerarExcel.Text = "Gerar Excel";
-            btnGerarExcel.Size = new System.Drawing.Size(112, 34);
+            btnGerarExcel.Size = new Size(112, 34);
             btnGerarExcel.Enabled = false;
             btnGerarExcel.CausesValidation = false;
-            btnGerarExcel.Click += (s, e) => ExportarResumo("xlsx");
+            btnGerarExcel.Click += btnGerarExcel_Click;
+            foreach (Button botao in new[]
+            {
+                btnGerarPdf,
+                btnGerarExcel
+            }
 
-            foreach (Button botao in new[] { btnGerarPdf, btnGerarExcel })
+            )
             {
                 botao.FlatStyle = FlatStyle.Flat;
-                botao.BackColor = System.Drawing.Color.White;
+                botao.BackColor = Color.White;
                 botao.ForeColor = VisualUtils.Texto;
                 VisualUtils.EstilizarBotao(botao);
                 VisualUtils.Arredondar(botao, 8);
                 panelAtividade.Controls.Add(botao);
             }
 
-            panelAtividade.SizeChanged += (s, e) => OrganizarExportacoes();
+            panelAtividade.SizeChanged += panelAtividade_SizeChanged;
             OrganizarExportacoes();
         }
 
@@ -108,30 +116,23 @@ namespace CASE.Quermesse
         {
             int largura = panelAtividade.ClientSize.Width;
             int margem = 18;
-            btnGerarExcel.SetBounds(largura - margem - btnGerarExcel.Width, 11,
-                btnGerarExcel.Width, 34);
-            btnGerarPdf.SetBounds(btnGerarExcel.Left - 8 - btnGerarPdf.Width, 11,
-                btnGerarPdf.Width, 34);
-            lblAtividaderecente.SetBounds(margem, 14,
-                Math.Max(120, btnGerarPdf.Left - margem - 12), 28);
+            btnGerarExcel.SetBounds(largura - margem - btnGerarExcel.Width, 11, btnGerarExcel.Width, 34);
+            btnGerarPdf.SetBounds(btnGerarExcel.Left - 8 - btnGerarPdf.Width, 11, btnGerarPdf.Width, 34);
+            lblAtividaderecente.SetBounds(margem, 14, Math.Max(120, btnGerarPdf.Left - margem - 12), 28);
         }
 
         private void ExportarResumo(string formato)
         {
             if (dadosAtividade == null)
                 return;
-
             using (var dialogo = new SaveFileDialog())
             {
-                dialogo.Filter = formato == "pdf"
-                    ? "Documento PDF (*.pdf)|*.pdf"
-                    : "Planilha Excel (*.xlsx)|*.xlsx";
+                dialogo.Filter = formato == "pdf" ? "Documento PDF (*.pdf)|*.pdf" : "Planilha Excel (*.xlsx)|*.xlsx";
                 dialogo.DefaultExt = formato;
                 dialogo.AddExtension = true;
                 dialogo.FileName = "CASE_resumo_evento_" + DateTime.Today.ToString("yyyyMMdd") + "." + formato;
                 if (dialogo.ShowDialog(this) != DialogResult.OK)
                     return;
-
                 btnGerarPdf.Enabled = btnGerarExcel.Enabled = false;
                 UseWaitCursor = true;
                 try
@@ -139,26 +140,19 @@ namespace CASE.Quermesse
                     ContextoRelatorio contexto = new ContextoRelatorio
                     {
                         Titulo = "Resumo do evento — " + lblSubtitulo.Text,
-                        Filtros = "Evento: " + lblSubtitulo.Text +
-                            " | Registros: " + lblValorIndicador0.Text +
-                            " | Itens vendidos: " + lblValorIndicador1.Text +
-                            " | Pessoas na equipe: " + lblValorIndicador2.Text +
-                            " | Setores: " + lblValorIndicador3.Text
+                        Filtros = "Evento: " + lblSubtitulo.Text + " | Registros: " + lblValorIndicador0.Text + " | Itens vendidos: " + lblValorIndicador1.Text + " | Pessoas na equipe: " + lblValorIndicador2.Text + " | Setores: " + lblValorIndicador3.Text
                     };
-
                     if (formato == "pdf")
                         ExportadorRelatorio.ExportarPdf(dadosAtividade, dialogo.FileName, contexto);
                     else
                         ExportadorRelatorio.ExportarExcel(dadosAtividade, dialogo.FileName, contexto);
-
                     labelAviso.Text = "Resumo do evento exportado para " + formato.ToUpperInvariant() + ".";
                     FeedbackUsuario.Exibir(this, labelAviso.Text, TipoFeedback.Sucesso);
                 }
                 catch (Exception erro)
                 {
-                    FeedbackUsuario.ExibirErro(this, erro,
-                        "Não foi possível gerar o arquivo. Confira o local escolhido e tente novamente.", labelAviso);
-                    System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em ExportarResumoEvento: " + erro.StackTrace);
+                    FeedbackUsuario.ExibirErro(this, erro, "Não foi possível gerar o arquivo. Confira o local escolhido e tente novamente.", labelAviso);
+                    Trace.WriteLine(erro.GetType().Name + " em ExportarResumoEvento: " + erro.StackTrace);
                 }
                 finally
                 {
@@ -175,12 +169,32 @@ namespace CASE.Quermesse
 
         private void AjustarIndicadores()
         {
-            Panel[] indicadores = { panelIndicador0, panelIndicador1, panelIndicador2, panelIndicador3 };
+            Panel[] indicadores =
+            {
+                panelIndicador0,
+                panelIndicador1,
+                panelIndicador2,
+                panelIndicador3
+            };
             for (int indice = 0; indice < indicadores.Length; indice++)
             {
-                indicadores[indice].SetBounds(indice * (panelCorpo.Width + 10) / 4,
-                    0, (panelCorpo.Width - 30) / 4, 105);
+                indicadores[indice].SetBounds(indice * (panelCorpo.Width + 10) / 4, 0, (panelCorpo.Width - 30) / 4, 105);
             }
+        }
+
+        private void btnGerarPdf_Click(object s, EventArgs e)
+        {
+            ExportarResumo("pdf");
+        }
+
+        private void btnGerarExcel_Click(object s, EventArgs e)
+        {
+            ExportarResumo("xlsx");
+        }
+
+        private void panelAtividade_SizeChanged(object s, EventArgs e)
+        {
+            OrganizarExportacoes();
         }
     }
 }

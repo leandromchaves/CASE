@@ -1,5 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System;
+using CASE.Data;
 using CASE.Models;
 using CASE.Services;
 using MySql.Data.MySqlClient;
@@ -8,30 +9,56 @@ namespace CASE.Repositories
 {
     public class SolicitacaoRepository
     {
-
         private const string Colunas = "id_solicitacao,id_escala,tipo,descricao,data_hora,situacao,id_usuario_solicitante,id_usuario_decisor,decidida_em,justificativa_rejeicao,criado_em,versao";
 
         public List<Solicitacao> ListarPorEscala(int idEscala)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM solicitacao WHERE id_escala=@id ORDER BY data_hora DESC,id_solicitacao DESC",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idEscala)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM solicitacao WHERE id_escala=@id ORDER BY data_hora DESC,id_solicitacao DESC", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idEscala);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Solicitacao> resultadoBanco = new List<Solicitacao>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<Solicitacao> ListarPorSolicitante(int idUsuario)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT " + Colunas + " FROM solicitacao WHERE id_usuario_solicitante=@usuario ORDER BY data_hora DESC,id_solicitacao DESC",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@usuario", idUsuario));
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM solicitacao WHERE id_usuario_solicitante=@usuario ORDER BY data_hora DESC,id_solicitacao DESC", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@usuario", idUsuario);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Solicitacao> resultadoBanco = new List<Solicitacao>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public List<Solicitacao> ListarPorEvento(int idEvento)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT DISTINCT so.id_solicitacao,so.id_escala,so.tipo,so.descricao,so.data_hora,so.situacao," +
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT DISTINCT so.id_solicitacao,so.id_escala,so.tipo,so.descricao,so.data_hora,so.situacao," +
                 "so.id_usuario_solicitante,so.id_usuario_decisor,so.decidida_em,so.justificativa_rejeicao,so.criado_em,so.versao " +
                 "FROM solicitacao so " +
                 "JOIN escala e ON e.id_escala=so.id_escala " +
@@ -39,24 +66,48 @@ namespace CASE.Repositories
                 "JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +
                 "JOIN setor s ON s.id_setor=j.id_setor " +
                 "WHERE ee.id_evento=@evento AND s.id_evento=@evento " +
-                "ORDER BY so.data_hora DESC,so.id_solicitacao DESC",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@evento", idEvento));
+                "ORDER BY so.data_hora DESC,so.id_solicitacao DESC", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@evento", idEvento);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Solicitacao> resultadoBanco = new List<Solicitacao>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         public Solicitacao BuscarPorId(int id)
         {
-            return AcessoDados.ConsultarUnico(
-                "SELECT " + Colunas + " FROM solicitacao WHERE id_solicitacao=@id",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", id)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT " + Colunas + " FROM solicitacao WHERE id_solicitacao=@id", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", id);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        if (leitorBanco.Read())
+                        {
+                            return ConverterLinha(leitorBanco);
+                        }
+                        return null;
+                    }
+                }
+            }
         }
 
         public List<Solicitacao> ListarPendentesPorEvento(int idEvento)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT DISTINCT so.id_solicitacao,so.id_escala,so.tipo,so.descricao,so.data_hora,so.situacao," +
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT DISTINCT so.id_solicitacao,so.id_escala,so.tipo,so.descricao,so.data_hora,so.situacao," +
                 "so.id_usuario_solicitante,so.id_usuario_decisor,so.decidida_em,so.justificativa_rejeicao,so.criado_em,so.versao " +
                 " FROM solicitacao so " +
                 "JOIN escala e ON e.id_escala=so.id_escala " +
@@ -64,17 +115,24 @@ namespace CASE.Repositories
                 "JOIN jornadasetor j ON j.id_jornada=e.id_jornada " +
                 "JOIN setor s ON s.id_setor=j.id_setor " +
                 "WHERE ee.id_evento=@evento AND s.id_evento=@evento AND so.situacao=@situacao " +
-                "ORDER BY so.data_hora,so.id_solicitacao",
-                ConverterLinha,
-                comando =>
+                "ORDER BY so.data_hora,so.id_solicitacao", conexaoBanco))
                 {
-                    AcessoDados.AdicionarParametro(comando, "@evento", idEvento);
+                    AcessoDados.AdicionarParametro(comandoBanco, "@evento", idEvento);
                     AcessoDados.AdicionarTextoObrigatorio(
-                        comando,
-                        "@situacao",
-                        SituacoesSolicitacao.Pendente);
+                    comandoBanco,
+                    "@situacao",
+                    SituacoesSolicitacao.Pendente);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<Solicitacao> resultadoBanco = new List<Solicitacao>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
                 }
-            );
+            }
         }
 
         public void RegistrarDecisao(
@@ -108,11 +166,11 @@ namespace CASE.Repositories
                     nameof(justificativa));
             }
 
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
 
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
@@ -123,7 +181,7 @@ namespace CASE.Repositories
                             versao,
                             idUsuarioDecisor);
 
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "UPDATE solicitacao " +
                             "SET situacao=@situacao,id_usuario_decisor=@usuario,decidida_em=NOW()," +
                             "justificativa_rejeicao=CASE WHEN @situacao='rejeitada' " +
@@ -149,7 +207,7 @@ namespace CASE.Repositories
                             }
                         }
 
-                        using (var comando = new MySqlCommand(
+                        using (MySqlCommand comando = new MySqlCommand(
                             "INSERT INTO historicoalteracaooperacao " +
                             "(entidade,id_entidade,id_usuario,justificativa,dados_anteriores,dados_novos) " +
                             "VALUES ('solicitacao',@id,@usuario,@justificativa," +
@@ -226,10 +284,10 @@ namespace CASE.Repositories
             {
                 throw new ArgumentNullException(nameof(itens));
             }
-            using (var conexao = CASE.Data.Conexao.CriarConexao())
+            using (MySqlConnection conexao = Conexao.CriarConexao())
             {
                 conexao.Open();
-                using (var transacao = conexao.BeginTransaction())
+                using (MySqlTransaction transacao = conexao.BeginTransaction())
                 {
                     try
                     {
@@ -250,20 +308,20 @@ namespace CASE.Repositories
                             solicitacao.IdEscala,
                             itens);
 
-                        int id = AcessoDados.Inserir(
-                            conexao,
-                            transacao,
-                            "INSERT INTO solicitacao (id_escala,tipo,descricao,data_hora,situacao,id_usuario_solicitante,criado_em) VALUES (@escala,@tipo,@descricao,@data,@situacao,@solicitante,@criadoEm)",
-                            comando =>
-                            {
-                                AcessoDados.AdicionarParametro(comando, "@escala", solicitacao.IdEscala);
-                                AcessoDados.AdicionarTextoObrigatorio(comando, "@tipo", solicitacao.Tipo);
-                                AcessoDados.AdicionarTextoOpcional(comando, "@descricao", solicitacao.Descricao);
-                                AcessoDados.AdicionarParametro(comando, "@data", solicitacao.DataHora);
-                                AcessoDados.AdicionarTextoObrigatorio(comando, "@situacao", solicitacao.Situacao);
-                                AcessoDados.AdicionarParametro(comando, "@solicitante", solicitacao.IdUsuarioSolicitante);
-                                AcessoDados.AdicionarParametro(comando, "@criadoEm", solicitacao.CriadoEm);
-                            });
+                        int resultadoBanco5;
+                        using (MySqlCommand comandoBanco5 = new MySqlCommand("INSERT INTO solicitacao (id_escala,tipo,descricao,data_hora,situacao,id_usuario_solicitante,criado_em) VALUES (@escala,@tipo,@descricao,@data,@situacao,@solicitante,@criadoEm)", conexao, transacao))
+                        {
+                            AcessoDados.AdicionarParametro(comandoBanco5, "@escala", solicitacao.IdEscala);
+                            AcessoDados.AdicionarTextoObrigatorio(comandoBanco5, "@tipo", solicitacao.Tipo);
+                            AcessoDados.AdicionarTextoOpcional(comandoBanco5, "@descricao", solicitacao.Descricao);
+                            AcessoDados.AdicionarParametro(comandoBanco5, "@data", solicitacao.DataHora);
+                            AcessoDados.AdicionarTextoObrigatorio(comandoBanco5, "@situacao", solicitacao.Situacao);
+                            AcessoDados.AdicionarParametro(comandoBanco5, "@solicitante", solicitacao.IdUsuarioSolicitante);
+                            AcessoDados.AdicionarParametro(comandoBanco5, "@criadoEm", solicitacao.CriadoEm);
+                            comandoBanco5.ExecuteNonQuery();
+                            resultadoBanco5 = Convert.ToInt32(comandoBanco5.LastInsertedId);
+                        }
+                        int id = resultadoBanco5;
 
                         foreach (var item in itens)
                         {
@@ -271,16 +329,13 @@ namespace CASE.Repositories
                             {
                                 throw new ArgumentException("A lista contem um item nulo.", nameof(itens));
                             }
-                            AcessoDados.Executar(
-                                conexao,
-                                transacao,
-                                "INSERT INTO solicitacaoitem (id_solicitacao,id_produto_setor,quantidade) VALUES (@solicitacao,@produtoSetor,@quantidade)",
-                                comando =>
-                                {
-                                    AcessoDados.AdicionarParametro(comando, "@solicitacao", id);
-                                    AcessoDados.AdicionarParametro(comando, "@produtoSetor", item.IdProdutoSetor);
-                                    AcessoDados.AdicionarParametro(comando, "@quantidade", item.Quantidade);
-                                });
+                            using (MySqlCommand comandoBanco6 = new MySqlCommand("INSERT INTO solicitacaoitem (id_solicitacao,id_produto_setor,quantidade) VALUES (@solicitacao,@produtoSetor,@quantidade)", conexao, transacao))
+                            {
+                                AcessoDados.AdicionarParametro(comandoBanco6, "@solicitacao", id);
+                                AcessoDados.AdicionarParametro(comandoBanco6, "@produtoSetor", item.IdProdutoSetor);
+                                AcessoDados.AdicionarParametro(comandoBanco6, "@quantidade", item.Quantidade);
+                                comandoBanco6.ExecuteNonQuery();
+                            }
 
                         }
                         transacao.Commit();

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using CASE.Models;
 
 namespace CASE.Services
@@ -6,7 +6,6 @@ namespace CASE.Services
     internal static class SessaoUsuario
     {
         private static Usuario usuarioAtual;
-
         public static bool EstaAutenticado
         {
             get
@@ -45,18 +44,14 @@ namespace CASE.Services
                 throw new UnauthorizedAccessException("A conta não possui um perfil de acesso.");
             }
 
-            if (!string.Equals(
-                usuario.SituacaoConta,
-                SituacoesUsuario.Aprovado,
-                StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(usuario.SituacaoConta, SituacoesUsuario.Aprovado, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException("A conta não está aprovada para acessar o sistema.");
             }
 
             if (usuarioAtual != null && usuarioAtual.IdUsuario != usuario.IdUsuario)
             {
-                throw new InvalidOperationException(
-                    "Encerre a sessão atual antes de iniciar uma sessão para outra conta.");
+                throw new InvalidOperationException("Encerre a sessão atual antes de iniciar uma sessão para outra conta.");
             }
 
             usuarioAtual = CopiarIdentidade(usuario);
@@ -84,12 +79,9 @@ namespace CASE.Services
                 throw new UnauthorizedAccessException("Não existe uma sessão autenticada.");
             }
 
-            if (usuario.IdUsuario != usuarioAtual.IdUsuario ||
-                usuario.IdPessoa != usuarioAtual.IdPessoa ||
-                usuario.IdPerfilSistema != usuarioAtual.IdPerfilSistema)
+            if (usuario.IdUsuario != usuarioAtual.IdUsuario || usuario.IdPessoa != usuarioAtual.IdPessoa || usuario.IdPerfilSistema != usuarioAtual.IdPerfilSistema)
             {
-                throw new UnauthorizedAccessException(
-                    "A identidade informada não corresponde à sessão autenticada.");
+                throw new UnauthorizedAccessException("A identidade informada não corresponde à sessão autenticada.");
             }
         }
 
@@ -107,7 +99,6 @@ namespace CASE.Services
             copia.Login = usuario.Login;
             copia.SituacaoConta = usuario.SituacaoConta;
             copia.SolicitadoEm = usuario.SolicitadoEm;
-
             return copia;
         }
     }

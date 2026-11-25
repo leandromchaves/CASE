@@ -1,13 +1,13 @@
-using System;
+﻿using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
+using System;
 
 namespace CASE.Utils
 {
     internal static class IconoAplicacao
     {
         private static Icon iconePrincipal;
-
         public static void Aplicar(Form formulario)
         {
             if (formulario == null)
@@ -15,8 +15,7 @@ namespace CASE.Utils
                 throw new ArgumentNullException(nameof(formulario));
             }
 
-            if (System.ComponentModel.LicenseManager.UsageMode ==
-                System.ComponentModel.LicenseUsageMode.Designtime)
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
             {
                 return;
             }

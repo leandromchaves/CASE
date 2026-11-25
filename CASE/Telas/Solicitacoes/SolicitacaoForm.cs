@@ -1,8 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
 using System.Globalization;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
+using CASE.Repositories;
 using CASE.Services;
 using CASE.Utils;
 
@@ -16,12 +19,12 @@ namespace CASE.Quermesse
             public string Descricao { get; set; }
         }
 
-        private readonly Usuario usuarioAutenticado;
-        private readonly int? idSolicitacaoDetalhe;
-        private readonly SolicitacaoService solicitacaoService = new SolicitacaoService();
-        private readonly EscalaService escalaService = new EscalaService();
-        private readonly EventoService eventoService = new EventoService();
-        private readonly ComboBox comboProdutos = new ComboBox();
+        private Usuario usuarioAutenticado;
+        private int? idSolicitacaoDetalhe;
+        private SolicitacaoService solicitacaoService = new SolicitacaoService();
+        private EscalaService escalaService = new EscalaService();
+        private EventoService eventoService = new EventoService();
+        private ComboBox comboProdutos = new ComboBox();
 
         public SolicitacaoForm() : this(null, null)
         {
@@ -43,6 +46,8 @@ namespace CASE.Quermesse
         public SolicitacaoForm(Usuario usuario, int? idSolicitacao)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode ==
+                LicenseUsageMode.Designtime) return;
             IconoAplicacao.Aplicar(this);
             FrontendTheme.Aplicar(this);
             usuarioAutenticado = usuario;
@@ -102,15 +107,15 @@ namespace CASE.Quermesse
         private void OrganizarNovaSolicitacao()
         {
             Text = lblTitulo.Text = "Solicitar reposição";
-            ClientSize = new System.Drawing.Size(640, 650);
+            ClientSize = new Size(640, 650);
             panelFormulario.Height = 618;
             cmbTipoSolicitacao.Visible = lblTipo.Visible = false;
             var orientacao = new Label
             {
                 Text = "Peça produtos do estoque geral para abastecer seu setor.",
                 ForeColor = VisualUtils.TextoSuave,
-                Font = new System.Drawing.Font("Segoe UI", 10),
-                Bounds = new System.Drawing.Rectangle(28, 70, 550, 30)
+                Font = new Font("Segoe UI", 10),
+                Bounds = new Rectangle(28, 70, 550, 30)
             };
             panelFormulario.Controls.Add(orientacao);
             lblSetor.Text = "Evento, setor e escala *";
@@ -181,7 +186,7 @@ namespace CASE.Quermesse
                     Setor setor = new SetorService().BuscarPorId(
                         usuarioAutenticado,
                         jornada.IdSetor);
-                    Turno turno = new CASE.Repositories.TurnoRepository().BuscarPorId(
+                    Turno turno = new TurnoRepository().BuscarPorId(
                         jornada.IdTurno);
 
                     if (setor == null)
@@ -354,11 +359,11 @@ namespace CASE.Quermesse
                 cmbSetorSolicitacao.SelectedIndex = 0;
                 cmbSetorSolicitacao.Enabled = false;
                 cmbTipoSolicitacao.Items.Clear();
-                cmbTipoSolicitacao.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Tipo));
+                cmbTipoSolicitacao.Items.Add(TextoInterface.FormatarValorBanco(solicitacao.Tipo));
                 cmbTipoSolicitacao.SelectedIndex = 0;
                 cmbTipoSolicitacao.Enabled = false;
                 cmbStatusSolicitacao.Items.Clear();
-                cmbStatusSolicitacao.Items.Add(CASE.Utils.TextoInterface.FormatarValorBanco(solicitacao.Situacao));
+                cmbStatusSolicitacao.Items.Add(TextoInterface.FormatarValorBanco(solicitacao.Situacao));
                 cmbStatusSolicitacao.SelectedIndex = 0;
                 cmbStatusSolicitacao.Visible = true;
                 lblSituacao.Visible = true;
@@ -417,7 +422,7 @@ namespace CASE.Quermesse
             }
             catch (ArgumentException ex)
             {
-                CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", labelAvisoFormulario);
+                FeedbackUsuario.ExibirErro(this, ex, "Confira os dados da solicitação e tente novamente.", labelAvisoFormulario);
             }
             catch (UnauthorizedAccessException)
             {

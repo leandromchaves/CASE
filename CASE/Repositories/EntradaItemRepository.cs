@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using CASE.Data;
 using CASE.Models;
 using MySql.Data.MySqlClient;
 
@@ -6,14 +7,25 @@ namespace CASE.Repositories
 {
     public class EntradaItemRepository
     {
-
         public List<EntradaItem> ListarPorEntrada(int idEntrada)
         {
-            return AcessoDados.ConsultarLista(
-                "SELECT id_entrada_item,id_entrada,id_produto,quantidade,custo_unitario FROM entradaitem WHERE id_entrada=@id ORDER BY id_entrada_item",
-                ConverterLinha,
-                comando => AcessoDados.AdicionarParametro(comando, "@id", idEntrada)
-            );
+            using (MySqlConnection conexaoBanco = Conexao.CriarConexao())
+            {
+                conexaoBanco.Open();
+                using (MySqlCommand comandoBanco = new MySqlCommand("SELECT id_entrada_item,id_entrada,id_produto,quantidade,custo_unitario FROM entradaitem WHERE id_entrada=@id ORDER BY id_entrada_item", conexaoBanco))
+                {
+                    AcessoDados.AdicionarParametro(comandoBanco, "@id", idEntrada);
+                    using (MySqlDataReader leitorBanco = comandoBanco.ExecuteReader())
+                    {
+                        List<EntradaItem> resultadoBanco = new List<EntradaItem>();
+                        while (leitorBanco.Read())
+                        {
+                            resultadoBanco.Add(ConverterLinha(leitorBanco));
+                        }
+                        return resultadoBanco;
+                    }
+                }
+            }
         }
 
         private static EntradaItem ConverterLinha(MySqlDataReader leitor)

@@ -1,4 +1,4 @@
-namespace CASE.Quermesse
+﻿namespace CASE.Quermesse
 {
     partial class FinanceiroControl
     {
@@ -69,42 +69,42 @@ namespace CASE.Quermesse
             this.pictureIconeTela.Name = "pictureIconeTela";
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Size = new System.Drawing.Size(36, 36);
-            this.pictureIconeTela.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.pictureIconeTela.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.pictureIconeTela.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.pictureIconeTela.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.pictureIconeTela.BackColor = System.Drawing.Color.FromArgb(255, 232, 240, 252);
             this.pictureIconeTela.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.pictureIconeTela.TabIndex = 0;
             this.pictureIconeTela.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulFinanceiro;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulFinanceiro;
             this.pictureIconeTela.TabStop = false;
             // lblTitulo
             this.lblTitulo.Name = "lblTitulo";
             this.lblTitulo.Location = new System.Drawing.Point(80, 22);
             this.lblTitulo.Size = new System.Drawing.Size(850, 42);
-            this.lblTitulo.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 20F, (System.Drawing.FontStyle)1);
+            this.lblTitulo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblTitulo.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.lblTitulo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.lblTitulo.ForeColor = System.Drawing.Color.FromArgb(255, 16, 43, 73);
             this.lblTitulo.TabIndex = 1;
             this.lblTitulo.Text = "Financeiro";
-            this.lblTitulo.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblTitulo.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // lblSubtitulo
             this.lblSubtitulo.Name = "lblSubtitulo";
             this.lblSubtitulo.Location = new System.Drawing.Point(82, 66);
             this.lblSubtitulo.Size = new System.Drawing.Size(880, 24);
-            this.lblSubtitulo.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.lblSubtitulo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblSubtitulo.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.lblSubtitulo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.lblSubtitulo.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblSubtitulo.TabIndex = 2;
             this.lblSubtitulo.Text = "Receitas e custos do evento · valores de demonstração";
-            this.lblSubtitulo.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblSubtitulo.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // panelCorpo
             this.panelCorpo.Name = "panelCorpo";
             this.panelCorpo.Location = new System.Drawing.Point(30, 112);
             this.panelCorpo.Size = new System.Drawing.Size(990, 530);
-            this.panelCorpo.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelCorpo.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelCorpo.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelCorpo.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelCorpo.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.panelCorpo.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelCorpo.TabIndex = 3;
@@ -112,8 +112,8 @@ namespace CASE.Quermesse
             this.panelFiltrosFinanceiro.Name = "panelFiltrosFinanceiro";
             this.panelFiltrosFinanceiro.Location = new System.Drawing.Point(0, 0);
             this.panelFiltrosFinanceiro.Size = new System.Drawing.Size(990, 75);
-            this.panelFiltrosFinanceiro.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelFiltrosFinanceiro.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelFiltrosFinanceiro.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelFiltrosFinanceiro.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelFiltrosFinanceiro.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelFiltrosFinanceiro.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelFiltrosFinanceiro.TabIndex = 0;
@@ -121,19 +121,19 @@ namespace CASE.Quermesse
             this.lblSetor.Name = "lblSetor";
             this.lblSetor.Location = new System.Drawing.Point(18, 7);
             this.lblSetor.Size = new System.Drawing.Size(230, 22);
-            this.lblSetor.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblSetor.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblSetor.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblSetor.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblSetor.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblSetor.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblSetor.TabIndex = 0;
             this.lblSetor.Text = "Setor";
-            this.lblSetor.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblSetor.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // cmbFiltroFinanceiro
             this.cmbFiltroFinanceiro.Name = "cmbFiltroFinanceiro";
             this.cmbFiltroFinanceiro.Location = new System.Drawing.Point(18, 34);
             this.cmbFiltroFinanceiro.Size = new System.Drawing.Size(300, 29);
-            this.cmbFiltroFinanceiro.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.cmbFiltroFinanceiro.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.cmbFiltroFinanceiro.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.cmbFiltroFinanceiro.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.cmbFiltroFinanceiro.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.cmbFiltroFinanceiro.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.cmbFiltroFinanceiro.TabIndex = 1;
@@ -145,23 +145,23 @@ namespace CASE.Quermesse
             this.lblData.Name = "lblData";
             this.lblData.Location = new System.Drawing.Point(345, 7);
             this.lblData.Size = new System.Drawing.Size(180, 22);
-            this.lblData.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblData.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblData.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblData.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblData.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblData.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblData.TabIndex = 2;
             this.lblData.Text = "Data";
-            this.lblData.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblData.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // dtpFinanceiro
             this.dtpFinanceiro.Name = "dtpFinanceiro";
             this.dtpFinanceiro.Location = new System.Drawing.Point(345, 34);
             this.dtpFinanceiro.Size = new System.Drawing.Size(180, 25);
-            this.dtpFinanceiro.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.dtpFinanceiro.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.dtpFinanceiro.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.dtpFinanceiro.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.dtpFinanceiro.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.dtpFinanceiro.ForeColor = System.Drawing.Color.FromArgb(255, 0, 0, 0);
             this.dtpFinanceiro.TabIndex = 3;
-            this.dtpFinanceiro.Format = (System.Windows.Forms.DateTimePickerFormat)2;
+            this.dtpFinanceiro.Format = System.Windows.Forms.DateTimePickerFormat.Short;
             this.dtpFinanceiro.CustomFormat = "";
             this.dtpFinanceiro.ShowUpDown = false;
             this.dtpFinanceiro.Value = new System.DateTime(2026, 10, 22, 0, 0, 0);
@@ -169,8 +169,8 @@ namespace CASE.Quermesse
             this.panelFinanceiroResumo0.Name = "panelFinanceiroResumo0";
             this.panelFinanceiroResumo0.Location = new System.Drawing.Point(0, 90);
             this.panelFinanceiroResumo0.Size = new System.Drawing.Size(320, 100);
-            this.panelFinanceiroResumo0.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.panelFinanceiroResumo0.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelFinanceiroResumo0.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.panelFinanceiroResumo0.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelFinanceiroResumo0.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelFinanceiroResumo0.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelFinanceiroResumo0.TabIndex = 1;
@@ -178,30 +178,30 @@ namespace CASE.Quermesse
             this.lblReceitas.Name = "lblReceitas";
             this.lblReceitas.Location = new System.Drawing.Point(16, 12);
             this.lblReceitas.Size = new System.Drawing.Size(280, 24);
-            this.lblReceitas.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblReceitas.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblReceitas.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblReceitas.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblReceitas.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblReceitas.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblReceitas.TabIndex = 0;
             this.lblReceitas.Text = "Receitas";
-            this.lblReceitas.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblReceitas.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // lblValorFinanceiroResumo0
             this.lblValorFinanceiroResumo0.Name = "lblValorFinanceiroResumo0";
             this.lblValorFinanceiroResumo0.Location = new System.Drawing.Point(16, 42);
             this.lblValorFinanceiroResumo0.Size = new System.Drawing.Size(290, 44);
-            this.lblValorFinanceiroResumo0.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblValorFinanceiroResumo0.Font = new System.Drawing.Font("Segoe UI", 20F, (System.Drawing.FontStyle)1);
+            this.lblValorFinanceiroResumo0.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblValorFinanceiroResumo0.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.lblValorFinanceiroResumo0.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblValorFinanceiroResumo0.ForeColor = System.Drawing.Color.FromArgb(255, 16, 43, 73);
             this.lblValorFinanceiroResumo0.TabIndex = 1;
             this.lblValorFinanceiroResumo0.Text = "R$ 273,00";
-            this.lblValorFinanceiroResumo0.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblValorFinanceiroResumo0.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // panelFinanceiroResumo1
             this.panelFinanceiroResumo1.Name = "panelFinanceiroResumo1";
             this.panelFinanceiroResumo1.Location = new System.Drawing.Point(335, 90);
             this.panelFinanceiroResumo1.Size = new System.Drawing.Size(320, 100);
-            this.panelFinanceiroResumo1.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.panelFinanceiroResumo1.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelFinanceiroResumo1.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.panelFinanceiroResumo1.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelFinanceiroResumo1.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelFinanceiroResumo1.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelFinanceiroResumo1.TabIndex = 2;
@@ -209,30 +209,30 @@ namespace CASE.Quermesse
             this.lblCustos.Name = "lblCustos";
             this.lblCustos.Location = new System.Drawing.Point(16, 12);
             this.lblCustos.Size = new System.Drawing.Size(280, 24);
-            this.lblCustos.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblCustos.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblCustos.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblCustos.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblCustos.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblCustos.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblCustos.TabIndex = 0;
             this.lblCustos.Text = "Custos";
-            this.lblCustos.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblCustos.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // lblValorFinanceiroResumo1
             this.lblValorFinanceiroResumo1.Name = "lblValorFinanceiroResumo1";
             this.lblValorFinanceiroResumo1.Location = new System.Drawing.Point(16, 42);
             this.lblValorFinanceiroResumo1.Size = new System.Drawing.Size(290, 44);
-            this.lblValorFinanceiroResumo1.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblValorFinanceiroResumo1.Font = new System.Drawing.Font("Segoe UI", 20F, (System.Drawing.FontStyle)1);
+            this.lblValorFinanceiroResumo1.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblValorFinanceiroResumo1.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.lblValorFinanceiroResumo1.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblValorFinanceiroResumo1.ForeColor = System.Drawing.Color.FromArgb(255, 16, 43, 73);
             this.lblValorFinanceiroResumo1.TabIndex = 1;
             this.lblValorFinanceiroResumo1.Text = "R$ 205,00";
-            this.lblValorFinanceiroResumo1.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblValorFinanceiroResumo1.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // panelFinanceiroResumo2
             this.panelFinanceiroResumo2.Name = "panelFinanceiroResumo2";
             this.panelFinanceiroResumo2.Location = new System.Drawing.Point(670, 90);
             this.panelFinanceiroResumo2.Size = new System.Drawing.Size(320, 100);
-            this.panelFinanceiroResumo2.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.panelFinanceiroResumo2.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelFinanceiroResumo2.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.panelFinanceiroResumo2.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelFinanceiroResumo2.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelFinanceiroResumo2.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelFinanceiroResumo2.TabIndex = 3;
@@ -240,30 +240,30 @@ namespace CASE.Quermesse
             this.lblResultadoparcial.Name = "lblResultadoparcial";
             this.lblResultadoparcial.Location = new System.Drawing.Point(16, 12);
             this.lblResultadoparcial.Size = new System.Drawing.Size(280, 24);
-            this.lblResultadoparcial.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblResultadoparcial.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblResultadoparcial.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblResultadoparcial.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblResultadoparcial.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblResultadoparcial.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblResultadoparcial.TabIndex = 0;
             this.lblResultadoparcial.Text = "Resultado parcial";
-            this.lblResultadoparcial.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblResultadoparcial.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // lblValorFinanceiroResumo2
             this.lblValorFinanceiroResumo2.Name = "lblValorFinanceiroResumo2";
             this.lblValorFinanceiroResumo2.Location = new System.Drawing.Point(16, 42);
             this.lblValorFinanceiroResumo2.Size = new System.Drawing.Size(290, 44);
-            this.lblValorFinanceiroResumo2.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblValorFinanceiroResumo2.Font = new System.Drawing.Font("Segoe UI", 20F, (System.Drawing.FontStyle)1);
+            this.lblValorFinanceiroResumo2.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblValorFinanceiroResumo2.Font = new System.Drawing.Font("Segoe UI", 20F, System.Drawing.FontStyle.Bold);
             this.lblValorFinanceiroResumo2.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblValorFinanceiroResumo2.ForeColor = System.Drawing.Color.FromArgb(255, 46, 139, 87);
             this.lblValorFinanceiroResumo2.TabIndex = 1;
             this.lblValorFinanceiroResumo2.Text = "R$ 68,00";
-            this.lblValorFinanceiroResumo2.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblValorFinanceiroResumo2.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // panelNovoCusto
             this.panelNovoCusto.Name = "panelNovoCusto";
             this.panelNovoCusto.Location = new System.Drawing.Point(0, 205);
             this.panelNovoCusto.Size = new System.Drawing.Size(990, 112);
-            this.panelNovoCusto.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelNovoCusto.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelNovoCusto.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelNovoCusto.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelNovoCusto.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelNovoCusto.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelNovoCusto.TabIndex = 4;
@@ -271,19 +271,19 @@ namespace CASE.Quermesse
             this.lblDescricaodocusto.Name = "lblDescricaodocusto";
             this.lblDescricaodocusto.Location = new System.Drawing.Point(18, 10);
             this.lblDescricaodocusto.Size = new System.Drawing.Size(300, 23);
-            this.lblDescricaodocusto.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblDescricaodocusto.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblDescricaodocusto.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblDescricaodocusto.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblDescricaodocusto.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblDescricaodocusto.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblDescricaodocusto.TabIndex = 0;
             this.lblDescricaodocusto.Text = "Descrição do custo";
-            this.lblDescricaodocusto.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblDescricaodocusto.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // txtDescricaoCusto
             this.txtDescricaoCusto.Name = "txtDescricaoCusto";
             this.txtDescricaoCusto.Location = new System.Drawing.Point(24, 43);
             this.txtDescricaoCusto.Size = new System.Drawing.Size(300, 25);
-            this.txtDescricaoCusto.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.txtDescricaoCusto.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.txtDescricaoCusto.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.txtDescricaoCusto.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.txtDescricaoCusto.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.txtDescricaoCusto.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.txtDescricaoCusto.TabIndex = 1;
@@ -295,19 +295,19 @@ namespace CASE.Quermesse
             this.lblSetor2.Name = "lblSetor2";
             this.lblSetor2.Location = new System.Drawing.Point(350, 10);
             this.lblSetor2.Size = new System.Drawing.Size(200, 23);
-            this.lblSetor2.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblSetor2.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblSetor2.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblSetor2.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblSetor2.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblSetor2.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblSetor2.TabIndex = 2;
             this.lblSetor2.Text = "Setor";
-            this.lblSetor2.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblSetor2.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // cmbSetorCusto
             this.cmbSetorCusto.Name = "cmbSetorCusto";
             this.cmbSetorCusto.Location = new System.Drawing.Point(350, 40);
             this.cmbSetorCusto.Size = new System.Drawing.Size(215, 29);
-            this.cmbSetorCusto.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.cmbSetorCusto.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.cmbSetorCusto.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.cmbSetorCusto.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.cmbSetorCusto.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.cmbSetorCusto.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.cmbSetorCusto.TabIndex = 3;
@@ -319,19 +319,19 @@ namespace CASE.Quermesse
             this.lblValorR.Name = "lblValorR";
             this.lblValorR.Location = new System.Drawing.Point(590, 10);
             this.lblValorR.Size = new System.Drawing.Size(140, 23);
-            this.lblValorR.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblValorR.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblValorR.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblValorR.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblValorR.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblValorR.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblValorR.TabIndex = 4;
             this.lblValorR.Text = "Valor (R$)";
-            this.lblValorR.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblValorR.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // numValorCusto
             this.numValorCusto.Name = "numValorCusto";
             this.numValorCusto.Location = new System.Drawing.Point(590, 40);
             this.numValorCusto.Size = new System.Drawing.Size(150, 25);
-            this.numValorCusto.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.numValorCusto.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.numValorCusto.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.numValorCusto.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.numValorCusto.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.numValorCusto.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.numValorCusto.TabIndex = 5;
@@ -344,19 +344,19 @@ namespace CASE.Quermesse
             this.lblDatadocustohoje.Name = "lblDatadocustohoje";
             this.lblDatadocustohoje.Location = new System.Drawing.Point(18, 83);
             this.lblDatadocustohoje.Size = new System.Drawing.Size(500, 23);
-            this.lblDatadocustohoje.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.lblDatadocustohoje.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)0);
+            this.lblDatadocustohoje.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.lblDatadocustohoje.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Regular);
             this.lblDatadocustohoje.BackColor = System.Drawing.Color.FromArgb(0, 255, 255, 255);
             this.lblDatadocustohoje.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.lblDatadocustohoje.TabIndex = 6;
             this.lblDatadocustohoje.Text = "Data do custo: hoje";
-            this.lblDatadocustohoje.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.lblDatadocustohoje.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             // btnAdicionarCusto
             this.btnAdicionarCusto.Name = "btnAdicionarCusto";
             this.btnAdicionarCusto.Location = new System.Drawing.Point(765, 36);
             this.btnAdicionarCusto.Size = new System.Drawing.Size(205, 38);
-            this.btnAdicionarCusto.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.btnAdicionarCusto.Font = new System.Drawing.Font("Segoe UI", 9.5F, (System.Drawing.FontStyle)1);
+            this.btnAdicionarCusto.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.btnAdicionarCusto.Font = new System.Drawing.Font("Segoe UI", 9.5F, System.Drawing.FontStyle.Bold);
             this.btnAdicionarCusto.BackColor = System.Drawing.Color.FromArgb(255, 23, 105, 210);
             this.btnAdicionarCusto.ForeColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.btnAdicionarCusto.TabIndex = 7;
@@ -366,13 +366,13 @@ namespace CASE.Quermesse
             this.btnAdicionarCusto.FlatAppearance.BorderColor = System.Drawing.Color.FromArgb(255, 228, 234, 242);
             this.btnAdicionarCusto.UseVisualStyleBackColor = false;
             this.btnAdicionarCusto.Cursor = System.Windows.Forms.Cursors.Hand;
-            this.btnAdicionarCusto.DialogResult = (System.Windows.Forms.DialogResult)0;
+            this.btnAdicionarCusto.DialogResult = System.Windows.Forms.DialogResult.None;
             // panelCustos
             this.panelCustos.Name = "panelCustos";
             this.panelCustos.Location = new System.Drawing.Point(0, 332);
             this.panelCustos.Size = new System.Drawing.Size(990, 198);
-            this.panelCustos.Anchor = (System.Windows.Forms.AnchorStyles)13;
-            this.panelCustos.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.panelCustos.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.panelCustos.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.panelCustos.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.panelCustos.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.panelCustos.TabIndex = 5;
@@ -380,8 +380,8 @@ namespace CASE.Quermesse
             this.dgvCustos.Name = "dgvCustos";
             this.dgvCustos.Location = new System.Drawing.Point(12, 12);
             this.dgvCustos.Size = new System.Drawing.Size(966, 174);
-            this.dgvCustos.Anchor = (System.Windows.Forms.AnchorStyles)15;
-            this.dgvCustos.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.dgvCustos.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right;
+            this.dgvCustos.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.dgvCustos.BackColor = System.Drawing.Color.FromArgb(255, 255, 255, 255);
             this.dgvCustos.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.dgvCustos.TabIndex = 0;
@@ -422,13 +422,13 @@ namespace CASE.Quermesse
             this.labelAviso.Name = "labelAviso";
             this.labelAviso.Location = new System.Drawing.Point(32, 652);
             this.labelAviso.Size = new System.Drawing.Size(900, 28);
-            this.labelAviso.Anchor = (System.Windows.Forms.AnchorStyles)5;
-            this.labelAviso.Font = new System.Drawing.Font("Segoe UI", 9F, (System.Drawing.FontStyle)0);
+            this.labelAviso.Anchor = System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left;
+            this.labelAviso.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Regular);
             this.labelAviso.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.labelAviso.ForeColor = System.Drawing.Color.FromArgb(255, 115, 132, 151);
             this.labelAviso.TabIndex = 4;
             this.labelAviso.Text = "";
-            this.labelAviso.TextAlign = (System.Drawing.ContentAlignment)1;
+            this.labelAviso.TextAlign = System.Drawing.ContentAlignment.TopLeft;
             this.Controls.Add(this.pictureIconeTela);
             this.Controls.Add(this.lblTitulo);
             this.Controls.Add(this.lblSubtitulo);
@@ -460,7 +460,7 @@ namespace CASE.Quermesse
             this.panelCustos.Controls.Add(this.dgvCustos);
             this.Controls.Add(this.labelAviso);
             this.Name = "FinanceiroControl";
-            this.Font = new System.Drawing.Font("Segoe UI", 10F, (System.Drawing.FontStyle)0);
+            this.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular);
             this.BackColor = System.Drawing.Color.FromArgb(255, 246, 248, 252);
             this.ForeColor = System.Drawing.Color.FromArgb(255, 30, 51, 75);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
@@ -490,7 +490,7 @@ namespace CASE.Quermesse
             this.btnAdicionarCusto.Click += new System.EventHandler(this.btnAdicionarCusto_Click);
             // pictureIndicadorReceitas — Lucide
             this.pictureIndicadorReceitas.Name = "pictureIndicadorReceitas";
-            this.pictureIndicadorReceitas.Image = global::CASE.Properties.Resources.LucideAzulEntradas;
+            this.pictureIndicadorReceitas.Image = global::CASE.Properties.Resources.IconeAzulEntradas;
             this.pictureIndicadorReceitas.Location = new System.Drawing.Point(264, 52);
             this.pictureIndicadorReceitas.Size = new System.Drawing.Size(28, 28);
             this.pictureIndicadorReceitas.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
@@ -503,7 +503,7 @@ namespace CASE.Quermesse
             ((System.ComponentModel.ISupportInitialize)(this.pictureIndicadorReceitas)).EndInit();
             // pictureIndicadorCustos — Lucide
             this.pictureIndicadorCustos.Name = "pictureIndicadorCustos";
-            this.pictureIndicadorCustos.Image = global::CASE.Properties.Resources.LucideAzulSaidas;
+            this.pictureIndicadorCustos.Image = global::CASE.Properties.Resources.IconeAzulSaidas;
             this.pictureIndicadorCustos.Location = new System.Drawing.Point(264, 52);
             this.pictureIndicadorCustos.Size = new System.Drawing.Size(28, 28);
             this.pictureIndicadorCustos.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
@@ -516,7 +516,7 @@ namespace CASE.Quermesse
             ((System.ComponentModel.ISupportInitialize)(this.pictureIndicadorCustos)).EndInit();
             // pictureIndicadorResultado — Lucide
             this.pictureIndicadorResultado.Name = "pictureIndicadorResultado";
-            this.pictureIndicadorResultado.Image = global::CASE.Properties.Resources.LucideAzulFinanceiro;
+            this.pictureIndicadorResultado.Image = global::CASE.Properties.Resources.IconeAzulFinanceiro;
             this.pictureIndicadorResultado.Location = new System.Drawing.Point(264, 52);
             this.pictureIndicadorResultado.Size = new System.Drawing.Size(28, 28);
             this.pictureIndicadorResultado.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;

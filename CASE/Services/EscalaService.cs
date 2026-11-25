@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using CASE.Models;
 using CASE.Repositories;
@@ -7,12 +7,12 @@ namespace CASE.Services
 {
     public class EscalaService
     {
-        private readonly EscalaRepository escalaRepository = new EscalaRepository();
-        private readonly JornadaSetorRepository jornadaSetorRepository = new JornadaSetorRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
-        private readonly EquipeEventoRepository equipeRepository = new EquipeEventoRepository();
-        private readonly SetorRepository setorRepository = new SetorRepository();
-        private readonly EventoRepository eventoRepository = new EventoRepository();
+        private EscalaRepository escalaRepository = new EscalaRepository();
+        private JornadaSetorRepository jornadaSetorRepository = new JornadaSetorRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private EquipeEventoRepository equipeRepository = new EquipeEventoRepository();
+        private SetorRepository setorRepository = new SetorRepository();
+        private EventoRepository eventoRepository = new EventoRepository();
 
         public List<Escala> ListarMinhas(Usuario usuario)
         {

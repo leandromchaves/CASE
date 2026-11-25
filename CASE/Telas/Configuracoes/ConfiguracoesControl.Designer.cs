@@ -1,4 +1,4 @@
-namespace CASE
+﻿namespace CASE
 {
     partial class ConfiguracoesControl
     {
@@ -325,7 +325,7 @@ namespace CASE
             this.panelSolicitacoesPendentes.PerformLayout();
             // pictureIconeTela — Lucide
             this.pictureIconeTela.Name = "pictureIconeTela";
-            this.pictureIconeTela.Image = global::CASE.Properties.Resources.LucideAzulConfiguracoes;
+            this.pictureIconeTela.Image = global::CASE.Properties.Resources.IconeAzulConfiguracoes;
             this.pictureIconeTela.Location = new System.Drawing.Point(30, 28);
             this.pictureIconeTela.Size = new System.Drawing.Size(36, 36);
             this.pictureIconeTela.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;

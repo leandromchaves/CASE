@@ -1,9 +1,11 @@
-using System;
+﻿using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Windows.Forms.DataVisualization.Charting;
+using System;
 
 namespace CASE.Utils
 {
@@ -24,9 +26,23 @@ namespace CASE.Utils
     {
         public static string[] TiposDisponiveis(string relatorio)
         {
-            return relatorio == "Estoque" || relatorio == "Estoque crítico"
-                ? new[] { "Colunas", "Barras", "Pizza", "Rosca" }
-                : new[] { "Colunas", "Barras", "Linhas", "Área", "Pizza", "Rosca" };
+            return relatorio == "Estoque" || relatorio == "Estoque crítico" ? new[]
+            {
+                "Colunas",
+                "Barras",
+                "Pizza",
+                "Rosca"
+            }
+
+            : new[]
+            {
+                "Colunas",
+                "Barras",
+                "Linhas",
+                "Área",
+                "Pizza",
+                "Rosca"
+            };
         }
 
         public static ResumoGraficoRelatorio Resumir(DataTable dados, string relatorio, string formato)
@@ -44,11 +60,13 @@ namespace CASE.Utils
             switch (relatorio)
             {
                 case "Movimentações":
-                    grupo = "tipo"; valor = "quantidade";
+                    grupo = "tipo";
+                    valor = "quantidade";
                     resumo.Titulo = "Unidades movimentadas";
                     break;
                 case "Estoque":
-                    grupo = "produto"; valor = "quantidade_atual";
+                    grupo = "produto";
+                    valor = "quantidade_atual";
                     resumo.Titulo = "Saldo por produto (unidade cadastrada)";
                     break;
                 case "Estoque crítico":
@@ -56,69 +74,98 @@ namespace CASE.Utils
                     resumo.Titulo = "Produtos críticos por local";
                     break;
                 case "Vendas e perdas":
-                    grupo = "forma_pagamento"; valor = "total";
-                    linhas = linhas.Where(r => Convert.ToString(r["tipo"]) == "venda");
+                    grupo = "forma_pagamento";
+                    valor = "total";
+                    linhas = linhas.Where(Resumir_Where);
                     resumo.Titulo = "Vendas por pagamento (R$)";
                     resumo.Monetario = true;
                     break;
                 case "Despesas":
-                    grupo = "evento"; valor = "valor"; data = "data";
+                    grupo = "evento";
+                    valor = "valor";
+                    data = "data";
                     resumo.Titulo = "Despesas por evento (R$)";
                     resumo.Monetario = true;
                     break;
                 case "Eventos":
-                    grupo = "situacao"; data = "data_inicio";
+                    grupo = "situacao";
+                    data = "data_inicio";
                     resumo.Titulo = "Eventos por situação";
                     break;
                 case "Solicitações de reposição":
-                    grupo = "situacao"; identificador = "id_solicitacao";
+                    grupo = "situacao";
+                    identificador = "id_solicitacao";
                     resumo.Titulo = "Pedidos de reposição por situação";
                     break;
                 case "Solicitações ao central":
-                    grupo = "situacao"; identificador = "id_solicitacao_estoque_central";
+                    grupo = "situacao";
+                    identificador = "id_solicitacao_estoque_central";
                     resumo.Titulo = "Pedidos ao central por situação";
                     break;
                 case "Apurações":
                     // Reconferências são contadas, sem somar seus valores como receitas.
-                    grupo = "setor"; identificador = "id_apuracao";
+                    grupo = "setor";
+                    identificador = "id_apuracao";
                     resumo.Titulo = "Quantidade de conferências por setor";
                     break;
                 default:
                     throw new ArgumentException("Este relatório não possui gráfico configurado.");
             }
+
             bool temporal = formato == "Linhas" || formato == "Área";
             if (temporal)
             {
                 grupo = data;
-                resumo.Titulo = resumo.Monetario ? "Valores por dia (R$)" :
-                    valor == "quantidade" ? "Unidades movimentadas por dia" : "Quantidade de registros por dia";
+                resumo.Titulo = resumo.Monetario ? "Valores por dia (R$)" : valor == "quantidade" ? "Unidades movimentadas por dia" : "Quantidade de registros por dia";
             }
-            if (identificador != null)
-                linhas = linhas.GroupBy(r => r[identificador]).Select(g => g.First());
-            if (valor != null)
-                linhas = linhas.Where(r => r[valor] != DBNull.Value);
-            if (temporal)
-                linhas = linhas.Where(r => r[grupo] != DBNull.Value);
-            var grupos = linhas.GroupBy(r => temporal
-                ? Convert.ToDateTime(r[grupo]).ToString("yyyy-MM-dd")
-                : Convert.ToString(r[grupo]));
-            var totais = grupos.Select(g => new
+
+            HashSet<object> identificadoresLidos = new HashSet<object>();
+            Dictionary<string, TotalGrupo> grupos = new Dictionary<string, TotalGrupo>();
+            List<TotalGrupo> lista = new List<TotalGrupo>();
+            foreach (DataRow linha in linhas)
             {
-                Nome = g.Key,
-                Valor = valor == null ? g.Count() : g.Sum(r => Convert.ToDecimal(r[valor]))
-            });
+                if (identificador != null && !identificadoresLidos.Add(linha[identificador]))
+                    continue;
+                if (valor != null && linha[valor] == DBNull.Value)
+                    continue;
+                if (temporal && linha[grupo] == DBNull.Value)
+                    continue;
+                string nome = temporal ? Convert.ToDateTime(linha[grupo]).ToString("yyyy-MM-dd") : Convert.ToString(linha[grupo]);
+                TotalGrupo total;
+                if (!grupos.TryGetValue(nome, out total))
+                {
+                    total = new TotalGrupo
+                    {
+                        Nome = nome,
+                        Ordem = lista.Count
+                    };
+                    grupos.Add(nome, total);
+                    lista.Add(total);
+                }
+
+                total.Valor += valor == null ? 1 : Convert.ToDecimal(linha[valor]);
+            }
+
             if (temporal)
-                totais = totais.OrderBy(g => g.Nome);
+                lista.Sort(CompararGruposPorNome);
             else
-                totais = totais.OrderByDescending(g => g.Valor);
-            var lista = totais.ToList();
-            // O agrupamento reduz legendas longas e preserva a soma integral.
+                lista.Sort(CompararGruposPorValor);
             int limite = temporal ? lista.Count : 7;
-            foreach (var item in lista.Take(limite))
-                resumo.Valores.Rows.Add(temporal ? DateTime.ParseExact(item.Nome, "yyyy-MM-dd",
-                    System.Globalization.CultureInfo.InvariantCulture).ToString("dd/MM/yyyy") : NomeGrupo(item.Nome), item.Valor);
+            decimal outros = 0;
+            for (int i = 0; i < lista.Count; i++)
+            {
+                TotalGrupo item = lista[i];
+                if (i >= limite)
+                {
+                    outros += item.Valor;
+                    continue;
+                }
+
+                resumo.Valores.Rows.Add(temporal ? DateTime.ParseExact(item.Nome, "yyyy-MM-dd", CultureInfo.InvariantCulture).ToString("dd/MM/yyyy") : NomeGrupo(item.Nome), item.Valor);
+            }
+
             if (lista.Count > limite)
-                resumo.Valores.Rows.Add("Outros", lista.Skip(limite).Sum(g => g.Valor));
+                resumo.Valores.Rows.Add("Outros", outros);
             return resumo;
         }
 
@@ -128,21 +175,34 @@ namespace CASE.Utils
                 return "Não informado";
             switch (nome)
             {
-                case "pix": return "Pix";
-                case "cartao": return "Cartão";
-                case "dinheiro": return "Dinheiro";
-                case "transferencia": return "Transferência";
-                case "entrada": return "Entrada";
-                case "venda": return "Venda";
-                case "perda": return "Perda";
-                default: return TextoInterface.FormatarValorBanco(nome);
+                case "pix":
+                    return "Pix";
+                case "cartao":
+                    return "Cartão";
+                case "dinheiro":
+                    return "Dinheiro";
+                case "transferencia":
+                    return "Transferência";
+                case "entrada":
+                    return "Entrada";
+                case "venda":
+                    return "Venda";
+                case "perda":
+                    return "Perda";
+                default:
+                    return TextoInterface.FormatarValorBanco(nome);
             }
         }
 
         public static Chart Criar(DataTable dados, string relatorio, string formato)
         {
             ResumoGraficoRelatorio resumo = Resumir(dados, relatorio, formato);
-            var grafico = new Chart { BackColor = Color.White, Width = 1000, Height = 620 };
+            var grafico = new Chart
+            {
+                BackColor = Color.White,
+                Width = 1000,
+                Height = 620
+            };
             var area = new ChartArea("Resumo");
             area.AxisX.MajorGrid.Enabled = false;
             area.AxisY.MajorGrid.LineColor = VisualUtils.Borda;
@@ -153,14 +213,32 @@ namespace CASE.Utils
             area.AxisY.Minimum = 0;
             area.AxisY.LabelStyle.Format = resumo.Monetario ? "C0" : "0.###";
             grafico.ChartAreas.Add(area);
-            string[] nomes = { "Colunas", "Barras", "Linhas", "Área", "Pizza", "Rosca" };
-            SeriesChartType[] tipos = { SeriesChartType.Column, SeriesChartType.Bar, SeriesChartType.Line,
-                SeriesChartType.Area, SeriesChartType.Pie, SeriesChartType.Doughnut };
+            string[] nomes =
+            {
+                "Colunas",
+                "Barras",
+                "Linhas",
+                "Área",
+                "Pizza",
+                "Rosca"
+            };
+            SeriesChartType[] tipos =
+            {
+                SeriesChartType.Column,
+                SeriesChartType.Bar,
+                SeriesChartType.Line,
+                SeriesChartType.Area,
+                SeriesChartType.Pie,
+                SeriesChartType.Doughnut
+            };
             var serie = new Series("Resumo")
             {
-                ChartType = tipos[Array.IndexOf(nomes, formato)], BorderWidth = 3,
-                Color = VisualUtils.Azul, Font = new Font("Segoe UI", 10F),
-                ToolTip = "#AXISLABEL: #VALY{0.###}", IsXValueIndexed = true
+                ChartType = tipos[Array.IndexOf(nomes, formato)],
+                BorderWidth = 3,
+                Color = VisualUtils.Azul,
+                Font = new Font("Segoe UI", 10F),
+                ToolTip = "#AXISLABEL: #VALY{0.###}",
+                IsXValueIndexed = true
             };
             bool circular = formato == "Pizza" || formato == "Rosca";
             serie.IsVisibleInLegend = circular;
@@ -174,47 +252,57 @@ namespace CASE.Utils
                 serie["PieLabelStyle"] = "Inside";
                 serie["DoughnutRadius"] = "65";
                 area.AxisX.Enabled = area.AxisY.Enabled = AxisEnabled.False;
-                grafico.Legends.Add(new Legend("Grupos")
-                {
-                    Docking = Docking.Bottom, Font = new Font("Segoe UI", 10F),
-                    MaximumAutoSize = 30, Alignment = StringAlignment.Center
-                });
+                grafico.Legends.Add(new Legend("Grupos") { Docking = Docking.Bottom, Font = new Font("Segoe UI", 10F), MaximumAutoSize = 30, Alignment = StringAlignment.Center });
             }
+
             if (formato == "Linhas")
             {
                 serie.MarkerStyle = MarkerStyle.Circle;
                 serie.MarkerSize = 8;
             }
+
             if (formato == "Área")
             {
                 serie.BackSecondaryColor = Color.FromArgb(230, 240, 255);
                 serie.BackGradientStyle = GradientStyle.TopBottom;
             }
+
             foreach (DataRow linha in resumo.Valores.Rows)
                 serie.Points.AddXY(linha["Grupo"], linha["Valor"]);
             if (circular)
             {
-                double total = serie.Points.Sum(p => p.YValues[0]);
+                double total = serie.Points.Sum(Criar_Sum);
                 foreach (DataPoint ponto in serie.Points)
                     if (total > 0 && ponto.YValues[0] / total < 0.03)
                         ponto.Label = " ";
             }
+
             if (formato == "Linhas" && serie.Points.Count == 1)
             {
                 serie.IsValueShownAsLabel = true;
-                grafico.Titles.Add(new Title("Há dados em apenas um dia; a linha precisa de dois dias.")
-                    { Docking = Docking.Bottom, Font = new Font("Segoe UI", 9F), ForeColor = VisualUtils.TextoSuave });
+                grafico.Titles.Add(new Title("Há dados em apenas um dia; a linha precisa de dois dias.") { Docking = Docking.Bottom, Font = new Font("Segoe UI", 9F), ForeColor = VisualUtils.TextoSuave });
             }
+
             grafico.Series.Add(serie);
             grafico.Palette = ChartColorPalette.None;
-            grafico.PaletteCustomColors = new[] { VisualUtils.Azul, Color.Teal, Color.Goldenrod,
-                Color.MediumPurple, Color.SteelBlue, Color.IndianRed, Color.DarkSeaGreen, Color.Gray };
+            grafico.PaletteCustomColors = new[]
+            {
+                VisualUtils.Azul,
+                Color.Teal,
+                Color.Goldenrod,
+                Color.MediumPurple,
+                Color.SteelBlue,
+                Color.IndianRed,
+                Color.DarkSeaGreen,
+                Color.Gray
+            };
             grafico.Titles.Add(new Title(resumo.Titulo) { Font = new Font("Segoe UI", 12F, FontStyle.Bold), ForeColor = VisualUtils.Marinho });
-            if (resumo.Valores.Rows.Count == 0 || resumo.Valores.Rows.Cast<DataRow>().All(r => Convert.ToDecimal(r["Valor"]) == 0))
+            if (resumo.Valores.Rows.Count == 0 || resumo.Valores.Rows.Cast<DataRow>().All(Criar_All))
             {
                 serie.Points.Clear();
                 grafico.Titles.Add("Sem valores para representar neste gráfico.");
             }
+
             grafico.AntiAliasing = AntiAliasingStyles.All;
             return grafico;
         }
@@ -249,12 +337,52 @@ namespace CASE.Utils
                         legenda.MaximumAutoSize = 45;
                     }
                 }
+
                 var area = grafico.ChartAreas[0];
                 area.AxisX.LabelStyle.Font = area.AxisY.LabelStyle.Font = new Font("Segoe UI", 17F);
                 area.AxisX.LabelStyle.Interval = Math.Max(1, (int)Math.Ceiling(grafico.Series[0].Points.Count / 6.0));
                 grafico.SaveImage(memoria, ChartImageFormat.Png);
                 return memoria.ToArray();
             }
+        }
+
+        private static bool Resumir_Where(DataRow r)
+        {
+            return Convert.ToString(r["tipo"]) == "venda";
+        }
+
+        private static DataRow Resumir_Select(IGrouping<object, DataRow> g)
+        {
+            return g.First();
+        }
+
+        private static double Criar_Sum(DataPoint p)
+        {
+            return p.YValues[0];
+        }
+
+        private static bool Criar_All(DataRow r)
+        {
+            return Convert.ToDecimal(r["Valor"]) == 0;
+        }
+
+        private class TotalGrupo
+        {
+            public string Nome;
+            public decimal Valor;
+            public int Ordem;
+        }
+
+        private static int CompararGruposPorNome(TotalGrupo a, TotalGrupo b)
+        {
+            int comparacao = string.Compare(a.Nome, b.Nome, StringComparison.CurrentCulture);
+            return comparacao == 0 ? a.Ordem.CompareTo(b.Ordem) : comparacao;
+        }
+
+        private static int CompararGruposPorValor(TotalGrupo a, TotalGrupo b)
+        {
+            int comparacao = b.Valor.CompareTo(a.Valor);
+            return comparacao == 0 ? a.Ordem.CompareTo(b.Ordem) : comparacao;
         }
     }
 }

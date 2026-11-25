@@ -1,42 +1,44 @@
-using System;
-
-using System.Drawing;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Drawing;
 using System.IO;
 using System.Linq;
-
 using System.Windows.Forms;
-using System.Collections.Generic;
-using CASE.Utils;
-using CASE.Quermesse;
+using System;
 using CASE.Models;
+using CASE.Quermesse;
+using CASE.Services;
+using CASE.Utils;
 
 namespace CASE
 {
     public partial class PrincipalForm : Form
     {
-        private readonly Usuario usuarioAutenticado;
+        private Usuario usuarioAutenticado;
         private Evento eventoSelecionado;
         private Button menuAtual;
         private bool ajustandoMenu;
         private Button buttonFornecedores;
         private Button buttonAcessos;
-        private readonly ComboBox cmbEventoContexto = new ComboBox();
-        private readonly Label lblEventoContexto = new Label();
+        private ComboBox cmbEventoContexto = new ComboBox();
+        private Label lblEventoContexto = new Label();
         private bool sincronizandoContextoEvento;
         private bool consultarTodosEventos;
         private bool usuarioAdministraEventos;
-        private readonly ToolTip dicaNotificacoes = new ToolTip();
-        private readonly ToolTip dicaNomeUsuario = new ToolTip();
-        private readonly Label indicadorNotificacoes = new Label();
-        private readonly ContextMenuStrip menuFotoPerfil = new ContextMenuStrip();
-        private readonly ContextMenuStrip menuNotificacoes = new ContextMenuStrip();
-        private readonly CASE.Services.FotoPerfilService fotoPerfilService =
-            new CASE.Services.FotoPerfilService();
+        private ToolTip dicaNotificacoes = new ToolTip();
+        private ToolTip dicaNomeUsuario = new ToolTip();
+        private Label indicadorNotificacoes = new Label();
+        private ContextMenuStrip menuFotoPerfil = new ContextMenuStrip();
+        private ContextMenuStrip menuNotificacoes = new ContextMenuStrip();
+        private FotoPerfilService fotoPerfilService = new FotoPerfilService();
         private Image fotoPerfilPersonalizada;
-        private readonly Timer atualizacaoConsultas = new Timer { Interval = 30000 };
-
-
+        private Timer atualizacaoConsultas = new Timer
+        {
+            Interval = 30000
+        };
         public PrincipalForm() : this(null)
         {
         }
@@ -44,26 +46,23 @@ namespace CASE
         internal PrincipalForm(Usuario usuario)
         {
             InitializeComponent();
-            if (System.ComponentModel.LicenseManager.UsageMode == System.ComponentModel.LicenseUsageMode.Designtime)
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
+                return;
+            if (LicenseManager.UsageMode == LicenseUsageMode.Designtime)
                 return;
             IconoAplicacao.Aplicar(this);
-
             if (usuario == null)
             {
                 throw new InvalidOperationException("É necessário autenticar uma conta autorizada.");
             }
 
-            CASE.Services.SessaoUsuario.ExigirUsuario(usuario);
-
+            SessaoUsuario.ExigirUsuario(usuario);
             if (!usuario.IdPerfilSistema.HasValue)
             {
                 throw new InvalidOperationException("A conta não possui um perfil de acesso.");
             }
 
-            if (!string.Equals(
-                usuario.SituacaoConta,
-                "Aprovado",
-                StringComparison.OrdinalIgnoreCase))
+            if (!string.Equals(usuario.SituacaoConta, "Aprovado", StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException("A conta ainda não foi autorizada.");
             }
@@ -73,69 +72,72 @@ namespace CASE
             ConfigurarNovosCadastros();
             InicializarEventoSelecionado();
             ConfigurarSeletorEventoContexto();
-            navegacao.Layout += (s, e) => AjustarLarguraMenu();
-            navegacao.ClientSizeChanged += (s, e) => AjustarLarguraMenu();
+            navegacao.Layout += navegacao_Layout;
+            navegacao.ClientSizeChanged += navegacao_ClientSizeChanged;
             AjustarLarguraMenu();
             AplicarAcabamento();
             ConfigurarNotificacoes();
-            atualizacaoConsultas.Tick += (s, e) => AtualizarConsultaAberta();
-            Shown += (s, e) => atualizacaoConsultas.Start();
-            Activated += (s, e) => AtualizarConsultaAberta();
-            Disposed += (s, e) => atualizacaoConsultas.Dispose();
-
+            atualizacaoConsultas.Tick += atualizacaoConsultas_Tick;
+            Shown += Tela_Shown;
+            Activated += Tela_Activated;
+            Disposed += Tela_Disposed;
             VisualUtils.Arredondar(buttonDashboard, 8);
             VisualUtils.Arredondar(buttonEstoque, 8);
             VisualUtils.Arredondar(buttonRelatorios, 8);
             VisualUtils.Arredondar(buttonProdutos, 8);
             VisualUtils.Arredondar(buttonMovimentacoes, 8);
-
             VisualUtils.Arredondar(buttonConfiguracoes, 8);
             VisualUtils.Arredondar(buttonSair, 8);
-
             panelPesquisa.Visible = false;
             textPesquisa.TabStop = false;
             panelConteudo.AutoScroll = true;
             VisualUtils.EstilizarRolagem(panelConteudo);
             VisualUtils.EstilizarRolagem(navegacao);
-            panelConteudo.ClientSizeChanged += (s, e) => AjustarAreaDaTela();
+            panelConteudo.ClientSizeChanged += panelConteudo_ClientSizeChanged;
             Rectangle areaDisponivel = Screen.FromControl(this).WorkingArea;
             MinimumSize = new Size(Math.Min(760, areaDisponivel.Width), Math.Min(480, areaDisponivel.Height));
             Size = new Size(Math.Min(1320, areaDisponivel.Width), Math.Min(850, areaDisponivel.Height));
-            buttonDashboard.Click += (s, e) => AbrirTela(buttonDashboard, () => new DashboardControl(usuarioAutenticado));
-            buttonProdutos.Click += (s, e) => AbrirTela(buttonProdutos, () => new ProdutosControl(usuarioAutenticado));
-            buttonEstoque.Click += (s, e) => AbrirTela(buttonEstoque, CriarOperacoesEstoque);
-            buttonMovimentacoes.Click += (s, e) => AbrirTela(
-                buttonMovimentacoes,
-                () => new RegistrosControl(usuarioAutenticado, eventoSelecionado));
+            buttonDashboard.Click += buttonDashboard_Click;
+            buttonProdutos.Click += buttonProdutos_Click;
+            buttonEstoque.Click += buttonEstoque_Click;
+            buttonMovimentacoes.Click += buttonMovimentacoes_Click;
             buttonRelatorios.Text = "Relatórios";
-            buttonRelatorios.Click += (s, e) => AbrirTela(buttonRelatorios, () => new RelatoriosControl(usuarioAutenticado));
-            buttonConfiguracoes.Click += (s, e) => AbrirTela(buttonConfiguracoes, CriarConfiguracoes);
-            buttonSair.Click += (s, e) => Close();
+            buttonRelatorios.Click += buttonRelatorios_Click;
+            buttonConfiguracoes.Click += buttonConfiguracoes_Click;
+            buttonSair.Click += buttonSair_Click;
             ConfigurarQuermesse();
         }
 
         private void ConfigurarQuermesse()
         {
-            buttonEquipeSetores.Click += (s, e) => AbrirTela(
+            buttonEquipeSetores.Click += buttonEquipeSetores_Click;
+            buttonFinanceiro.Click += buttonFinanceiro_Click;
+            buttonQuermesses.Click += buttonQuermesses_Click;
+            buttonEscala.Click += buttonEscala_Click;
+            buttonSolicitacoes.Click += buttonSolicitacoes_Click;
+            foreach (var botao in new[]
+            {
                 buttonEquipeSetores,
-                () => new EquipeSetoresControl(usuarioAutenticado, eventoSelecionado));
-            buttonFinanceiro.Click += (s, e) => AbrirTela(buttonFinanceiro, () => new FinanceiroControl(usuarioAutenticado, eventoSelecionado));
-            buttonQuermesses.Click += (s, e) => AbrirTela(buttonQuermesses, CriarTelaEventos);
-            buttonEscala.Click += (s, e) => AbrirTela(
+                buttonFinanceiro,
+                buttonQuermesses,
                 buttonEscala,
-                () => new EscalaControl(usuarioAutenticado, eventoSelecionado));
-            buttonSolicitacoes.Click += (s, e) => AbrirTela(
-                buttonSolicitacoes,
-                CriarSolicitacoes);
-            foreach (var botao in new[] { buttonEquipeSetores, buttonFinanceiro, buttonQuermesses, buttonEscala, buttonSolicitacoes })
+                buttonSolicitacoes
+            }
+
+            )
             {
                 VisualUtils.Arredondar(botao, 8);
-                botao.SizeChanged += (s, e) => VisualUtils.Arredondar(botao, 8);
+                botao.SizeChanged += Tratar_botao_SizeChanged;
+                void Tratar_botao_SizeChanged(object s, EventArgs e)
+                {
+                    VisualUtils.Arredondar(botao, 8);
+                }
             }
+
             usuarioPreview.Visible = false;
             labelPreviewUsuario.Visible = false;
             AtualizarCabecalho();
-            AbrirTela(buttonDashboard, () => new DashboardControl(usuarioAutenticado));
+            AbrirTela(buttonDashboard, ConfigurarQuermesse_AbrirTela);
         }
 
         private UserControl CriarTelaEventos()
@@ -143,13 +145,14 @@ namespace CASE
             QuermessesControl tela = new QuermessesControl(usuarioAutenticado);
             if (eventoSelecionado != null)
                 tela.SelecionarEvento(eventoSelecionado.IdEvento);
-            tela.EventoSelecionado += evento =>
+            tela.EventoSelecionado += Tratar_tela_EventoSelecionado;
+            AtualizarEventoSelecionado(tela.ObterEventoSelecionado());
+            return tela;
+            void Tratar_tela_EventoSelecionado(Evento evento)
             {
                 if (!tela.Disposing && !tela.IsDisposed && tela.Parent == panelConteudo)
                     AtualizarEventoSelecionado(evento);
-            };
-            AtualizarEventoSelecionado(tela.ObterEventoSelecionado());
-            return tela;
+            }
         }
 
         private UserControl CriarSolicitacoes()
@@ -163,29 +166,20 @@ namespace CASE
         {
             if (panelConteudo.Controls.Count == 0)
                 return;
-
             Control tela = panelConteudo.Controls[0];
             float escala = tela.DeviceDpi / 96F;
             Size minimo = new Size((int)(1000 * escala), (int)(650 * escala));
             panelConteudo.AutoScrollMinSize = minimo;
-            tela.Size = new Size(Math.Max(minimo.Width, panelConteudo.ClientSize.Width),
-                Math.Max(minimo.Height, panelConteudo.ClientSize.Height));
+            tela.Size = new Size(Math.Max(minimo.Width, panelConteudo.ClientSize.Width), Math.Max(minimo.Height, panelConteudo.ClientSize.Height));
         }
 
         private void AtualizarEventoSelecionado(Evento evento)
         {
             Evento anterior = eventoSelecionado;
-            bool contextoAlterado = anterior == null || evento == null ||
-                anterior.IdEvento != evento.IdEvento ||
-                !string.Equals(anterior.Nome, evento.Nome, StringComparison.Ordinal) ||
-                !string.Equals(anterior.Local, evento.Local, StringComparison.Ordinal) ||
-                !string.Equals(anterior.Situacao, evento.Situacao, StringComparison.OrdinalIgnoreCase) ||
-                anterior.DataInicio != evento.DataInicio || anterior.DataFim != evento.DataFim ||
-                anterior.IdResponsavel != evento.IdResponsavel;
+            bool contextoAlterado = anterior == null || evento == null || anterior.IdEvento != evento.IdEvento || !string.Equals(anterior.Nome, evento.Nome, StringComparison.Ordinal) || !string.Equals(anterior.Local, evento.Local, StringComparison.Ordinal) || !string.Equals(anterior.Situacao, evento.Situacao, StringComparison.OrdinalIgnoreCase) || anterior.DataInicio != evento.DataInicio || anterior.DataFim != evento.DataFim || anterior.IdResponsavel != evento.IdResponsavel;
             eventoSelecionado = evento;
             if (!contextoAlterado || !usuarioAdministraEventos)
                 return;
-
             // Atualiza o seletor quando o evento muda de situação, deixa de existir
             // ou passa a ter outra responsabilidade enquanto a lista está aberta.
             SincronizarSeletorEventoContexto();
@@ -210,9 +204,7 @@ namespace CASE
             panelCabecalho.Controls.Add(lblEventoContexto);
             cmbEventoContexto.BringToFront();
             lblEventoContexto.BringToFront();
-            panelCabecalho.Layout += (s, e) =>
-                cmbEventoContexto.Width = Math.Max(180, Math.Min(360,
-                    panelCabecalho.ClientSize.Width - panelPerfil.Width - cmbEventoContexto.Left - 24));
+            panelCabecalho.Layout += panelCabecalho_Layout;
             SincronizarSeletorEventoContexto();
             cmbEventoContexto.Visible = false;
             lblEventoContexto.Visible = false;
@@ -223,13 +215,12 @@ namespace CASE
             sincronizandoContextoEvento = true;
             try
             {
-                List<Evento> eventos = new CASE.Services.EventoService().ListarEmAberto(usuarioAutenticado);
+                List<Evento> eventos = new EventoService().ListarEmAberto(usuarioAutenticado);
                 cmbEventoContexto.BeginUpdate();
                 cmbEventoContexto.Items.Clear();
                 cmbEventoContexto.Items.Add("Todos os eventos em aberto");
                 foreach (Evento evento in eventos)
                     cmbEventoContexto.Items.Add(evento);
-
                 int indice = consultarTodosEventos ? 0 : -1;
                 for (int i = 0; i < cmbEventoContexto.Items.Count; i++)
                 {
@@ -240,12 +231,14 @@ namespace CASE
                         break;
                     }
                 }
+
                 if (indice < 0 && cmbEventoContexto.Items.Count > 0)
                 {
                     indice = cmbEventoContexto.Items.Count > 1 ? 1 : 0;
                     if (cmbEventoContexto.Items.Count == 1)
                         consultarTodosEventos = true;
                 }
+
                 cmbEventoContexto.SelectedIndex = indice;
                 eventoSelecionado = indice >= 0 ? cmbEventoContexto.Items[indice] as Evento : null;
                 cmbEventoContexto.Enabled = cmbEventoContexto.Items.Count > 1;
@@ -253,7 +246,7 @@ namespace CASE
             catch (Exception erro)
             {
                 cmbEventoContexto.Enabled = false;
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " ao atualizar o evento em consulta.");
+                Trace.WriteLine(erro.GetType().Name + " ao atualizar o evento em consulta.");
             }
             finally
             {
@@ -264,8 +257,7 @@ namespace CASE
 
         private bool TelaDependeDeEvento(Button menu)
         {
-            return menu == buttonEstoque || menu == buttonEquipeSetores || menu == buttonFinanceiro || menu == buttonEscala ||
-                menu == buttonSolicitacoes || menu == buttonMovimentacoes;
+            return menu == buttonEstoque || menu == buttonEquipeSetores || menu == buttonFinanceiro || menu == buttonEscala || menu == buttonSolicitacoes || menu == buttonMovimentacoes;
         }
 
         private void cmbEventoContexto_SelectedIndexChanged(object sender, EventArgs e)
@@ -280,6 +272,7 @@ namespace CASE
                     ReabrirTelaDependenteDeEvento(menuAtual);
                 return;
             }
+
             Evento selecionado = cmbEventoContexto.SelectedItem as Evento;
             if (selecionado == null || (!consultarTodosEventos && eventoSelecionado != null && selecionado.IdEvento == eventoSelecionado.IdEvento))
                 return;
@@ -294,15 +287,15 @@ namespace CASE
             if (menu == buttonEstoque)
                 AbrirTela(menu, CriarOperacoesEstoque);
             else if (menu == buttonEquipeSetores)
-                AbrirTela(menu, () => new EquipeSetoresControl(usuarioAutenticado, eventoSelecionado));
+                AbrirTela(menu, ReabrirTelaDependenteDeEvento_AbrirTela);
             else if (menu == buttonFinanceiro)
-                AbrirTela(menu, () => new FinanceiroControl(usuarioAutenticado, eventoSelecionado));
+                AbrirTela(menu, ReabrirTelaDependenteDeEvento_AbrirTela2);
             else if (menu == buttonEscala)
-                AbrirTela(menu, () => new EscalaControl(usuarioAutenticado, eventoSelecionado));
+                AbrirTela(menu, ReabrirTelaDependenteDeEvento_AbrirTela3);
             else if (menu == buttonSolicitacoes)
                 AbrirTela(menu, CriarSolicitacoes);
             else if (menu == buttonMovimentacoes)
-                AbrirTela(menu, () => new RegistrosControl(usuarioAutenticado, eventoSelecionado));
+                AbrirTela(menu, ReabrirTelaDependenteDeEvento_AbrirTela4);
         }
 
         private void InicializarEventoSelecionado()
@@ -310,26 +303,17 @@ namespace CASE
             try
             {
                 string perfil;
-                new CASE.Services.AutorizacaoService().ValidarUsuarioEObterPerfil(
-                    usuarioAutenticado,
-                    out perfil);
-
-                usuarioAdministraEventos =
-                    string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase) ||
-                    string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase);
-
+                new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out perfil);
+                usuarioAdministraEventos = string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase) || string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase);
                 if (usuarioAdministraEventos)
                 {
-                eventoSelecionado = new CASE.Services.EventoService()
-                        .ListarEmAberto(usuarioAutenticado)
-                        .FirstOrDefault();
+                    eventoSelecionado = new EventoService().ListarEmAberto(usuarioAutenticado).FirstOrDefault();
                 }
             }
             catch (Exception erro)
             {
                 eventoSelecionado = null;
-                System.Diagnostics.Trace.WriteLine(
-                    erro.GetType().Name + " ao selecionar o evento inicial.");
+                Trace.WriteLine(erro.GetType().Name + " ao selecionar o evento inicial.");
             }
         }
 
@@ -337,16 +321,16 @@ namespace CASE
         {
             buttonFornecedores = CriarBotaoMenu("buttonFornecedores", "Fornecedores");
             buttonAcessos = CriarBotaoMenu("buttonAcessos", "Usuários e acessos");
-            AdicionarIconeMenu(buttonFornecedores, Properties.Resources.LucideMenuFornecedores);
-            AdicionarIconeMenu(buttonAcessos, Properties.Resources.LucideMenuAcessos);
+            AdicionarIconeMenu(buttonFornecedores, Properties.Resources.IconeMenuFornecedores);
+            AdicionarIconeMenu(buttonAcessos, Properties.Resources.IconeMenuAcessos);
             buttonAcessos.Visible = false;
-            buttonFornecedores.Click += (s, e) => AbrirTela(buttonFornecedores, () => new FornecedoresControl(usuarioAutenticado));
-            buttonAcessos.Click += (s, e) => AbrirTela(buttonAcessos, CriarGestaoAcessos);
+            buttonFornecedores.Click += buttonFornecedores_Click;
+            buttonAcessos.Click += buttonAcessos_Click;
             Button historico = CriarBotaoMenu("buttonHistorico", "Movimentações");
             historico.Visible = false;
             historico.TabStop = false;
-            AdicionarIconeMenu(historico, Properties.Resources.LucideAzulRegistros);
-            historico.Click += (s, e) => AbrirTela(buttonEstoque, CriarOperacoesEstoque);
+            AdicionarIconeMenu(historico, Properties.Resources.IconeAzulRegistros);
+            historico.Click += historico_Click;
         }
 
         private Button CriarBotaoMenu(string nome, string texto)
@@ -385,41 +369,28 @@ namespace CASE
 
         private UserControl CriarOperacoesEstoque()
         {
-            var tela = new OperacoesEstoqueControl(
-                usuarioAutenticado,
-                eventoSelecionado,
-                !consultarTodosEventos && eventoSelecionado != null);
-            tela.FornecedoresSolicitados += (s, e) => AbrirTela(buttonFornecedores, () => new FornecedoresControl(usuarioAutenticado));
-            tela.SolicitacoesSolicitadas += (s, e) => AbrirTela(buttonSolicitacoes, () =>
-            {
-                var pedidos = (SolicitacoesControl)CriarSolicitacoes();
-                pedidos.ExibirPedidosCentrais();
-                return pedidos;
-            });
+            var tela = new OperacoesEstoqueControl(usuarioAutenticado, eventoSelecionado, !consultarTodosEventos && eventoSelecionado != null);
+            tela.FornecedoresSolicitados += tela_FornecedoresSolicitados;
+            tela.SolicitacoesSolicitadas += tela_SolicitacoesSolicitadas;
             return tela;
         }
 
         private UserControl CriarGestaoAcessos()
         {
             var tela = new AcessosControl(usuarioAutenticado);
-            tela.AcessosAlterados += (s, e) =>
-            {
-                AtualizarCabecalho();
-            };
+            tela.AcessosAlterados += tela_AcessosAlterados;
             return tela;
         }
 
         private void ConfigurarNotificacoes()
         {
-            FormClosing += (s, e) => menuNotificacoes.Close();
-            Disposed += (s, e) => menuNotificacoes.Dispose();
+            FormClosing += Tela_FormClosing;
+            Disposed += Tela_Disposed2;
             pictureNotificacoes.Cursor = Cursors.Hand;
             pictureNotificacoes.Click += pictureNotificacoes_Click;
             indicadorNotificacoes.Name = "indicadorNotificacoes";
             indicadorNotificacoes.Size = new Size(18, 18);
-            indicadorNotificacoes.Location = new Point(
-                pictureNotificacoes.Right - 7,
-                pictureNotificacoes.Top - 6);
+            indicadorNotificacoes.Location = new Point(pictureNotificacoes.Right - 7, pictureNotificacoes.Top - 6);
             indicadorNotificacoes.TextAlign = ContentAlignment.MiddleCenter;
             indicadorNotificacoes.Font = new Font("Segoe UI", 7F, FontStyle.Bold);
             indicadorNotificacoes.ForeColor = Color.White;
@@ -437,10 +408,8 @@ namespace CASE
         {
             try
             {
-                List<CASE.Services.NotificacaoPendente> pendencias =
-                    new CASE.Services.NotificacaoService().ListarPendencias(usuarioAutenticado);
+                List<NotificacaoPendente> pendencias = new NotificacaoService().ListarPendencias(usuarioAutenticado);
                 indicadorNotificacoes.Visible = pendencias.Count > 0;
-
                 if (pendencias.Count > 9)
                 {
                     indicadorNotificacoes.Text = "9+";
@@ -450,16 +419,12 @@ namespace CASE
                     indicadorNotificacoes.Text = pendencias.Count.ToString();
                 }
 
-                dicaNotificacoes.SetToolTip(
-                    pictureNotificacoes,
-                    pendencias.Count + " pendência(s) que exigem atenção.");
+                dicaNotificacoes.SetToolTip(pictureNotificacoes, pendencias.Count + " pendência(s) que exigem atenção.");
             }
             catch (Exception)
             {
                 indicadorNotificacoes.Visible = false;
-                dicaNotificacoes.SetToolTip(
-                    pictureNotificacoes,
-                    "Não foi possível consultar as pendências.");
+                dicaNotificacoes.SetToolTip(pictureNotificacoes, "Não foi possível consultar as pendências.");
             }
         }
 
@@ -476,9 +441,7 @@ namespace CASE
 
             try
             {
-                List<CASE.Services.NotificacaoPendente> pendencias =
-                    new CASE.Services.NotificacaoService().ListarPendencias(usuarioAutenticado);
-
+                List<NotificacaoPendente> pendencias = new NotificacaoService().ListarPendencias(usuarioAutenticado);
                 if (pendencias.Count == 0)
                 {
                     ToolStripMenuItem vazio = new ToolStripMenuItem("Nenhuma pendência no momento");
@@ -487,10 +450,9 @@ namespace CASE
                 }
                 else
                 {
-                    foreach (CASE.Services.NotificacaoPendente pendencia in pendencias)
+                    foreach (NotificacaoPendente pendencia in pendencias)
                     {
-                        ToolStripMenuItem item = new ToolStripMenuItem(
-                            pendencia.Titulo + " — " + pendencia.Descricao);
+                        ToolStripMenuItem item = new ToolStripMenuItem(pendencia.Titulo + " — " + pendencia.Descricao);
                         item.Tag = pendencia;
                         item.Click += NotificacaoSelecionada_Click;
                         menu.Items.Add(item);
@@ -504,27 +466,20 @@ namespace CASE
             catch (Exception erro)
             {
                 menu.Close();
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em Notificacoes: " + erro.StackTrace);
-                MessageBox.Show(
-                    "Não foi possível carregar as pendências.",
-                    "Notificações",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                Trace.WriteLine(erro.GetType().Name + " em Notificacoes: " + erro.StackTrace);
+                MessageBox.Show("Não foi possível carregar as pendências.", "Notificações", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
         }
 
         private void NotificacaoSelecionada_Click(object sender, EventArgs e)
         {
             ToolStripMenuItem item = sender as ToolStripMenuItem;
-
             if (item == null)
             {
                 return;
             }
 
-            CASE.Services.NotificacaoPendente pendencia =
-                item.Tag as CASE.Services.NotificacaoPendente;
-
+            NotificacaoPendente pendencia = item.Tag as NotificacaoPendente;
             if (pendencia == null)
             {
                 return;
@@ -538,12 +493,8 @@ namespace CASE
             {
                 try
                 {
-                    eventoSelecionado = new CASE.Services.EventoService().BuscarPorId(
-                        usuarioAutenticado,
-                        pendencia.IdEvento);
-                    AbrirTela(
-                        buttonSolicitacoes,
-                        () => new SolicitacoesControl(usuarioAutenticado, eventoSelecionado));
+                    eventoSelecionado = new EventoService().BuscarPorId(usuarioAutenticado, pendencia.IdEvento);
+                    AbrirTela(buttonSolicitacoes, NotificacaoSelecionada_Click_AbrirTela);
                     if (panelConteudo.Controls.Count > 0)
                     {
                         SolicitacoesControl tela = panelConteudo.Controls[0] as SolicitacoesControl;
@@ -555,15 +506,10 @@ namespace CASE
                 }
                 catch (Exception)
                 {
-                    MessageBox.Show(
-                        "Não foi possível abrir a solicitação deste evento.",
-                        "Notificações",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                    MessageBox.Show("Não foi possível abrir a solicitação deste evento.", "Notificações", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
             }
-            else if (pendencia.Tipo == "solicitacao_central" ||
-                pendencia.Tipo == "solicitacao_central_aprovada")
+            else if (pendencia.Tipo == "solicitacao_central" || pendencia.Tipo == "solicitacao_central_aprovada")
             {
                 DecidirSolicitacaoCentral(pendencia.IdReferencia);
             }
@@ -573,30 +519,19 @@ namespace CASE
 
         private void DecidirSolicitacaoCentral(int idSolicitacao)
         {
-            CASE.Services.SolicitacaoEstoqueCentralService service =
-                new CASE.Services.SolicitacaoEstoqueCentralService();
-
+            SolicitacaoEstoqueCentralService service = new SolicitacaoEstoqueCentralService();
             try
             {
-                CASE.Models.SolicitacaoEstoqueCentral solicitacao = service.BuscarPorId(
-                    usuarioAutenticado,
-                    idSolicitacao);
+                SolicitacaoEstoqueCentral solicitacao = service.BuscarPorId(usuarioAutenticado, idSolicitacao);
                 DialogResult respostaPedido;
                 using (var formulario = new DetalhesPedidoCentralForm(usuarioAutenticado, idSolicitacao, true))
                     respostaPedido = formulario.ShowDialog(this);
-
-                if (string.Equals(
-                    solicitacao.Situacao,
-                    CASE.Services.SituacoesSolicitacao.Aprovada,
-                    StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(solicitacao.Situacao, SituacoesSolicitacao.Aprovada, StringComparison.OrdinalIgnoreCase))
                 {
                     DialogResult atender = respostaPedido;
-
                     if (atender == DialogResult.Yes)
                     {
-                        service.AtenderComTransferencia(
-                            usuarioAutenticado,
-                            solicitacao.IdSolicitacaoEstoqueCentral);
+                        service.AtenderComTransferencia(usuarioAutenticado, solicitacao.IdSolicitacaoEstoqueCentral);
                     }
 
                     AtualizarContagemNotificacoes();
@@ -604,69 +539,40 @@ namespace CASE
                 }
 
                 DialogResult decisao = respostaPedido;
-
                 if (decisao == DialogResult.Yes)
                 {
-                    service.Aprovar(
-                        usuarioAutenticado,
-                        solicitacao.IdSolicitacaoEstoqueCentral,
-                        solicitacao.Versao);
-
-                    DialogResult liberarAgora = MessageBox.Show(
-                        "Pedido aprovado sem movimentar saldo. Deseja efetivar a transferência agora?",
-                        "Efetivar atendimento",
-                        MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question);
-
+                    service.Aprovar(usuarioAutenticado, solicitacao.IdSolicitacaoEstoqueCentral, solicitacao.Versao);
+                    DialogResult liberarAgora = MessageBox.Show("Pedido aprovado sem movimentar saldo. Deseja efetivar a transferência agora?", "Efetivar atendimento", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
                     if (liberarAgora == DialogResult.Yes)
                     {
-                        service.AtenderComTransferencia(
-                            usuarioAutenticado,
-                            solicitacao.IdSolicitacaoEstoqueCentral);
+                        service.AtenderComTransferencia(usuarioAutenticado, solicitacao.IdSolicitacaoEstoqueCentral);
                     }
                 }
                 else if (decisao == DialogResult.No)
                 {
                     string justificativa = SolicitarMotivoRejeicao();
-
                     if (string.IsNullOrWhiteSpace(justificativa))
                     {
                         return;
                     }
 
-                    service.Rejeitar(
-                        usuarioAutenticado,
-                        solicitacao.IdSolicitacaoEstoqueCentral,
-                        solicitacao.Versao,
-                        justificativa);
+                    service.Rejeitar(usuarioAutenticado, solicitacao.IdSolicitacaoEstoqueCentral, solicitacao.Versao, justificativa);
                 }
 
                 AtualizarContagemNotificacoes();
             }
             catch (UnauthorizedAccessException)
             {
-                MessageBox.Show(
-                    "Sua conta não pode decidir este pedido.",
-                    "Solicitação ao estoque central",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
+                MessageBox.Show("Sua conta não pode decidir este pedido.", "Solicitação ao estoque central", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             catch (InvalidOperationException ex)
             {
-                MessageBox.Show(
-                    CASE.Utils.FeedbackUsuario.MensagemErro(ex, "Não foi possível processar o pedido. Atualize a tela e tente novamente."),
-                    "Solicitação ao estoque central",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                MessageBox.Show(FeedbackUsuario.MensagemErro(ex, "Não foi possível processar o pedido. Atualize a tela e tente novamente."), "Solicitação ao estoque central", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 AtualizarContagemNotificacoes();
             }
             catch (Exception)
             {
-                MessageBox.Show(
-                    "Não foi possível processar o pedido.",
-                    "Solicitação ao estoque central",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show("Não foi possível processar o pedido.", "Solicitação ao estoque central", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -689,19 +595,14 @@ namespace CASE
                 campo.MaxLength = 500;
                 campo.SetBounds(12, 12, 396, 72);
                 rejeitar.Text = "Rejeitar";
-                Label erroMotivo = new Label { Name = "lblErroJustificativa", ForeColor = Color.Firebrick };
+                Label erroMotivo = new Label
+                {
+                    Name = "lblErroJustificativa",
+                    ForeColor = Color.Firebrick
+                };
                 erroMotivo.SetBounds(12, 85, 396, 17);
                 dialogo.Controls.Add(erroMotivo);
-                rejeitar.Click += (s, e) =>
-                {
-                    if (string.IsNullOrWhiteSpace(campo.Text))
-                    {
-                        erroMotivo.Text = "Informe o motivo da rejeição.";
-                        campo.Focus();
-                        return;
-                    }
-                    dialogo.DialogResult = DialogResult.OK;
-                };
+                rejeitar.Click += Tratar_rejeitar_Click;
                 rejeitar.SetBounds(222, 102, 88, 30);
                 cancelar.Text = "Cancelar";
                 cancelar.DialogResult = DialogResult.Cancel;
@@ -712,10 +613,21 @@ namespace CASE
                 FrontendTheme.Aplicar(dialogo);
                 dialogo.AcceptButton = rejeitar;
                 dialogo.CancelButton = cancelar;
-
                 if (dialogo.ShowDialog(this) == DialogResult.OK)
                 {
                     return campo.Text.Trim();
+                }
+
+                void Tratar_rejeitar_Click(object s, EventArgs e)
+                {
+                    if (string.IsNullOrWhiteSpace(campo.Text))
+                    {
+                        erroMotivo.Text = "Informe o motivo da rejeição.";
+                        campo.Focus();
+                        return;
+                    }
+
+                    dialogo.DialogResult = DialogResult.OK;
                 }
             }
 
@@ -728,11 +640,7 @@ namespace CASE
             panelAreaPrincipal.BackColor = panelConteudo.BackColor = VisualUtils.Fundo;
             panelMenu.BackColor = panelRodapeMenu.BackColor = navegacao.BackColor = VisualUtils.Marinho;
             panelCabecalho.BackColor = Color.White;
-            panelCabecalho.Paint += (s, e) =>
-            {
-                using (var linha = new Pen(VisualUtils.Borda))
-                    e.Graphics.DrawLine(linha, 0, panelCabecalho.Height - 1, panelCabecalho.Width, panelCabecalho.Height - 1);
-            };
+            panelCabecalho.Paint += panelCabecalho_Paint;
             labelNomeUsuario.Font = new Font("Segoe UI", 9, FontStyle.Bold);
             labelNomeUsuario.ForeColor = VisualUtils.Texto;
             labelTipoUsuario.Font = new Font("Segoe UI", 8.5F);
@@ -748,13 +656,14 @@ namespace CASE
                 botao.FlatAppearance.MouseOverBackColor = Color.FromArgb(26, 61, 98);
                 botao.FlatAppearance.BorderSize = 0;
                 botao.Cursor = Cursors.Hand;
-                botao.Paint += (s, e) =>
+                botao.Paint += Tratar_botao_Paint;
+                void Tratar_botao_Paint(object s, PaintEventArgs e)
                 {
                     if (botao.BackColor != Color.FromArgb(27, 75, 125))
                         return;
                     using (var pincel = new SolidBrush(Color.FromArgb(89, 163, 255)))
                         e.Graphics.FillRectangle(pincel, 0, 10, 3, Math.Max(1, botao.Height - 20));
-                };
+                }
             }
         }
 
@@ -766,27 +675,22 @@ namespace CASE
             };
             ToolStripMenuItem itemAlterarFoto = new ToolStripMenuItem("Alterar foto");
             itemAlterarFoto.Click += AlterarFotoPerfil_Click;
-
             ToolStripMenuItem itemRemoverFoto = new ToolStripMenuItem("Remover foto");
             itemRemoverFoto.Click += RemoverFotoPerfil_Click;
-
             menuFotoPerfil.Items.Add(itemUsuario);
             menuFotoPerfil.Items.Add(new ToolStripSeparator());
             menuFotoPerfil.Items.Add(itemAlterarFoto);
             menuFotoPerfil.Items.Add(itemRemoverFoto);
             menuFotoPerfil.Opening += MenuFotoPerfil_Opening;
-
             pictureUsuario.ContextMenuStrip = menuFotoPerfil;
             pictureUsuario.Cursor = Cursors.Hand;
             pictureUsuario.BackColor = Color.Transparent;
             pictureUsuario.Click += pictureUsuario_Click;
             pictureUsuario.Paint += PictureUsuario_Paint;
             FormClosed += PrincipalForm_FormClosed;
-
             try
             {
                 byte[] foto = fotoPerfilService.BuscarFotoPerfil(usuarioAutenticado);
-
                 if (foto != null && foto.Length > 0)
                 {
                     AplicarFotoPerfil(foto);
@@ -800,9 +704,7 @@ namespace CASE
 
         private void pictureUsuario_Click(object sender, EventArgs e)
         {
-            menuFotoPerfil.Show(
-                pictureUsuario,
-                new Point(0, pictureUsuario.Height));
+            menuFotoPerfil.Show(pictureUsuario, new Point(0, pictureUsuario.Height));
         }
 
         private void PictureUsuario_Paint(object sender, PaintEventArgs e)
@@ -822,7 +724,7 @@ namespace CASE
             }
         }
 
-        private void MenuFotoPerfil_Opening(object sender, System.ComponentModel.CancelEventArgs e)
+        private void MenuFotoPerfil_Opening(object sender, CancelEventArgs e)
         {
             if (menuFotoPerfil.Items.Count > 3)
             {
@@ -838,7 +740,6 @@ namespace CASE
                 seletorArquivo.Filter = "Imagens JPG ou PNG|*.jpg;*.jpeg;*.png";
                 seletorArquivo.CheckFileExists = true;
                 seletorArquivo.Multiselect = false;
-
                 if (seletorArquivo.ShowDialog(this) != DialogResult.OK)
                 {
                     return;
@@ -847,51 +748,27 @@ namespace CASE
                 try
                 {
                     FileInfo arquivo = new FileInfo(seletorArquivo.FileName);
-
                     if (arquivo.Length > 2 * 1024 * 1024)
                     {
-                        MessageBox.Show(
-                            this,
-                            "A imagem não pode ultrapassar 2 MB.",
-                            "Foto de perfil",
-                            MessageBoxButtons.OK,
-                            MessageBoxIcon.Warning);
+                        MessageBox.Show(this, "A imagem não pode ultrapassar 2 MB.", "Foto de perfil", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
 
                     byte[] arquivoImagem = File.ReadAllBytes(seletorArquivo.FileName);
-                    byte[] fotoSalva = fotoPerfilService.SalvarFotoPerfil(
-                        usuarioAutenticado,
-                        arquivoImagem);
-
+                    byte[] fotoSalva = fotoPerfilService.SalvarFotoPerfil(usuarioAutenticado, arquivoImagem);
                     AplicarFotoPerfil(fotoSalva);
                 }
                 catch (ArgumentException)
                 {
-                    MessageBox.Show(
-                        this,
-                        "O arquivo não é uma imagem JPG ou PNG válida.",
-                        "Foto de perfil",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning);
+                    MessageBox.Show(this, "O arquivo não é uma imagem JPG ou PNG válida.", "Foto de perfil", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
                 catch (InvalidOperationException erro)
                 {
-                    MessageBox.Show(
-                        this,
-                        CASE.Utils.FeedbackUsuario.MensagemErro(erro, "A imagem de perfil selecionada não pôde ser utilizada."),
-                        "Foto de perfil",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Information);
+                    MessageBox.Show(this, FeedbackUsuario.MensagemErro(erro, "A imagem de perfil selecionada não pôde ser utilizada."), "Foto de perfil", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }
                 catch (Exception)
                 {
-                    MessageBox.Show(
-                        this,
-                        "Não foi possível salvar a foto de perfil.",
-                        "Foto de perfil",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                    MessageBox.Show(this, "Não foi possível salvar a foto de perfil.", "Foto de perfil", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -905,21 +782,11 @@ namespace CASE
             }
             catch (InvalidOperationException erro)
             {
-                MessageBox.Show(
-                    this,
-                    CASE.Utils.FeedbackUsuario.MensagemErro(erro, "A imagem de perfil selecionada não pôde ser utilizada."),
-                    "Foto de perfil",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                MessageBox.Show(this, FeedbackUsuario.MensagemErro(erro, "A imagem de perfil selecionada não pôde ser utilizada."), "Foto de perfil", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception)
             {
-                MessageBox.Show(
-                    this,
-                    "Não foi possível remover a foto de perfil.",
-                    "Foto de perfil",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(this, "Não foi possível remover a foto de perfil.", "Foto de perfil", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -940,11 +807,7 @@ namespace CASE
         {
             const int tamanho = 256;
             const int margem = 10;
-            var circular = new Bitmap(
-                tamanho,
-                tamanho,
-                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
-
+            var circular = new Bitmap(tamanho, tamanho, PixelFormat.Format32bppArgb);
             using (Graphics grafico = Graphics.FromImage(circular))
             using (var recorte = new GraphicsPath())
             {
@@ -952,21 +815,11 @@ namespace CASE
                 grafico.SmoothingMode = SmoothingMode.AntiAlias;
                 grafico.InterpolationMode = InterpolationMode.HighQualityBicubic;
                 grafico.PixelOffsetMode = PixelOffsetMode.HighQuality;
-
-                var circulo = new Rectangle(
-                    margem,
-                    margem,
-                    tamanho - margem * 2,
-                    tamanho - margem * 2);
+                var circulo = new Rectangle(margem, margem, tamanho - margem * 2, tamanho - margem * 2);
                 recorte.AddEllipse(circulo);
                 grafico.SetClip(recorte);
-
                 int ladoOrigem = Math.Min(imagem.Width, imagem.Height);
-                var origem = new Rectangle(
-                    (imagem.Width - ladoOrigem) / 2,
-                    (imagem.Height - ladoOrigem) / 2,
-                    ladoOrigem,
-                    ladoOrigem);
+                var origem = new Rectangle((imagem.Width - ladoOrigem) / 2, (imagem.Height - ladoOrigem) / 2, ladoOrigem, ladoOrigem);
                 grafico.DrawImage(imagem, circulo, origem, GraphicsUnit.Pixel);
                 grafico.ResetClip();
             }
@@ -976,7 +829,7 @@ namespace CASE
 
         private void RestaurarFotoPadrao()
         {
-            pictureUsuario.Image = Properties.Resources.LucideUsuario;
+            pictureUsuario.Image = Properties.Resources.IconeUsuario;
             LiberarFotoPersonalizada();
             pictureUsuario.Invalidate();
         }
@@ -1001,17 +854,11 @@ namespace CASE
             AtualizarNomeExibido();
             labelTipoUsuario.Text = "Conta autenticada";
             buttonAcessos.Visible = false;
-
             try
             {
                 string nomePerfil;
-                new CASE.Services.AutorizacaoService().ValidarUsuarioEObterPerfil(
-                    usuarioAutenticado,
-                    out nomePerfil);
-                buttonAcessos.Visible = string.Equals(
-                    nomePerfil,
-                    "Administrador",
-                    StringComparison.OrdinalIgnoreCase);
+                new AutorizacaoService().ValidarUsuarioEObterPerfil(usuarioAutenticado, out nomePerfil);
+                buttonAcessos.Visible = string.Equals(nomePerfil, "Administrador", StringComparison.OrdinalIgnoreCase);
                 labelTipoUsuario.Text = nomePerfil;
                 bool membro = string.Equals(nomePerfil, "Membro", StringComparison.OrdinalIgnoreCase);
                 buttonProdutos.Visible = !membro;
@@ -1038,10 +885,8 @@ namespace CASE
         {
             try
             {
-                Pessoa pessoa = new CASE.Services.PessoaService().BuscarMeusDados(usuarioAutenticado);
-                labelNomeUsuario.Text = string.IsNullOrWhiteSpace(pessoa?.Nome)
-                    ? usuarioAutenticado.Login
-                    : pessoa.Nome;
+                Pessoa pessoa = new PessoaService().BuscarMeusDados(usuarioAutenticado);
+                labelNomeUsuario.Text = string.IsNullOrWhiteSpace(pessoa?.Nome) ? usuarioAutenticado.Login : pessoa.Nome;
             }
             catch (Exception)
             {
@@ -1052,9 +897,9 @@ namespace CASE
         private UserControl CriarConfiguracoes()
         {
             var controle = new ConfiguracoesControl(usuarioAutenticado);
-            controle.GerenciarAcessosSolicitado += (s, e) => AbrirTela(buttonAcessos, CriarGestaoAcessos);
-            controle.PerfilAtualizado += (s, e) => AtualizarNomeExibido();
-            controle.SenhaAlterada += (s, e) => Close();
+            controle.GerenciarAcessosSolicitado += controle_GerenciarAcessosSolicitado;
+            controle.PerfilAtualizado += controle_PerfilAtualizado;
+            controle.SenhaAlterada += controle_SenhaAlterada;
             return controle;
         }
 
@@ -1063,47 +908,56 @@ namespace CASE
             string[] ordem;
             if (string.Equals(perfil, "Administrador", StringComparison.OrdinalIgnoreCase))
             {
-                ordem = new[] { "buttonDashboard",
+                ordem = new[]
+                {
+                    "buttonDashboard",
                     "buttonFornecedores",
-"buttonProdutos",
-"buttonQuermesses",
-"buttonEquipeSetores",
+                    "buttonProdutos",
+                    "buttonQuermesses",
+                    "buttonEquipeSetores",
                     "buttonEscala",
-"buttonEstoque",
-"buttonSolicitacoes",
-"buttonMovimentacoes",
+                    "buttonEstoque",
+                    "buttonSolicitacoes",
+                    "buttonMovimentacoes",
                     "buttonFinanceiro",
-"buttonHistorico",
-"buttonRelatorios",
-"buttonConfiguracoes",
-"buttonAcessos" };
+                    "buttonHistorico",
+                    "buttonRelatorios",
+                    "buttonConfiguracoes",
+                    "buttonAcessos"
+                };
             }
             else if (string.Equals(perfil, "Gerente", StringComparison.OrdinalIgnoreCase))
             {
-                ordem = new[] { "buttonDashboard",
-"buttonFornecedores",
-"buttonProdutos",
+                ordem = new[]
+                {
+                    "buttonDashboard",
+                    "buttonFornecedores",
+                    "buttonProdutos",
                     "buttonQuermesses",
-"buttonEquipeSetores",
-"buttonEscala",
-"buttonEstoque",
+                    "buttonEquipeSetores",
+                    "buttonEscala",
+                    "buttonEstoque",
                     "buttonSolicitacoes",
-"buttonMovimentacoes",
-"buttonFinanceiro",
-"buttonHistorico",
+                    "buttonMovimentacoes",
+                    "buttonFinanceiro",
+                    "buttonHistorico",
                     "buttonRelatorios",
-"buttonConfiguracoes" };
+                    "buttonConfiguracoes"
+                };
             }
             else
             {
-                ordem = new[] { "buttonDashboard",
-"buttonEscala",
-"buttonEstoque",
+                ordem = new[]
+                {
+                    "buttonDashboard",
+                    "buttonEscala",
+                    "buttonEstoque",
                     "buttonMovimentacoes",
-"buttonSolicitacoes",
-"buttonHistorico",
-"buttonRelatorios",
-                    "buttonConfiguracoes" };
+                    "buttonSolicitacoes",
+                    "buttonHistorico",
+                    "buttonRelatorios",
+                    "buttonConfiguracoes"
+                };
             }
 
             navegacao.SuspendLayout();
@@ -1150,26 +1004,26 @@ namespace CASE
 
         private void AtualizarConsultaAberta()
         {
-            if (Form.ActiveForm != this || panelConteudo.Controls.Count == 0 ||
-                WindowState == FormWindowState.Minimized)
+            if (Form.ActiveForm != this || panelConteudo.Controls.Count == 0 || WindowState == FormWindowState.Minimized)
                 return;
-
             Control tela = panelConteudo.Controls[0];
             if (ConsultaEmEdicao(tela))
                 return;
-
             try
             {
                 var escalas = tela as EscalaControl;
                 var estoque = tela as OperacoesEstoqueControl;
                 var solicitacoes = tela as SolicitacoesControl;
-                if (escalas != null) escalas.AtualizarConsulta();
-                else if (estoque != null) estoque.AtualizarConsulta();
-                else if (solicitacoes != null) solicitacoes.AtualizarConsulta();
+                if (escalas != null)
+                    escalas.AtualizarConsulta();
+                else if (estoque != null)
+                    estoque.AtualizarConsulta();
+                else if (solicitacoes != null)
+                    solicitacoes.AtualizarConsulta();
             }
             catch (Exception erro)
             {
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " ao atualizar a consulta aberta.");
+                Trace.WriteLine(erro.GetType().Name + " ao atualizar a consulta aberta.");
             }
         }
 
@@ -1180,12 +1034,12 @@ namespace CASE
                 var selecao = controle as ComboBox;
                 if (selecao != null && (selecao.DroppedDown || selecao.ContainsFocus))
                     return true;
-                if ((controle is TextBoxBase || controle is NumericUpDown || controle is DateTimePicker) &&
-                    controle.ContainsFocus)
+                if ((controle is TextBoxBase || controle is NumericUpDown || controle is DateTimePicker) && controle.ContainsFocus)
                     return true;
                 if (ConsultaEmEdicao(controle))
                     return true;
             }
+
             return false;
         }
 
@@ -1202,10 +1056,10 @@ namespace CASE
                     // atribuídas enquanto esta sessão continua aberta.
                     SincronizarSeletorEventoContexto();
                 }
+
                 bool possuiEventosNoContexto = cmbEventoContexto.Items.Count > 1;
                 cmbEventoContexto.Visible = dependeDeEvento && possuiEventosNoContexto;
                 lblEventoContexto.Visible = dependeDeEvento && possuiEventosNoContexto;
-
                 if (dependeDeEvento && eventoSelecionado == null && !consultarTodosEventos)
                 {
                     InicializarEventoSelecionado();
@@ -1214,22 +1068,25 @@ namespace CASE
                 if (dependeDeEvento && consultarTodosEventos && menu != buttonEstoque)
                 {
                     var consulta = new TodosEventosControl(usuarioAutenticado, menu.Text);
-                    consulta.EventoSolicitado += evento =>
+                    consulta.EventoSolicitado += Tratar_consulta_EventoSolicitado;
+                    tela = consulta;
+                    void Tratar_consulta_EventoSolicitado(Evento evento)
                     {
                         consultarTodosEventos = false;
                         eventoSelecionado = evento;
                         SincronizarSeletorEventoContexto();
                         ReabrirTelaDependenteDeEvento(menu);
-                    };
-                    tela = consulta;
+                    }
                 }
-                else tela = criar();
+                else
+                    tela = criar();
                 tela.Dock = DockStyle.None;
                 panelConteudo.SuspendLayout();
                 while (panelConteudo.Controls.Count > 0)
                 {
                     panelConteudo.Controls[0].Dispose();
                 }
+
                 panelConteudo.Controls.Add(tela);
                 AjustarAreaDaTela();
                 tela.PerformLayout();
@@ -1243,9 +1100,9 @@ namespace CASE
                 {
                     tela.Dispose();
                 }
-                System.Diagnostics.Trace.WriteLine(erro.GetType().Name + " em AbrirTela: " + erro.StackTrace);
-                MessageBox.Show(this, "Não foi possível abrir esta tela. Confira se sua conta tem acesso e tente novamente.",
-                    "CASE", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                Trace.WriteLine(erro.GetType().Name + " em AbrirTela: " + erro.StackTrace);
+                MessageBox.Show(this, "Não foi possível abrir esta tela. Confira se sua conta tem acesso e tente novamente.", "CASE", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
             finally
             {
@@ -1259,6 +1116,7 @@ namespace CASE
             {
                 return;
             }
+
             ajustandoMenu = true;
             try
             {
@@ -1305,5 +1163,237 @@ namespace CASE
             this.ActiveControl = null;
         }
 
+        private void navegacao_Layout(object s, LayoutEventArgs e)
+        {
+            AjustarLarguraMenu();
+        }
+
+        private void navegacao_ClientSizeChanged(object s, EventArgs e)
+        {
+            AjustarLarguraMenu();
+        }
+
+        private void atualizacaoConsultas_Tick(object s, EventArgs e)
+        {
+            AtualizarConsultaAberta();
+        }
+
+        private void Tela_Shown(object s, EventArgs e)
+        {
+            atualizacaoConsultas.Start();
+        }
+
+        private void Tela_Activated(object s, EventArgs e)
+        {
+            AtualizarConsultaAberta();
+        }
+
+        private void Tela_Disposed(object s, EventArgs e)
+        {
+            atualizacaoConsultas.Dispose();
+        }
+
+        private void panelConteudo_ClientSizeChanged(object s, EventArgs e)
+        {
+            AjustarAreaDaTela();
+        }
+
+        private void buttonDashboard_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonDashboard, Tratar_buttonDashboard_Click_AbrirTela);
+            UserControl Tratar_buttonDashboard_Click_AbrirTela()
+            {
+                return new DashboardControl(usuarioAutenticado);
+            }
+        }
+
+        private void buttonProdutos_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonProdutos, Tratar_buttonProdutos_Click_AbrirTela);
+            UserControl Tratar_buttonProdutos_Click_AbrirTela()
+            {
+                return new ProdutosControl(usuarioAutenticado);
+            }
+        }
+
+        private void buttonEstoque_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonEstoque, CriarOperacoesEstoque);
+        }
+
+        private void buttonMovimentacoes_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonMovimentacoes, Tratar_buttonMovimentacoes_Click_AbrirTela);
+            UserControl Tratar_buttonMovimentacoes_Click_AbrirTela()
+            {
+                return new RegistrosControl(usuarioAutenticado, eventoSelecionado);
+            }
+        }
+
+        private void buttonRelatorios_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonRelatorios, Tratar_buttonRelatorios_Click_AbrirTela);
+            UserControl Tratar_buttonRelatorios_Click_AbrirTela()
+            {
+                return new RelatoriosControl(usuarioAutenticado);
+            }
+        }
+
+        private void buttonConfiguracoes_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonConfiguracoes, CriarConfiguracoes);
+        }
+
+        private void buttonSair_Click(object s, EventArgs e)
+        {
+            Close();
+        }
+
+        private void buttonEquipeSetores_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonEquipeSetores, Tratar_buttonEquipeSetores_Click_AbrirTela);
+            UserControl Tratar_buttonEquipeSetores_Click_AbrirTela()
+            {
+                return new EquipeSetoresControl(usuarioAutenticado, eventoSelecionado);
+            }
+        }
+
+        private void buttonFinanceiro_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonFinanceiro, Tratar_buttonFinanceiro_Click_AbrirTela);
+            UserControl Tratar_buttonFinanceiro_Click_AbrirTela()
+            {
+                return new FinanceiroControl(usuarioAutenticado, eventoSelecionado);
+            }
+        }
+
+        private void buttonQuermesses_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonQuermesses, CriarTelaEventos);
+        }
+
+        private void buttonEscala_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonEscala, Tratar_buttonEscala_Click_AbrirTela);
+            UserControl Tratar_buttonEscala_Click_AbrirTela()
+            {
+                return new EscalaControl(usuarioAutenticado, eventoSelecionado);
+            }
+        }
+
+        private void buttonSolicitacoes_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonSolicitacoes, CriarSolicitacoes);
+        }
+
+        private UserControl ConfigurarQuermesse_AbrirTela()
+        {
+            return new DashboardControl(usuarioAutenticado);
+        }
+
+        private void panelCabecalho_Layout(object s, LayoutEventArgs e)
+        {
+            cmbEventoContexto.Width = Math.Max(180, Math.Min(360, panelCabecalho.ClientSize.Width - panelPerfil.Width - cmbEventoContexto.Left - 24));
+        }
+
+        private UserControl ReabrirTelaDependenteDeEvento_AbrirTela()
+        {
+            return new EquipeSetoresControl(usuarioAutenticado, eventoSelecionado);
+        }
+
+        private UserControl ReabrirTelaDependenteDeEvento_AbrirTela2()
+        {
+            return new FinanceiroControl(usuarioAutenticado, eventoSelecionado);
+        }
+
+        private UserControl ReabrirTelaDependenteDeEvento_AbrirTela3()
+        {
+            return new EscalaControl(usuarioAutenticado, eventoSelecionado);
+        }
+
+        private UserControl ReabrirTelaDependenteDeEvento_AbrirTela4()
+        {
+            return new RegistrosControl(usuarioAutenticado, eventoSelecionado);
+        }
+
+        private void buttonFornecedores_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonFornecedores, Tratar_buttonFornecedores_Click_AbrirTela);
+            UserControl Tratar_buttonFornecedores_Click_AbrirTela()
+            {
+                return new FornecedoresControl(usuarioAutenticado);
+            }
+        }
+
+        private void buttonAcessos_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonAcessos, CriarGestaoAcessos);
+        }
+
+        private void historico_Click(object s, EventArgs e)
+        {
+            AbrirTela(buttonEstoque, CriarOperacoesEstoque);
+        }
+
+        private void tela_FornecedoresSolicitados(object s, EventArgs e)
+        {
+            AbrirTela(buttonFornecedores, Tratar_tela_FornecedoresSolicitados_AbrirTela);
+            UserControl Tratar_tela_FornecedoresSolicitados_AbrirTela()
+            {
+                return new FornecedoresControl(usuarioAutenticado);
+            }
+        }
+
+        private void tela_SolicitacoesSolicitadas(object s, EventArgs e)
+        {
+            AbrirTela(buttonSolicitacoes, Tratar_tela_SolicitacoesSolicitadas_AbrirTela);
+            UserControl Tratar_tela_SolicitacoesSolicitadas_AbrirTela()
+            {
+                var pedidos = (SolicitacoesControl)CriarSolicitacoes();
+                pedidos.ExibirPedidosCentrais();
+                return pedidos;
+            }
+        }
+
+        private void tela_AcessosAlterados(object s, EventArgs e)
+        {
+            AtualizarCabecalho();
+        }
+
+        private void Tela_FormClosing(object s, FormClosingEventArgs e)
+        {
+            menuNotificacoes.Close();
+        }
+
+        private void Tela_Disposed2(object s, EventArgs e)
+        {
+            menuNotificacoes.Dispose();
+        }
+
+        private UserControl NotificacaoSelecionada_Click_AbrirTela()
+        {
+            return new SolicitacoesControl(usuarioAutenticado, eventoSelecionado);
+        }
+
+        private void panelCabecalho_Paint(object s, PaintEventArgs e)
+        {
+            using (var linha = new Pen(VisualUtils.Borda))
+                e.Graphics.DrawLine(linha, 0, panelCabecalho.Height - 1, panelCabecalho.Width, panelCabecalho.Height - 1);
+        }
+
+        private void controle_GerenciarAcessosSolicitado(object s, EventArgs e)
+        {
+            AbrirTela(buttonAcessos, CriarGestaoAcessos);
+        }
+
+        private void controle_PerfilAtualizado(object s, EventArgs e)
+        {
+            AtualizarNomeExibido();
+        }
+
+        private void controle_SenhaAlterada(object s, EventArgs e)
+        {
+            Close();
+        }
     }
 }

@@ -6,9 +6,9 @@ namespace CASE.Services
 {
     public class AutenticacaoService
     {
-        private readonly UsuarioRepository usuarioRepository = new UsuarioRepository();
-        private readonly PerfilSistemaRepository perfilSistemaRepository = new PerfilSistemaRepository();
-        private readonly SenhaService senhaService = new SenhaService();
+        private UsuarioRepository usuarioRepository = new UsuarioRepository();
+        private PerfilSistemaRepository perfilSistemaRepository = new PerfilSistemaRepository();
+        private SenhaService senhaService = new SenhaService();
 
         public Usuario Autenticar(string login, string senha)
         {

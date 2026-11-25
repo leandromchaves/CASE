@@ -1,4 +1,4 @@
-namespace CASE
+﻿namespace CASE
 {
     partial class ProdutoForm
     {
@@ -384,7 +384,7 @@ namespace CASE
             this.btnSalvarProduto.Click += new System.EventHandler(this.btnSalvarProduto_Click);
             // pictureIconeFormulario — Lucide
             this.pictureIconeFormulario.Name = "pictureIconeFormulario";
-            this.pictureIconeFormulario.Image = global::CASE.Properties.Resources.LucideAzulProdutos;
+            this.pictureIconeFormulario.Image = global::CASE.Properties.Resources.IconeAzulProdutos;
             this.pictureIconeFormulario.Location = new System.Drawing.Point(790, 22);
             this.pictureIconeFormulario.Size = new System.Drawing.Size(36, 36);
             this.pictureIconeFormulario.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;
@@ -397,7 +397,7 @@ namespace CASE
             ((System.ComponentModel.ISupportInitialize)(this.pictureIconeFormulario)).EndInit();
             // pictureIconeImagemProduto — Lucide
             this.pictureIconeImagemProduto.Name = "pictureIconeImagemProduto";
-            this.pictureIconeImagemProduto.Image = global::CASE.Properties.Resources.LucideAzulImagem;
+            this.pictureIconeImagemProduto.Image = global::CASE.Properties.Resources.IconeAzulImagem;
             this.pictureIconeImagemProduto.Location = new System.Drawing.Point(69, 84);
             this.pictureIconeImagemProduto.Size = new System.Drawing.Size(32, 32);
             this.pictureIconeImagemProduto.SizeMode = System.Windows.Forms.PictureBoxSizeMode.Zoom;

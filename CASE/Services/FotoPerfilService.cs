@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -16,8 +16,8 @@ namespace CASE.Services
         private const int DimensaoMaximaOriginal = 12000;
         private const long TotalMaximoPixels = 30000000;
 
-        private readonly PessoaRepository pessoaRepository = new PessoaRepository();
-        private readonly AutorizacaoService autorizacaoService = new AutorizacaoService();
+        private PessoaRepository pessoaRepository = new PessoaRepository();
+        private AutorizacaoService autorizacaoService = new AutorizacaoService();
 
         public byte[] BuscarFotoPerfil(Usuario usuarioAutenticado)
         {

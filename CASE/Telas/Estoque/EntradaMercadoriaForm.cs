@@ -1,7 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.Windows.Forms;
+using System;
 using CASE.Models;
 using CASE.Services;
 using CASE.Utils;
@@ -10,14 +11,14 @@ namespace CASE
 {
     public partial class EntradaMercadoriaForm : Form
     {
-        private readonly Usuario usuarioAutenticado;
-        private readonly List<EntradaItem> itens = new List<EntradaItem>();
-        private readonly List<Produto> produtos = new List<Produto>();
-        private readonly EntradaMercadoriaService entradaService = new EntradaMercadoriaService();
-        private readonly ProdutoService produtoService = new ProdutoService();
-        private readonly FornecedorService fornecedorService = new FornecedorService();
-        private readonly LocalEstoqueService localEstoqueService = new LocalEstoqueService();
-        private readonly string chaveOperacao = Guid.NewGuid().ToString("N");
+        private Usuario usuarioAutenticado;
+        private List<EntradaItem> itens = new List<EntradaItem>();
+        private List<Produto> produtos = new List<Produto>();
+        private EntradaMercadoriaService entradaService = new EntradaMercadoriaService();
+        private ProdutoService produtoService = new ProdutoService();
+        private FornecedorService fornecedorService = new FornecedorService();
+        private LocalEstoqueService localEstoqueService = new LocalEstoqueService();
+        private string chaveOperacao = Guid.NewGuid().ToString("N");
         private bool salvando;
 
         public EntradaMercadoriaForm() : this(null)
@@ -27,12 +28,14 @@ namespace CASE
         public EntradaMercadoriaForm(Usuario usuario)
         {
             InitializeComponent();
+            if (LicenseManager.UsageMode ==
+                LicenseUsageMode.Designtime) return;
             IconoAplicacao.Aplicar(this);
             usuarioAutenticado = usuario;
             lblModoApresentacao.Visible = false;
 
-            if (System.ComponentModel.LicenseManager.UsageMode ==
-                System.ComponentModel.LicenseUsageMode.Designtime)
+            if (LicenseManager.UsageMode ==
+                LicenseUsageMode.Designtime)
             {
                 return;
             }
@@ -283,7 +286,7 @@ namespace CASE
             {
                 if (ex is ArgumentException || ex is InvalidOperationException)
                 {
-                    CASE.Utils.FeedbackUsuario.ExibirErro(this, ex, "Não foi possível registrar a entrada.", lblMensagem);
+                    FeedbackUsuario.ExibirErro(this, ex, "Não foi possível registrar a entrada.", lblMensagem);
                 }
                 else if (ex is UnauthorizedAccessException)
                 {
